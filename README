@@ -1,1 +1,26 @@
-I'll write something later...
+Requirements:
+
+- cmake
+- zlib
+- boost libraries (at least version 1.44)
+- google-sparse-hash
+
+How to build the application:
+
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make
+
+Usage:
+
+$ ./gam-ngs blocks <BAM Master CoordinateSorted> <BAM Master NameSorted> <BAM Slave CoordinateSorted> <BAM Slave NameSorted> <Min Block Size> <Min Pairing Evidence> <Master.fasta> <Slave.fasta> <Number of Threads>
+
+Explanation of the arguments:
+- <Min Block Size>: number of reads supporting a block (lower values imply longer computation time)
+- <Min Pairing Evidence>: this can be set to 1 (higher values imply that some blocks are discarded)
+
+It will output the following files: 
+- blocks.txt: description of the similar regions in the assemblies
+- pctgs.fasta: fasta file of the output assembly
+- pctgs-descriptors.txt: description on how the contigs in pctgs.fasta are built
