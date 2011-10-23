@@ -121,7 +121,7 @@ int main(int argc, char** argv)
         
         // load only useful reads of the slave assembly
         sparse_hash_map< std::string, Read > readMap;
-        readMap.set_deleted_key(NULL);
+        readMap.set_deleted_key("");
         Read::getReadMap(inBamMasterSorted,inBamSlaveSorted,readMap);
         
         inBamMasterSorted.Close();
