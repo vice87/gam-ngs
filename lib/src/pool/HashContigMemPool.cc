@@ -69,4 +69,7 @@ void HashContigMemPool::savePool(const char* poolFile)
     HashContigMemPool::savePool(std::string(poolFile));
 }
 		
-		
+void HashContigMemPool::clear()
+{
+    (this->_pool).clear();
+}

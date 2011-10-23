@@ -13,8 +13,10 @@
 #include "api/BamReader.h"
 
 #include "types.hpp"
+#include "google/sparse_hash_map"
 
 using namespace BamTools;
+using google::sparse_hash_map;
 
 //! Class implementing a read.
 class Read 
@@ -76,7 +78,7 @@ public:
      */
     bool isReverse();
     
-    static void getReadMap( BamReader &bamMaster, BamReader &bamSlave, std::map< std::string, Read >& readMap );
+    static void getReadMap( BamReader &bamMaster, BamReader &bamSlave, sparse_hash_map< std::string, Read > &readMap );
 };
 
 #endif	/* READS_HPP */

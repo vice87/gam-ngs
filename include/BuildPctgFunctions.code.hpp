@@ -181,8 +181,8 @@ std::list< PairedContig > buildPctg(
 
 std::list< PairedContig > buildPctg( 
         const AssemblyGraph &ag,
-        const ContigMemPool *masterPool, 
-        const ContigMemPool *slavePool, 
+        const HashContigMemPool *masterPool, 
+        const HashContigMemPool *slavePool, 
         const BamTools::RefVector *masterRefVector,
         const BamTools::RefVector *slaveRefVector,
         IdType &pctgId,
@@ -202,8 +202,8 @@ std::list< PairedContig > buildPctg(
 void generateSingleCtgPctgs(
         std::list<PairedContig>& pctgList, 
         const std::list<IdType>& ctgIds, 
-        ContigMemPool* pctgPool, 
-        ContigMemPool* masterPool,
+        HashContigMemPool* pctgPool, 
+        HashContigMemPool* masterPool,
         BamTools::RefVector *masterRefVector,
         IdType& pctgId )
 {

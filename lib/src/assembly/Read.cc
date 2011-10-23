@@ -47,10 +47,8 @@ bool Read::isReverse()
     return _isRev;
 }
 
-void Read::getReadMap( BamReader &bamMaster, BamReader &bamSlave, std::map< std::string, Read >& readMap )
-{
-    typedef std::map< std::string, Read > ReadMap;
-    
+void Read::getReadMap( BamReader &bamMaster, BamReader &bamSlave, sparse_hash_map< std::string, Read > &readMap )
+{    
     uint32_t nh;
     BamAlignment align, slaveAlign, prevSlaveAlign;
         

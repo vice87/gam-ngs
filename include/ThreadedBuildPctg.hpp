@@ -24,9 +24,9 @@ private:
     UIntType _pctgsDone;
     UIntType _lastPerc;
     std::list< std::vector<Block> > _blocksList;
-    ContigMemPool *_pctgPool;
-    const ContigMemPool *_masterPool;
-    const ContigMemPool *_slavePool;
+    HashContigMemPool *_pctgPool;
+    const HashContigMemPool *_masterPool;
+    const HashContigMemPool *_slavePool;
     const BamTools::RefVector *_masterRefVector;
     const BamTools::RefVector *_slaveRefVector;
     
@@ -46,9 +46,9 @@ public:
     
     ThreadedBuildPctg( 
             const std::list< std::vector<Block> > &blocksList,
-            ContigMemPool *pctgPool,
-            const ContigMemPool *masterPool,
-            const ContigMemPool *slavePool,
+            HashContigMemPool *pctgPool,
+            const HashContigMemPool *masterPool,
+            const HashContigMemPool *slavePool,
             const BamTools::RefVector *masterRefVector,
             const BamTools::RefVector *slaveRefVector
             );

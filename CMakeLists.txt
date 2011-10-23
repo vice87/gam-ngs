@@ -4,15 +4,12 @@ project(GamNgs)
 add_definitions( -Wno-deprecated )
 
 find_package(Boost COMPONENTS graph REQUIRED)
-find_package(Boost COMPONENTS filesystem REQUIRED)
 
 include_directories("${PROJECT_SOURCE_DIR}/include")
 include_directories("${PROJECT_SOURCE_DIR}/lib")
 include_directories("${PROJECT_SOURCE_DIR}/lib/include")
 include_directories("${PROJECT_SOURCE_DIR}/lib/BamFile/include")
-include_directories ( ${Boost_INCLUDE_DIRS} )
-
-link_directories ( ${Boost_LIBRARY_DIRS} )
+include_directories( ${Boost_INCLUDE_DIRS} )
 
 # sorgenti da compilare
 file(GLOB GAMNGSLIB_SRC_FILES 
@@ -32,7 +29,7 @@ file(GLOB GAMNGSLIB_SRC_FILES
     ${PROJECT_SOURCE_DIR}/lib/src/pctg/ContigInPctgInfo.cc
     ${PROJECT_SOURCE_DIR}/lib/src/pctg/PairedContig.cc
     ${PROJECT_SOURCE_DIR}/lib/src/pctg/PctgBuilder.cc
-    ${PROJECT_SOURCE_DIR}/lib/src/pool/ContigMemPool.cc
+    ${PROJECT_SOURCE_DIR}/lib/src/pool/HashContigMemPool.cc
     ${PROJECT_SOURCE_DIR}/lib/src/strand_fixer/RelativeStrand.cc
     ${PROJECT_SOURCE_DIR}/lib/src/strand_fixer/RelativeStrandEvidences.cc
     ${PROJECT_SOURCE_DIR}/lib/src/strand_fixer/StrandProbability.cc

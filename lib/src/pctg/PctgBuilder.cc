@@ -7,8 +7,8 @@
 
 
 PctgBuilder::PctgBuilder(
-        const ContigMemPool *masterPool, 
-        const ContigMemPool *slavePool,
+        const HashContigMemPool *masterPool, 
+        const HashContigMemPool *slavePool,
         const BamTools::RefVector *masterRefVector,
         const BamTools::RefVector *slaveRefVector) :
                 _masterPool(masterPool), _slavePool(slavePool),

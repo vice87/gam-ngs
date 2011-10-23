@@ -20,7 +20,7 @@
 #include "pctg/ContigInPctgInfo.hpp"
 #include "pctg/PairedContig.hpp"
 #include "pctg/constraints_disattended.hpp"
-#include "pool/ContigMemPool.hpp"
+#include "pool/HashContigMemPool.hpp"
 
 #define DEFAULT_MAX_GAPS 300
 #define DEFAULT_MAX_SEARCHED_ALIGNMENT 400000
@@ -44,8 +44,8 @@ class PctgBuilder
 private:
     const BamTools::RefVector *_masterRefVector;        //!< Reference to the id->name vector of the master contigs.
     const BamTools::RefVector *_slaveRefVector;         //!< Reference to the id->name vector of the slave contigs.
-    const ContigMemPool *_masterPool;                   //!< Reference to the master contig pool
-    const ContigMemPool *_slavePool;                    //!< Reference to the slave contig pool
+    const HashContigMemPool *_masterPool;                   //!< Reference to the master contig pool
+    const HashContigMemPool *_slavePool;                    //!< Reference to the slave contig pool
     UIntType _maxAlignment;                             //!< Maximum alignment size
     UIntType _maxPctgGap;                               //!< Maximum paired contig gaps
     UIntType _maxCtgGap;                                //!< Maximum contig gaps
@@ -60,8 +60,8 @@ public:
      * \param slaveRefVector reference to the vector id->name of slave contigs
      */
     PctgBuilder(
-            const ContigMemPool *masterPool = NULL, 
-            const ContigMemPool *slavePool = NULL,
+            const HashContigMemPool *masterPool = NULL, 
+            const HashContigMemPool *slavePool = NULL,
             const BamTools::RefVector *masterRefVector = NULL, 
             const BamTools::RefVector *slaveRefVector = NULL);
     

@@ -31,6 +31,8 @@ public:
     void savePool(const std::string& poolFile);
     void savePool(const char* poolFile);
     
+    void clear();
+    
     //friend std::istream& operator >>(std::istream &is, HashContigMemPool &cmp);
     //friend std::ostream& operator <<(std::ostream &os, const HashContigMemPool& cmp);
 };

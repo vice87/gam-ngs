@@ -123,9 +123,9 @@ bool Block::addReads( Read &mRead, Read &sRead, int minOverlap )
 std::vector< Block > Block::findBlocks( BamReader &inBamMaster, 
                                         BamReader &inBamSlave, 
                                         const int minBlockSize,
-                                        std::map< std::string, Read > &slaveReadMap)
+                                        sparse_hash_map< std::string, Read > &slaveReadMap)
 {
-    typedef std::map< std::string, Read > ReadMap;
+    typedef sparse_hash_map< std::string, Read > ReadMap;
     typedef std::list< std::string > ReadNameList;
     typedef std::vector< Block > BlockVector;
     typedef std::list< Block > BlockList;

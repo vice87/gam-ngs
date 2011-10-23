@@ -16,9 +16,11 @@
 #include "assembly/Read.hpp"
 #include "assembly/Frame.hpp"
 
+#include "google/sparse_hash_map"
 #include "types.hpp"
 
 using namespace BamTools;
+using google::sparse_hash_map;
 
 //! Class implementing a block.
 class Block 
@@ -112,7 +114,7 @@ public:
      * \param minBlockSize      minimum reads required to form a block.
      * \return vector of blocks found.
      */
-    static std::vector<Block> findBlocks( BamReader &master, BamReader &slave, const int minBlockSize, std::map< std::string, Read > &readMap );
+    static std::vector<Block> findBlocks( BamReader &master, BamReader &slave, const int minBlockSize, sparse_hash_map< std::string, Read > &readMap );
     
     //! Returns whether two block share the master contig.
     /*!

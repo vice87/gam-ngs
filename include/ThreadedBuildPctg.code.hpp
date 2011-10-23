@@ -84,9 +84,9 @@ ThreadedBuildPctg::memorizeNewPctg(const PairedContig &pctg)
 
 ThreadedBuildPctg::ThreadedBuildPctg(
         const std::list<std::vector<Block> >& blocksList, 
-        ContigMemPool* pctgPool, 
-        const ContigMemPool* masterPool, 
-        const ContigMemPool* slavePool, 
+        HashContigMemPool* pctgPool, 
+        const HashContigMemPool* masterPool, 
+        const HashContigMemPool* slavePool, 
         const BamTools::RefVector* masterRefVector, 
         const BamTools::RefVector* slaveRefVector):
                 _blocksList(blocksList),

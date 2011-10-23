@@ -14,11 +14,12 @@
 #include <sstream>
 #include <fstream>
 #include <algorithm>
-#include <unistd.h>
 #include <time.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <boost/graph/graphviz.hpp>
-#include <boost/filesystem/operations.hpp>
+#include <google/sparse_hash_map>
 
 #include "types.hpp"
 #include "api/BamAux.h"
@@ -28,12 +29,13 @@
 #include "assembly/Block.hpp"
 #include "graphs/PairingEvidencesGraph.hpp"
 #include "pctg/PairedContig.hpp"
-#include "pool/ContigMemPool.hpp"
+#include "pool/HashContigMemPool.hpp"
 #include "OrderingFunctions.hpp"
 #include "PartitionFunctions.hpp"
 #include "ThreadedBuildPctg.code.hpp"
 
 using namespace BamTools;
+using google::sparse_hash_map;
 
 /*
  * 
@@ -99,11 +101,13 @@ int main(int argc, char** argv)
     
     BamReader inBamM;
     inBamM.Open( bamFileM );
-    if ( boost::filesystem::exists( bamFileM + ".bai" ) ) inBamM.OpenIndex( bamFileM + ".bai" );
+    
+    struct stat st;
+    if( stat((bamFileM + ".bai").c_str(),&st) == 0 ) inBamM.OpenIndex( bamFileM + ".bai" );
     
     BamReader inBamS;
     inBamS.Open( bamFileS );
-    if ( boost::filesystem::exists( bamFileS + ".bai" ) ) inBamM.OpenIndex( bamFileS + ".bai" );
+    if( stat((bamFileS + ".bai").c_str(),&st) == 0 ) inBamM.OpenIndex( bamFileS + ".bai" );
     
     std::vector<Block> blocks;
     
@@ -116,7 +120,7 @@ int main(int argc, char** argv)
         inBamSlaveSorted.Open( bamSlaveSorted );
         
         // load only useful reads of the slave assembly
-        std::map< std::string, Read > readMap;
+        sparse_hash_map< std::string, Read > readMap;
         Read::getReadMap(inBamMasterSorted,inBamSlaveSorted,readMap);
         
         inBamMasterSorted.Close();
@@ -156,11 +160,11 @@ int main(int argc, char** argv)
     
     std::cerr << "Loading contigs in memory... " << std::flush;
     
-    ContigMemPool masterPool, slavePool, pctgPool;
+    HashContigMemPool masterPool, slavePool, pctgPool;
     
     // load master and slave contigs in memory
-    masterPool = ContigMemPool::loadPool(masterFasta);
-    slavePool = ContigMemPool::loadPool(slaveFasta);
+    masterPool.loadPool(masterFasta);
+    slavePool.loadPool(slaveFasta);
     
     std::cerr << "done." << std::endl << std::flush;
     
@@ -174,20 +178,20 @@ int main(int argc, char** argv)
     std::pair< std::list<PairedContig>, std::vector<bool> > result = tbp.run(threadsNum);
     
     IdType pctgNum((result.first).size());
-    
     std::cerr << "Paired Contigs: " << pctgNum << std::endl << std::flush;
+    
+    // slave contig pool is no more needed
+    slavePool.clear();
     
     std::list<IdType> ctgIds;
     
-    for(IdType i = 0; i < result.second.size(); i++)
-    {
+    for(IdType i = 0; i < result.second.size(); i++) 
         if( !result.second.at(i) ) ctgIds.push_back(i);
-    }
     
     generateSingleCtgPctgs( result.first, ctgIds, &pctgPool, &masterPool, &mcRef, pctgNum);
     
     // save paired contig pool to file
-    ContigMemPool::savePool(std::string("pctgs.fasta"), pctgPool);
+    pctgPool.savePool(std::string("pctgs.fasta"));
     
     // save paired contigs descriptors to file
     std::cerr << "Writing PairedContig descriptors..." << std::flush;
