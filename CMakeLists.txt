@@ -4,11 +4,13 @@ project(GamNgs)
 add_definitions( -Wno-deprecated )
 
 find_package(Boost COMPONENTS graph REQUIRED)
+find_package(ZLIB REQUIRED)
+find_package(Threads REQUIRED)
 
 include_directories("${PROJECT_SOURCE_DIR}/include")
 include_directories("${PROJECT_SOURCE_DIR}/lib")
 include_directories("${PROJECT_SOURCE_DIR}/lib/include")
-include_directories("${PROJECT_SOURCE_DIR}/lib/BamFile/include")
+include_directories("${PROJECT_SOURCE_DIR}/lib/bamtools-1.0.2/src")
 include_directories( ${Boost_INCLUDE_DIRS} )
 
 # sorgenti da compilare
@@ -37,14 +39,15 @@ file(GLOB GAMNGSLIB_SRC_FILES
     ${PROJECT_SOURCE_DIR}/lib/src/PartitionFunctions.cc
 )
 
-# libreria contenente le classi usate
-#add_subdirectory(lib)
+# sottocartella dove si trova la libreria BamTools
+add_subdirectory(lib)
 
 # add the executable
 add_executable(gam-ngs src/gam-ngs.cc ${GAMNGSLIB_SRC_FILES})
 
-target_link_libraries(gam-ngs z)
-target_link_libraries(gam-ngs ${PROJECT_SOURCE_DIR}/lib/BamFile/libbamtools.a)
+target_link_libraries(gam-ngs ${ZLIB_LIBRARIES})
+target_link_libraries(gam-ngs ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(gam-ngs BamTools) #target_link_libraries(gam-ngs ${PROJECT_SOURCE_DIR}/lib/BamFile/libbamtools.a)
 target_link_libraries(gam-ngs ${Boost_LIBRARIES})
 
 # executable for computing fasta statistics

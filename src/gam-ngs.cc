@@ -99,10 +99,10 @@ int main(int argc, char** argv)
     time_t t1,t2;
     t1 = time(NULL);
     
+    struct stat st;
+    
     BamReader inBamM;
     inBamM.Open( bamFileM );
-    
-    struct stat st;
     if( stat((bamFileM + ".bai").c_str(),&st) == 0 ) inBamM.OpenIndex( bamFileM + ".bai" );
     
     BamReader inBamS;
