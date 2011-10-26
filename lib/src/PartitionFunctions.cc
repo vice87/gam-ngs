@@ -32,15 +32,6 @@ partitionBlocks( const std::vector<Block> &blocks )
         // create an assembly graph
         AssemblyGraph ag( *pcb );
         
-        // DEBUG
-        //std::stringstream ff;
-        //ff << "./tmp/Partition_" << z << "_first.dot";
-        //std::ofstream ss( ff.str().c_str() );
-        //ag.writeGraphviz(ss);
-        //ss.close();
-        //boost::write_graphviz( ss, ag );
-        // END DEBUG
-        
         typedef std::vector< size_t > container;
         container c;
         bool done = false;
@@ -52,22 +43,42 @@ partitionBlocks( const std::vector<Block> &blocks )
             {
                 boost::topological_sort( ag, std::back_inserter(c) );
                 done = true;
+                
+                /* DEBUG - Assembly graph with "fork" nodes */
+                typedef boost::graph_traits<AssemblyGraph>::vertex_iterator VertexIterator;
+                VertexIterator vbegin,vend;
+                boost::tie(vbegin,vend) = boost::vertices(ag);
+                
+                for (VertexIterator v=vbegin; v!=vend; v++) 
+                {
+                    int in = boost::in_degree(*v,ag);
+                    int out = boost::out_degree(*v,ag);
+                    
+                    if( in > 1 || out > 1)
+                    {
+                        std::stringstream ff1;
+                        ff1 << "./tmp/Partition_" << z << "_has_cycles.dot";
+                        std::ofstream ss1( ff1.str().c_str() );
+                        ag.writeGraphviz(ss1);
+                        ss1.close();
+                    }
+                }
+                /* END DEBUG*/
             }
             catch( boost::not_a_dag ) // if the graph is not a DAG, remove cycles.
             {
+                /* DEBUG - Assembly graph with cycles */
+                std::stringstream ff1;
+                ff1 << "./tmp/Partition_" << z << "_has_cycles.dot";
+                std::ofstream ss1( ff1.str().c_str() );
+                ag.writeGraphviz(ss1);
+                ss1.close();
+                /* END DEBUG*/
+                
                 ag.removeCycles();
                 cyclesRemoved = true;
             }
         } while(!done);
-        
-//        if(cyclesRemoved)
-//        {
-//            std::stringstream ff1;
-//            ff1 << "./tmp/Partition_" << z << "_nocycles.dot";
-//            std::ofstream ss1( ff1.str().c_str() );
-//            ag.writeGraphviz(ss1);
-//            ss1.close();
-//        }
         
         z++;
         

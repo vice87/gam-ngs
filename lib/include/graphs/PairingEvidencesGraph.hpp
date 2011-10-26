@@ -42,10 +42,10 @@ public:
 //! Discards blocks whose master and slave contigs have a pairing evidence below a certain threshold.
 /*!
  * \param blocks a vector of blocks.
- * \param minPairEvid minimum number of blocks on two contigs.
+ * \param minPairEvid minimum number of blocks between two contigs.
  * \return a filtered vector of blocks.
  */
-std::vector<Block> filterBlocksByPairingEvidences( const std::vector<Block> &blocks, const int minPairEvid );
+std::vector<Block> filterBlocksByPairingEvidences( const std::vector<Block> &blocks, const int minPairEvid = 1 );
 
 #endif	/* PAIRINGEVIDENCESGRAPH_HPP */
 

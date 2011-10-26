@@ -27,10 +27,10 @@ typedef enum { MASTER_EDGE, SLAVE_EDGE } EdgeKindType;
  * blocks in the master and slave assemblies.
  */
 class AssemblyGraph : public boost::adjacency_list< boost::setS, boost::vecS, 
-        boost::directedS, boost::no_property, boost::property<boost::edge_kind_t,EdgeKindType> >
+        boost::bidirectionalS, boost::no_property, boost::property<boost::edge_kind_t,EdgeKindType> >
 {
 public:
-    typedef boost::adjacency_list< boost::setS, boost::vecS, boost::directedS, 
+    typedef boost::adjacency_list< boost::setS, boost::vecS, boost::bidirectionalS, 
             boost::no_property, boost::property<boost::edge_kind_t,EdgeKindType> > Graph;
     typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
     typedef boost::graph_traits<Graph>::vertex_iterator VertexIterator;
