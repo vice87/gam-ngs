@@ -10,7 +10,7 @@ find_package(Threads REQUIRED)
 include_directories("${PROJECT_SOURCE_DIR}/include")
 include_directories("${PROJECT_SOURCE_DIR}/lib")
 include_directories("${PROJECT_SOURCE_DIR}/lib/include")
-include_directories("${PROJECT_SOURCE_DIR}/lib/bamtools-1.0.2/src")
+include_directories("${PROJECT_SOURCE_DIR}/lib/bamtools-2.0.5/src")
 include_directories( ${Boost_INCLUDE_DIRS} )
 
 # sorgenti da compilare
