@@ -57,10 +57,12 @@ partitionBlocks( const std::vector<Block> &blocks )
                     if( in > 1 || out > 1)
                     {
                         std::stringstream ff1;
-                        ff1 << "./tmp/Partition_" << z << "_has_cycles.dot";
+                        ff1 << "./tmp/Partition_" << z << "_not_linear.dot";
                         std::ofstream ss1( ff1.str().c_str() );
                         ag.writeGraphviz(ss1);
                         ss1.close();
+                        
+                        break;
                     }
                 }
                 /* END DEBUG*/
