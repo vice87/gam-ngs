@@ -25,7 +25,7 @@ class Read
 private: 
     IdType _contigId;   //!< contig's identifier.
     IdType _startPos;   //!< starting position (0-based) of the read inside the contig.
-    IdType _endPos;     //!< ending position (0-based) of the read inside the contig.
+    IdType _endPos;     //!< ending position (0-based) of the read inside the contig (half-open interval).
     bool _isRev;        //!< whether the read is reverse complemented or not.
 
 public:

@@ -34,12 +34,12 @@ IdType Read::getStartPos() const
 
 IdType Read::getEndPos() const
 {
-    return _endPos;
+    return (_endPos - 1);
 }
 
 IntType Read::getLength() const
 {
-    return _endPos - _startPos + 1;
+    return _endPos - _startPos;
 }
 
 bool Read::isReverse()
@@ -63,9 +63,11 @@ void Read::getReadMap( BamReader &bamMaster, BamReader &bamSlave, sparse_hash_ma
         {            
             if( align.Name == prevSlaveAlign.Name && align.IsPaired() && align.IsFirstMate() == prevSlaveAlign.IsFirstMate() )
             {
-                if( align.GetTag(std::string("NH"),nh) && nh == 1 && align.IsMapped() )
+                if( !align.GetTag(std::string("NH"),nh) ) nh = 1; // se molteplicità in un campo non standard assumo che sia pari ad 1
+                if( nh == 1 && align.IsMapped() )
                 {
-                    if( slaveAlign.GetTag(std::string("NH"),nh) && nh == 1 && slaveAlign.IsMapped() )
+                    if( !slaveAlign.GetTag(std::string("NH"),nh) ) nh = 1; // se molteplicità in un campo non standard assumo che sia pari ad 1
+                    if( nh == 1 && slaveAlign.IsMapped() )
                     {
                         Read slaveRead(IdType(prevSlaveAlign.RefID), IdType(prevSlaveAlign.Position), IdType(prevSlaveAlign.GetEndPosition()), prevSlaveAlign.IsReverseStrand());
                         std::string readName = prevSlaveAlign.Name + (prevSlaveAlign.IsFirstMate() ? "1" : "2");
@@ -90,9 +92,11 @@ void Read::getReadMap( BamReader &bamMaster, BamReader &bamSlave, sparse_hash_ma
         
         if( strnum_cmp( align.Name.c_str(), slaveAlign.Name.c_str()) == 0 )
         {
-            if( align.GetTag(std::string("NH"),nh) && nh == 1 && align.IsMapped() )
+            if( !align.GetTag(std::string("NH"),nh) ) nh = 1; // se molteplicità in un campo non standard assumo che sia pari ad 1
+            if( nh == 1 && align.IsMapped() )
             {
-                if( slaveAlign.GetTag(std::string("NH"),nh) && nh == 1 && slaveAlign.IsMapped() )
+                if( !slaveAlign.GetTag(std::string("NH"),nh) ) nh = 1; // se molteplicità in un campo non standard assumo che sia pari ad 1
+                if( nh == 1 && slaveAlign.IsMapped() )
                 {
                     Read slaveRead(IdType(slaveAlign.RefID), IdType(slaveAlign.Position), IdType(slaveAlign.GetEndPosition()), slaveAlign.IsReverseStrand());
                     std::string readName = slaveAlign.Name;
