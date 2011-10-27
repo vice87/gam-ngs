@@ -143,9 +143,10 @@ public:
     //! Reads blocks from an input file.
     /*!
      * \param blockFile the name of the input file.
+     * \param minBlockSize minimum size (# reads) of the blocks to be loaded.
      * \return a vector containing the blocks read from the file.
      */
-    static std::vector<Block> readBlocks( const std::string& blockFile );    
+    static std::vector<Block> readBlocks( const std::string& blockFile, int minBlockSize = 1 );    
     
     //! Write a vector of blocks into a file.
     /*!

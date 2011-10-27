@@ -271,14 +271,14 @@ bool Block::shareContig(const Block& a, const Block& b)
     return (shareMasterContig(a,b) && shareSlaveContig(a,b));
 }
 
-std::vector< Block > Block::readBlocks( const std::string& blockFile )
+std::vector< Block > Block::readBlocks( const std::string& blockFile, int minBlockSize )
 {
     std::ifstream input( blockFile.c_str() );
     
     Block block;
     std::vector< Block > blocks;
         
-    while( input >> block ){ blocks.push_back(block); }
+    while( input >> block ){ if( block.getReadsNumber() >= minBlockSize ) blocks.push_back(block); }
     
     input.close();
     

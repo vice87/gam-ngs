@@ -139,10 +139,10 @@ int main(int argc, char** argv)
     /* Command to merge assemblies */
     if( action.compare("merge") == 0 )
     {
-        if( argc != 8 )
+        if( argc != 9 )
         {
             std::cerr << "Usage: " << getPathBaseName(argv[0]) << " merge "
-                      << "<Input.blocks> "
+                      << "<Input.blocks> <Min Block Size>"
                       << "<BAM Master CoordinateSorted> <BAM Slave ReadNameSorted> "
                       << "<Master FASTA> <Slave FASTA> "
                       << "<Threads>"
@@ -151,11 +151,12 @@ int main(int argc, char** argv)
         }
         
         inBlocksFile = argv[2];
-        bamFileM = argv[3];
-        bamFileS = argv[4];
-        masterFasta = argv[5];
-        slaveFasta = argv[6];
-        threadsNum = atoi(argv[7]);
+        minBlockSize = atoi(argv[3]);
+        bamFileM = argv[4];
+        bamFileS = argv[5];
+        masterFasta = argv[6];
+        slaveFasta = argv[7];
+        threadsNum = atoi(argv[8]);
         
         if( threadsNum < 1 ) threadsNum = 1;
         
@@ -164,7 +165,7 @@ int main(int argc, char** argv)
         inBamS.Open( bamFileS );
         
         std::cerr << "[loading blocks]" << std::endl;
-        std::vector<Block> blocks = Block::readBlocks( std::string("blocks.txt") );
+        std::vector<Block> blocks = Block::readBlocks( inBlocksFile, minBlockSize );
         std::cerr << "[blocks loaded: " << blocks.size() << "]" << std::endl;
         
         // keep only blocks between contigs that share at least minEvidence blocks.
