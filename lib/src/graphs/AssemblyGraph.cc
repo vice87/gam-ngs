@@ -206,7 +206,7 @@ AssemblyGraph::removeCycles()
     // re-initialize the graph with blocks that do not create cycles
     this->initGraph( newBlockVector );
     
-    std::cout << "Filtered blocks after cycles removal = " << newBlockVector.size() << std::endl << std::flush;
+    //std::cout << "Filtered blocks after cycles removal = " << newBlockVector.size() << std::endl << std::flush;
     
     //return sComponents;
 }
