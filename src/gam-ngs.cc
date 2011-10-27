@@ -76,6 +76,17 @@ int main(int argc, char** argv)
     
     action = argv[1]; // get command string
     
+    if( action.compare("blocks") != 0 && action.compare("merge") != 0 )
+    {
+        std::cerr << std::endl << "Usage:   " << getPathBaseName(argv[0]) << " <command> [options]" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Command: " << "blocks" << "\t" << "generate blocks file" << std::endl
+                  << "         " << "merge" << "\t" << "merge two assemblies given a blocks file" << std::endl
+                  << std::endl;
+        
+        return 1;
+    }
+    
     /* Command to build the blocks */
     if( action.compare("blocks") == 0 )
     {
