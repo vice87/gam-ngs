@@ -215,7 +215,7 @@ void generateSingleCtgPctgs(
         
         if( pctg.size() > 0 )
         {
-            pctgPool->set( pctg.name(), pctg );
+            //pctgPool->set( pctg.name(), pctg );
             pctgList.push_back( pctg );
             pctgId++;
         }

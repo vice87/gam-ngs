@@ -130,7 +130,7 @@ AssemblyGraph::removeCycles()
     
     ////////////////////////////////////////////////////////// NEW CODE
     
-    std::list< Block > newBlocks;
+    /*std::list< Block > newBlocks;
     
     // group vertices by scc
     std::vector< std::list<Block> > components(sccNum);
@@ -158,11 +158,9 @@ AssemblyGraph::removeCycles()
     // re-initialize the graph with blocks that do not create cycles
     this->initGraph( newBlockVect );
     
-    std::cout << "Filtered blocks after new cycles removal = " << newBlockVect.size() << std::endl << std::flush;
+    //std::cout << "Filtered blocks after new cycles removal = " << newBlockVect.size() << std::endl << std::flush;*/
     
     ////////////////////////////////////////////////////////// OLD CODE
-    
-    /*
     
     // group vertices by scc
     std::vector< std::list<UIntType> > components(sccNum);
@@ -211,8 +209,6 @@ AssemblyGraph::removeCycles()
     std::cout << "Filtered blocks after cycles removal = " << newBlockVector.size() << std::endl << std::flush;
     
     //return sComponents;
-    
-    */
 }
 
 
@@ -353,6 +349,10 @@ AssemblyGraph::addSlaveSingleEdge(const UIntType& s, const UIntType& t)
         {
             e = boost::add_edge(s,t,*this).first;
             boost::put( boost::edge_kind_t(), *this, e, SLAVE_EDGE );
+        }
+        else
+        {
+            boost::put( boost::edge_kind_t(), *this, e, BOTH_EDGE );
         }
         
         return true;

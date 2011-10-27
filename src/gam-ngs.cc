@@ -115,7 +115,7 @@ int main(int argc, char** argv)
         BamReader inBamSlaveSorted;
         inBamSlaveSorted.Open( bamSlaveSorted );
         
-        std::cerr << "[building reads map]" << std::endl;
+        std::cout << "[building reads map]" << std::endl << std::flush;
         
         /* load only useful reads of the slave assembly */
         sparse_hash_map< std::string, Read > readMap;
@@ -135,16 +135,14 @@ int main(int argc, char** argv)
         inBamS.Open( bamFileS );
         if( stat((bamFileS + ".bai").c_str(),&st) == 0 ) inBamM.OpenIndex( bamFileS + ".bai" );
         
-        std::cerr << "[finding blocks]" << std::endl;
+        std::cout << "[finding blocks]" << std::endl << std::flush;
         std::vector<Block> blocks = Block::findBlocks( inBamM, inBamS, minBlockSize, readMap );
         
-        std::cerr << "[writing blocks on file: " << getPathBaseName( outFilePrefix + ".blocks" ) << "]" << std::endl;
+        std::cout << "[writing blocks on file: " << getPathBaseName( outFilePrefix + ".blocks" ) << "]" << std::endl << std::flush;
         Block::writeBlocks( outFilePrefix + ".blocks" , blocks ); // write blocks to file
         
         inBamM.Close();
         inBamS.Close();
-        
-        return 0;
     }
     
     /* Command to merge assemblies */
@@ -176,18 +174,18 @@ int main(int argc, char** argv)
         inBamM.Open( bamFileM );
         inBamS.Open( bamFileS );
         
-        std::cerr << "[loading blocks]" << std::endl;
+        std::cout << "[loading blocks]" << std::endl << std::flush;
         std::vector<Block> blocks = Block::readBlocks( inBlocksFile, minBlockSize );
-        std::cerr << "[blocks loaded: " << blocks.size() << "]" << std::endl;
+        std::cout << "[blocks loaded: " << blocks.size() << "]" << std::endl << std::flush;
         
         // keep only blocks between contigs that share at least minEvidence blocks.
         // std::vector< Block > outBlocks = filterBlocksByPairingEvidences( blocks, minEvidence );
         
         // create the graph of assemblies, remove cycles and keep remaining blocks.
-        std::cerr << "[partitioning blocks for merging]" << std::endl;
+        std::cout << "[removing cycles from assemblies graph]" << std::endl << std::flush;
         std::list< std::vector<Block> > pcblocks = partitionBlocks( blocks );
         
-        std::cerr << "[loading contigs in memory]" << std::endl;
+        std::cout << "[loading contigs in memory]" << std::endl << std::flush;
         HashContigMemPool masterPool, slavePool, pctgPool;
     
         // load master and slave contigs in memory
@@ -198,13 +196,13 @@ int main(int argc, char** argv)
         BamTools::RefVector mcRef = inBamM.GetReferenceData();
         BamTools::RefVector scRef = inBamS.GetReferenceData();
         
-        std::cerr << "[building paired contigs]" << std::endl;
+        std::cout << "[building paired contigs]" << std::endl << std::flush;
         // build paired contigs (threaded)
         ThreadedBuildPctg tbp( pcblocks, &pctgPool, &masterPool, &slavePool, &mcRef, &scRef );
         std::pair< std::list<PairedContig>, std::vector<bool> > result = tbp.run(threadsNum);
         
         IdType pctgNum((result.first).size());
-        std::cerr << "[paired contigs built: " << pctgNum << "]" << std::endl;
+        std::cout << "[paired contigs built: " << pctgNum << "]" << std::endl << std::flush;
         
         slavePool.clear(); // slave contigs pool is no more needed
 
@@ -217,12 +215,16 @@ int main(int argc, char** argv)
         generateSingleCtgPctgs( result.first, ctgIds, &pctgPool, &masterPool, &mcRef, pctgNum);
 
         // save paired contig pool to disk
-        std::cerr << "[writing paired contigs on file: " << getPathBaseName( outFilePrefix + ".fasta" ) << "]" << std::endl;
-        pctgPool.savePool( outFilePrefix + ".fasta" );
+        std::cout << "[writing paired contigs on file: " << getPathBaseName( outFilePrefix + ".fasta" ) << "]" << std::endl << std::flush;
+        //pctgPool.savePool( outFilePrefix + ".fasta" );
+        result.first.sort( orderPctgsByName );
+        std::ofstream outFasta((outFilePrefix + ".fasta").c_str(),std::ios::out);
+        std::list< PairedContig >::const_iterator i;
+        for( i = result.first.begin(); i != result.first.end(); i++ ) outFasta << *i << std::endl;
+        outFasta.close();
         
         // save paired contigs descriptors to file
-        std::cerr << "[writing paired contigs descriptors on file: " << getPathBaseName( outFilePrefix + ".pctgs" ) << "]" << std::endl;
-        result.first.sort( orderPctgsByName );
+        std::cout << "[writing paired contigs descriptors on file: " << getPathBaseName( outFilePrefix + ".pctgs" ) << "]" << std::endl << std::flush;
         std::fstream pctgDescFile( (outFilePrefix + ".pctgs").c_str(), std::fstream::out );
         writePctgDescriptors( pctgDescFile, result.first );
         pctgDescFile.close();
@@ -232,7 +234,7 @@ int main(int argc, char** argv)
     }
     
     t2 = time(NULL);
-    std::cerr << "[execution time: " << formatTime(t2-t1) << "]" << std::endl;
+    std::cout << "[execution time: " << formatTime(t2-t1) << "]" << std::endl << std::flush;
     
     return 0;
 }

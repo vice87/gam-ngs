@@ -18,7 +18,7 @@ namespace boost
     BOOST_INSTALL_PROPERTY(edge, kind);
 }
 
-typedef enum { MASTER_EDGE, SLAVE_EDGE } EdgeKindType;
+typedef enum { MASTER_EDGE, SLAVE_EDGE, BOTH_EDGE } EdgeKindType;
 
 //! Class implementing the graph of assemblies
 /*!

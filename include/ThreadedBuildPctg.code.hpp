@@ -34,7 +34,7 @@ ThreadedBuildPctg::extractNextPctg()
         if( this->_lastPerc < perc )
         {
             this->_lastPerc = perc;
-            if( perc % 5 == 0 ) std::cerr << "Weaving " << perc << "% done." << std::endl << std::flush;
+            //if( perc % 5 == 0 ) std::cerr << "Weaving " << perc << "% done." << std::endl << std::flush;
         }
     }
     else
@@ -66,7 +66,7 @@ ThreadedBuildPctg::memorizeNewPctg(const PairedContig &pctg)
 {
     pthread_mutex_lock(&(this->_mutexRemoveCtgId));
     
-    (this->_pctgPool)->set( pctg.name(), pctg ); // aggiungi il paired contig al rispettivo pool
+    //(this->_pctgPool)->set( pctg.name(), pctg ); // aggiungi il paired contig al rispettivo pool
     
     // aggiungi il paired contig alla lista dei paired contigs trovati
     this->_pctgList.push_back(pctg);
