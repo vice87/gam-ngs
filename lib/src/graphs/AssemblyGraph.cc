@@ -377,7 +377,8 @@ AssemblyGraph::writeGraphviz(std::ostream& os)
     for (VertexIterator v=vbegin; v!=vend; v++) 
     {
         os << "   " << *v << "[label=\""<< *v << " (" << this->_blockVector[*v].getReadsNumber() << ")\""
-                    << ((boost::in_degree(*v,*this) > 1 || boost::out_degree(*v,*this)) ? ", color = blue " : "") << "]";
+                    << ((boost::in_degree(*v,*this) > 1 || boost::out_degree(*v,*this) > 1) ? ", color = blue" : "") << "];"
+                    << std::endl;
     }
     
     EdgeIterator ebegin,eend;

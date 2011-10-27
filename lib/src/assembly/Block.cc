@@ -152,8 +152,6 @@ std::vector< Block > Block::findBlocks( BamReader &inBamMaster,
     std::cerr << "done." << std::endl;
     */
     
-    std::cerr << "Finding Blocks... " << std::flush;
-    
     BamAlignment align;
     BlockVector outblocks;
     BlockList curblocks;
@@ -245,11 +243,7 @@ std::vector< Block > Block::findBlocks( BamReader &inBamMaster,
         ++readlist;
     }
 
-    std::cerr << "done." << std::endl;
-    
-    std::cerr << "Clearing remaining reads (num = " << slaveReadMap.size() << ")..." << std::flush;
     slaveReadMap.clear(); // remove remaining reads from the map
-    std::cerr << "done." << std::endl << std::flush;
     
     return outblocks;
 }
