@@ -61,6 +61,9 @@ const PairedContig& PctgBuilder::extendPctgWithCtgFrom(
     
     for( UIntType i = 0; i < newBases; i++ ) // ORIGINALE => for( UIntType i = ctgPos; i < ctg.size(); i++ )
     {
+        // avoid to write an 'N' to the paired contig
+        if( i < lastBases && ctg.at(ctgPos + i).base() == N ) continue;
+        
         orig.at(pctgPos + i) = ctg.at(ctgPos + i);
         //orig.qual(pctgPos+i) = ctg.qual(i);
     }
