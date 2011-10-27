@@ -150,12 +150,12 @@ int main(int argc, char** argv)
     /* Command to merge assemblies */
     if( action.compare("merge") == 0 )
     {
-        if( argc != 9 )
+        if( argc != 10 )
         {
             std::cerr << "Usage: " << getPathBaseName(argv[0]) << " merge "
-                      << "<Input.blocks> <Min Block Size>"
-                      << "<BAM Master CoordinateSorted> <BAM Slave ReadNameSorted> "
-                      << "<Master FASTA> <Slave FASTA> "
+                      << "<Input.blocks> <Min Block Size> "
+                      << "<BAM Master CoordinateSorted> <BAM Slave CoordinateSorted> "
+                      << "<Master FASTA> <Slave FASTA> <Output FileName> "
                       << "<Threads>"
                       << std::endl;
             return 1;
@@ -167,7 +167,8 @@ int main(int argc, char** argv)
         bamFileS = argv[5];
         masterFasta = argv[6];
         slaveFasta = argv[7];
-        threadsNum = atoi(argv[8]);
+        outFilePrefix = argv[8];
+        threadsNum = atoi(argv[9]);
         
         if( threadsNum < 1 ) threadsNum = 1;
         
