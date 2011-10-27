@@ -396,6 +396,9 @@ AssemblyGraph::writeGraphviz(std::ostream& os)
             case SLAVE_EDGE:
                 os << "   " << boost::source(*e,*this) << "->" << boost::target(*e,*this) << "[color=red];" << std::endl;
                 break;
+            case BOTH_EDGE:
+                os << "   " << boost::source(*e,*this) << "->" << boost::target(*e,*this) << "[color=green];" << std::endl;
+                break;
         }
     }
     

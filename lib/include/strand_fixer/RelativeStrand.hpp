@@ -16,7 +16,7 @@
 #include "strand_fixer/StrandProbability.hpp"
 #include "strand_fixer/RelativeStrandEvidences.hpp"
 
-#define MAX_PTP_LIST_SIZE 1000
+#define MAX_PTP_LIST_SIZE 100
 
 //! Class implementing a relative strand graph.
 class RelativeStrandEvidencesGraph : public PairedContigGraph< unsigned short int, RelativeStrandEvidences >
