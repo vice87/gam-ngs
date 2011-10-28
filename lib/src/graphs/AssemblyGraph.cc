@@ -376,7 +376,18 @@ AssemblyGraph::writeGraphviz(std::ostream& os)
     
     for (VertexIterator v=vbegin; v!=vend; v++) 
     {
-        os << "   " << *v << "[label=\""<< *v << " (" << this->_blockVector[*v].getReadsNumber() << ")\""
+        IdType masterCtgId = this->_blockVector[*v].getMasterFrame().getContigId();
+        UIntType masterFrameLen = this->_blockVector[*v].getMasterFrame().getLength();
+        UIntType masterFrameBeg = this->_blockVector[*v].getMasterFrame().getBegin();
+        
+        IdType slaveCtgId = this->_blockVector[*v].getSlaveFrame().getContigId();
+        UIntType slaveFrameLen = this->_blockVector[*v].getSlaveFrame().getLength();
+        UIntType slaveFrameBeg = this->_blockVector[*v].getSlaveFrame().getBegin();
+        
+        os << "   " << "[label=\"" 
+                        << masterCtgId << ":" << masterFrameBeg << ":" << masterFrameLen << "\n"
+                        << slaveCtgId << ":" << slaveFrameBeg << ":" << slaveFrameBeg 
+                    << "\""
                     << ((boost::in_degree(*v,*this) > 1 || boost::out_degree(*v,*this) > 1) ? ", color = blue" : "") << "];"
                     << std::endl;
     }
