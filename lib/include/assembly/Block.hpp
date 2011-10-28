@@ -156,10 +156,6 @@ public:
     static void writeBlocks( const std::string& blockFile, std::vector< Block >& blocks  );
     
     //! Less-Than operator for the Block class.
-    /*!
-     * \todo sistemare la definizione: la funzione è implementata in modo scorretto solo
-     * per poterla usare in strutture dove è richiesto questo operatore di confronto (es. std::map).
-     */
     bool operator <(const Block &block) const;
     
     //! Equality operator for the Block class.

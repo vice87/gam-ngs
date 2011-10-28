@@ -295,9 +295,11 @@ void Block::writeBlocks( const std::string& blockFile, std::vector< Block >& blo
 bool
 Block::operator <(const Block& block) const
 {    
-    if( this->_masterFrame < block.getMasterFrame() ) return true;
-    
-    return false;
+    return ( 
+             this->_masterFrame < block.getMasterFrame() ||
+             (this->_masterFrame == block.getMasterFrame() && this->_slaveFrame < block.getSlaveFrame()) ||
+             (this->_masterFrame == block.getMasterFrame() && this->_slaveFrame == block.getSlaveFrame() && this->_numReads < block.getReadsNumber())
+           );
 }
 
 

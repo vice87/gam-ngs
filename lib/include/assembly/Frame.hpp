@@ -98,9 +98,6 @@ public:
     const Frame& operator=(const Frame& frame); 
     
     //! Less-than operator for the Frame class.
-    /*!
-     * \todo stesso problema dell'operatore less-than della classe Block
-     */
     bool operator <(const Frame &frame) const;
     
     //! Equality operator for the Frame class.

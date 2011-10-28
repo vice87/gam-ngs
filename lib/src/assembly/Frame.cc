@@ -75,7 +75,9 @@ bool
 Frame::operator <(const Frame& frame) const
 {
     return( this->_ctgId < frame.getContigId() || 
-            (this->_ctgId == frame.getContigId() && this->_begin < frame.getBegin()) );
+            (this->_ctgId == frame.getContigId() && this->_begin < frame.getBegin()) ||
+            (this->_ctgId == frame.getContigId() && this->_begin == frame.getBegin() && this->_end < frame.getEnd())
+            );
 }
 
 

@@ -236,11 +236,8 @@ AssemblyGraph::initGraph( const std::vector<Block> &blocks )
     this->addVertices();
     
     // for each block, connect his vertex to the successive blocks' vertices
-    for( UIntType i=0; i < blocks.size(); i++ )
-    {
-        this->addMasterEdges( i, masterStrandMap, indexMaster, backIndexMaster );
-        this->addSlaveEdges( i, slaveStrandMap, indexSlave, backIndexSlave );
-    }
+    for( UIntType i=0; i < blocks.size(); i++ ) this->addMasterEdges( i, masterStrandMap, indexMaster, backIndexMaster );
+    for( UIntType i=0; i < blocks.size(); i++ ) this->addSlaveEdges( i, slaveStrandMap, indexSlave, backIndexSlave );
 }
 
 
@@ -352,7 +349,10 @@ AssemblyGraph::addSlaveSingleEdge(const UIntType& s, const UIntType& t)
         }
         else
         {
-            boost::put( boost::edge_kind_t(), *this, e, BOTH_EDGE );
+            EdgeKindType edge_type = boost::get( boost::edge_kind_t(), *this, e );
+            
+            if( edge_type == MASTER_EDGE )
+                boost::put( boost::edge_kind_t(), *this, e, BOTH_EDGE );
         }
         
         return true;
@@ -402,7 +402,7 @@ AssemblyGraph::writeGraphviz(std::ostream& os)
         switch(kind)
         {
             case MASTER_EDGE:
-                os << "   " << boost::source(*e,*this) << "->" << boost::target(*e,*this) << ";" << std::endl;
+                os << "   " << boost::source(*e,*this) << "->" << boost::target(*e,*this) << "[color=black];" << std::endl;
                 break;
             case SLAVE_EDGE:
                 os << "   " << boost::source(*e,*this) << "->" << boost::target(*e,*this) << "[color=red];" << std::endl;
