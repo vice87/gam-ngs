@@ -384,9 +384,9 @@ AssemblyGraph::writeGraphviz(std::ostream& os)
         UIntType slaveFrameLen = this->_blockVector[*v].getSlaveFrame().getLength();
         UIntType slaveFrameBeg = this->_blockVector[*v].getSlaveFrame().getBegin();
         
-        os << "   " << "[label=\"" 
+        os << "   " << *v << "[label=\"" 
                         << masterCtgId << ":" << masterFrameBeg << ":" << masterFrameLen << "\\n"
-                        << slaveCtgId << ":" << slaveFrameBeg << ":" << slaveFrameBeg 
+                        << slaveCtgId << ":" << slaveFrameBeg << ":" << slaveFrameLen 
                     << "\""
                     << ((boost::in_degree(*v,*this) > 1 || boost::out_degree(*v,*this) > 1) ? ", color = blue" : "") << "];"
                     << std::endl;
