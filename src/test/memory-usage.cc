@@ -12,6 +12,8 @@
 #include <string>
 #include <map>
 
+#include <time.h>
+
 #include "api/BamAux.h"
 #include "api/BamReader.h"
 #include "api/BamAlignment.h"
@@ -30,56 +32,44 @@ int main(int argc, char** argv)
         return 1;
     }
     
+    time_t t1,t2;
+    t1 = time(NULL);
+    
     std::string fasta1 = argv[1];
     std::string bam1 = argv[2];
     std::string fasta2 = argv[3];
     std::string bam2 = argv[4];
     
+    BamReader inBamM, inBamS;
+    inBamM.Open( bam1 );
+    inBamS.Open( bam2 );
+    
+    // load reference data (index => contig name)
+    BamTools::RefVector mcRef = inBamM.GetReferenceData();
+    BamTools::RefVector scRef = inBamS.GetReferenceData();
+
+    sparse_hash_map< std::string, int32_t > masterContigs( mcRef.size() ), slaveContigs( scRef.size() );
+
+    BamTools::RefVector::const_iterator ref_iter;
+
+    for( ref_iter = mcRef.begin(); ref_iter != mcRef.end(); ref_iter++ ) 
+        masterContigs[ ref_iter->RefName ] = ref_iter->RefLength;
+
+    for( ref_iter = scRef.begin(); ref_iter != scRef.end(); ref_iter++ ) 
+        slaveContigs[ ref_iter->RefName ] = ref_iter->RefLength;   
+    
+    std::cout << "Reference Data loaded." << std::endl;
+    
     //USO DELLA STRUTTURA SPARSE-HASH
     HashContigMemPool pool1, pool2;
     //load master and slave contigs in memory
-    pool1.loadPool(fasta1);
+    pool1.loadPool(fasta1,masterContigs);
     std::cout << "Fasta1 loaded." << std::endl;
-    pool2.loadPool(fasta2);
+    pool2.loadPool(fasta2,slaveContigs);
     std::cout << "Fasta2 loaded." << std::endl;
     
-    //USO DI UN SEMPLICE ARRAY
-//    BamReader inBamM, inBamS;
-//    inBamM.Open( bam1 );
-//    inBamS.Open( bam2 );
-//    
-//    BamTools::RefVector mcRef = inBamM.GetReferenceData();
-//    BamTools::RefVector scRef = inBamS.GetReferenceData();
-//    
-//    Contig ctgs1[ mcRef.size() ];
-//    Contig ctgs2[ scRef.size() ];
-//    
-//    std::ifstream ifs( fasta1.c_str(), std::ifstream::in );
-//    long count = 0;
-//    
-//    while( !ifs.eof() )
-//    {
-//        Contig ctg;
-//        
-//        ifs >> ctg;
-//        ctgs1[count] = ctg;
-//        count++;
-//    }
-//    
-//    ifs.open( fasta2.c_str(), std::ifstream::in );
-//    
-//    count = 0;
-//    
-//    while( !ifs.eof() )
-//    {
-//        Contig ctg;
-//        
-//        ifs >> ctg;
-//        ctgs2[count] = ctg;
-//        count++;
-//    }
-//    
-//    ifs.close();
+    t2 = time(NULL);
+    std::cout << "Execution time: " << (t2-t1) << "]" << std::endl << std::flush;
     
     std::cout << "Press Enter to terminate..." << std::endl << std::flush;
     char c = getchar();

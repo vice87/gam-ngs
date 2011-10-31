@@ -17,6 +17,7 @@ class HashContigMemPool
 {   
 private:
     typedef sparse_hash_map< std::string, Contig > ContigMap;
+    typedef sparse_hash_map< std::string, int32_t > RefMap;
     ContigMap _pool;
     
 public:
@@ -25,13 +26,16 @@ public:
     Contig get( const std::string &id ) const;
     void set( const std::string &id, const Contig &ctg );
     
-    void loadPool(const std::string &file);
-    void loadPool(const char *file);
+    void loadPool(const std::string &file, RefMap &refMap);
+    void loadPool(const char *file, RefMap &refMap);
     
     void savePool(const std::string& poolFile);
     void savePool(const char* poolFile);
     
     void clear();
+    
+    void readNextContigID( std::istream &is, std::string &ctg_id );
+    void readNextSequence( std::istream &is, Contig &ctg );
     
     //friend std::istream& operator >>(std::istream &is, HashContigMemPool &cmp);
     //friend std::ostream& operator <<(std::ostream &os, const HashContigMemPool& cmp);

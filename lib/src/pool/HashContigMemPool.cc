@@ -1,13 +1,15 @@
 
-#include <iosfwd>
 #include <map>
 #include <stdexcept>
-#include <ios>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 
 #include "pool/HashContigMemPool.hpp"
 #include "assembly/io_contig.hpp"
+#include "types.hpp"
+
+#define BUFFER_LEN 16384
 
 HashContigMemPool::HashContigMemPool()
 {
@@ -28,26 +30,82 @@ void HashContigMemPool::set(const std::string &name, const Contig &ctg)
 }
 
 
-void HashContigMemPool::loadPool(const std::string &file)
+void HashContigMemPool::loadPool(const std::string &file, RefMap &refMap)
 {
     std::ifstream ifs( file.c_str(), std::ifstream::in );
-    (this->_pool).resize(0);
-    
+    (this->_pool).resize( refMap.size() );
+        
     while( !ifs.eof() )
     {
-        Contig ctg;
+        std::string ctg_name;
+        readNextContigID( ifs, ctg_name );
         
-        ifs >> ctg;
-        this->_pool[ ctg.name() ] = ctg;
+        Contig *ctg = &(this->_pool[ ctg_name ]);
+        
+        ctg->set_name( ctg_name );
+        ctg->resize( refMap[ctg_name] );
+        readNextSequence( ifs, *ctg );
     }
     
     ifs.close();
 }
 
-
-void HashContigMemPool::loadPool(const char *file)
+void HashContigMemPool::loadPool(const char *file, RefMap &refMap)
 {
-    return HashContigMemPool::loadPool( std::string(file) );
+    return HashContigMemPool::loadPool( std::string(file), refMap );
+}
+
+void HashContigMemPool::readNextContigID( std::istream &is, std::string &ctg_id )
+{
+    char c = is.peek();
+    
+    while( !is.eof() and (c == ' ' or c == '\n') ) 
+    {
+        is.ignore(1);
+        if( !is.eof() ) c = is.peek();
+    }
+    
+    if( !is.eof() and c != '>' ) 
+    {
+        std::stringstream ss;
+        ss << "Found invalid character: " << c;
+	throw std::domain_error(ss.str().c_str());
+    }
+    
+    std::string line, id;
+    
+    // get name    
+    std::getline( is, line );
+    id = line.substr(1,line.size()-1);
+    
+    size_t pos = id.find(' ');
+    if( pos != std::string::npos ) id = id.substr(0,pos);
+    
+    ctg_id = id;
+}
+
+void HashContigMemPool::readNextSequence( std::istream &is, Contig &ctg )
+{
+    if( is.eof() ) return;
+    
+    char c('\n');
+    UIntType idx = 0;
+    
+    // while we do not reach a new contig
+    while( !is.eof() and c != '>' )
+    {
+        // read a new char
+        is.get(c);
+        
+        if( c != '\n' and c != '>' and c != ' ' and !is.eof() ) 
+        {
+            // copy read nucleotide into sequence
+            ctg.at(idx) = c;
+            idx++;
+        }
+    }
+    
+    if( !is.eof() ) is.unget();
 }
 
 

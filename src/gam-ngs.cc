@@ -185,16 +185,27 @@ int main(int argc, char** argv)
         std::cout << "[removing cycles from assemblies graph]" << std::endl << std::flush;
         std::list< std::vector<Block> > pcblocks = partitionBlocks( blocks );
         
-        std::cout << "[loading contigs in memory]" << std::endl << std::flush;
-        HashContigMemPool masterPool, slavePool, pctgPool;
-    
-        // load master and slave contigs in memory
-        masterPool.loadPool(masterFasta);
-        slavePool.loadPool(slaveFasta);
-        
+        std::cout << "[loading reference data]" << std::endl << std::flush;
         // load reference data (index => contig name)
         BamTools::RefVector mcRef = inBamM.GetReferenceData();
         BamTools::RefVector scRef = inBamS.GetReferenceData();
+        
+        sparse_hash_map< std::string, int32_t > masterContigs( mcRef.size() ), slaveContigs( scRef.size() );
+        
+        BamTools::RefVector::const_iterator ref_iter;
+        
+        for( ref_iter = mcRef.begin(); ref_iter != mcRef.end(); ref_iter++ ) 
+            masterContigs[ ref_iter->RefName ] = ref_iter->RefLength;
+        
+        for( ref_iter = scRef.begin(); ref_iter != scRef.end(); ref_iter++ ) 
+            slaveContigs[ ref_iter->RefName ] = ref_iter->RefLength;       
+        
+        std::cout << "[loading contigs in memory]" << std::endl << std::flush;
+        
+        HashContigMemPool masterPool, slavePool, pctgPool;
+        // load master and slave contigs in memory
+        masterPool.loadPool( masterFasta, masterContigs );
+        slavePool.loadPool( slaveFasta, slaveContigs );
         
         std::cout << "[building paired contigs]" << std::endl << std::flush;
         // build paired contigs (threaded)
