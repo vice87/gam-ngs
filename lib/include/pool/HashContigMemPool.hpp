@@ -9,6 +9,9 @@
 #define	HASHCONTIGMEMPOOL_HPP
 
 #include <map>
+
+#include "api/BamAux.h"
+
 #include "assembly/contig.hpp"
 
 class HashContigMemPool
