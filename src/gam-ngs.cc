@@ -19,12 +19,12 @@
 #include <unistd.h>
 
 #include <boost/graph/graphviz.hpp>
-#include <google/sparse_hash_map>
 
-#include "types.hpp"
 #include "api/BamAux.h"
 #include "api/BamReader.h"
 #include "api/BamAlignment.h"
+
+#include "types.hpp"
 #include "assembly/Read.hpp"
 #include "assembly/Block.hpp"
 #include "graphs/PairingEvidencesGraph.hpp"
@@ -190,7 +190,7 @@ int main(int argc, char** argv)
         BamTools::RefVector mcRef = inBamM.GetReferenceData();
         BamTools::RefVector scRef = inBamS.GetReferenceData();
         
-        sparse_hash_map< std::string, int32_t > masterContigs( mcRef.size() ), slaveContigs( scRef.size() );
+        std::map< std::string, int32_t > masterContigs, slaveContigs;
         
         BamTools::RefVector::const_iterator ref_iter;
         

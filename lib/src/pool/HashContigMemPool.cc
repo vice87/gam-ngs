@@ -13,7 +13,7 @@
 
 HashContigMemPool::HashContigMemPool()
 {
-    _pool.resize(0);
+    _pool.clear(); //_pool.resize(0);
 }
 
 Contig HashContigMemPool::get(const std::string& name) const
@@ -33,7 +33,9 @@ void HashContigMemPool::set(const std::string &name, const Contig &ctg)
 void HashContigMemPool::loadPool(const std::string &file, RefMap &refMap)
 {
     std::ifstream ifs( file.c_str(), std::ifstream::in );
-    (this->_pool).resize( refMap.size() );
+    
+    char buffer[BUFFER_LEN];
+    ifs.rdbuf()->pubsetbuf( buffer, BUFFER_LEN );
         
     while( !ifs.eof() )
     {

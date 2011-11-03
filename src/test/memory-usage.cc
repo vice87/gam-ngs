@@ -48,7 +48,10 @@ int main(int argc, char** argv)
     BamTools::RefVector mcRef = inBamM.GetReferenceData();
     BamTools::RefVector scRef = inBamS.GetReferenceData();
 
-    sparse_hash_map< std::string, int32_t > masterContigs( mcRef.size() ), slaveContigs( scRef.size() );
+    //sparse_hash_map< std::string, int32_t > masterContigs( mcRef.size() ), slaveContigs( scRef.size() );
+    //masterContigs.set_empty_key(std::string(""));
+    //slaveContigs.set_empty_key(std::string(""));
+    std::map< std::string, int32_t > masterContigs, slaveContigs;
 
     BamTools::RefVector::const_iterator ref_iter;
 
@@ -69,7 +72,7 @@ int main(int argc, char** argv)
     std::cout << "Fasta2 loaded." << std::endl;
     
     t2 = time(NULL);
-    std::cout << "Execution time: " << (t2-t1) << "]" << std::endl << std::flush;
+    std::cout << "[Execution time: " << (t2-t1) << "]" << std::endl << std::flush;
     
     std::cout << "Press Enter to terminate..." << std::endl << std::flush;
     char c = getchar();

@@ -8,16 +8,14 @@
 #ifndef HASHCONTIGMEMPOOL_HPP
 #define	HASHCONTIGMEMPOOL_HPP
 
-#include <google/sparse_hash_map>
+#include <map>
 #include "assembly/contig.hpp"
-
-using google::sparse_hash_map;
 
 class HashContigMemPool
 {   
 private:
-    typedef sparse_hash_map< std::string, Contig > ContigMap;
-    typedef sparse_hash_map< std::string, int32_t > RefMap;
+    typedef std::map< std::string, Contig > ContigMap;
+    typedef std::map< std::string, int32_t > RefMap;
     ContigMap _pool;
     
 public:
