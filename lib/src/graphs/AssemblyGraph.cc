@@ -417,3 +417,41 @@ AssemblyGraph::writeGraphviz(std::ostream& os)
     
     return os;
 }
+
+
+void AssemblyGraph::agTopologicalSort( const AssemblyGraph &g, Vertex v, std::vector<char> &colors, std::list<Vertex> &tsList )
+{
+    colors[v] = 1;
+    
+    AdjacencyIterator begin, end;
+    boost::tie(begin,end) = boost::adjacent_vertices(v,g);
+    
+    for( AdjacencyIterator u = begin; u != end; u++ )
+    {
+        if( colors[*u] == 0 ) AssemblyGraph::agTopologicalSort( g, *u, colors, tsList );
+        if( colors[*u] == 1 ) throw boost::not_a_dag();
+    }
+    
+    colors[v] = 2;
+    tsList.push_back(v);
+}
+
+
+void AssemblyGraph::agTopologicalSort( const AssemblyGraph &g, std::list<Vertex> &tsList )
+{    
+    std::list<Vertex> roots;
+    std::vector<char> colors( boost::num_vertices(g), 0 );
+    
+    VertexIterator vbegin,vend;
+    boost::tie(vbegin,vend) = boost::vertices(g);
+    
+    for( VertexIterator v = vbegin; v != vend; v++ ) 
+    {
+        if( boost::in_degree(*v,g) == 0 ) roots.push_back(*v);
+    }
+    
+    for( std::list<Vertex>::const_iterator v = roots.begin(); v != roots.end(); v++ )
+    {
+        AssemblyGraph::agTopologicalSort(g, *v, colors, tsList);
+    }
+}

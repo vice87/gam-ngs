@@ -21,13 +21,16 @@ std::list< PairedContig > buildPctg(
     
     if( boost::num_vertices(AG) == 0 ) return pctgList;
     
-    typedef std::vector< UIntType > container;
-    container c;//, c_new;
+    //typedef std::vector< UIntType > container;
+    //container c;//, c_new;
+    
+    typedef boost::graph_traits<AssemblyGraph>::vertex_descriptor Vertex;
+    std::list< Vertex > c;
     std::list< UIntType > notMerged;
     
     try
     {
-		boost::topological_sort(AG,std::back_inserter(c));
+		AssemblyGraph::agTopologicalSort( AG, c ); //boost::topological_sort(AG,std::back_inserter(c));
 		
 		/* new code: weaving sul longest path */
 		/*IntType pathLength[ boost::num_vertices(AG) ];
@@ -109,7 +112,8 @@ std::list< PairedContig > buildPctg(
     
     try
     {
-        std::vector<UIntType>::reverse_iterator i;
+        //std::vector<UIntType>::reverse_iterator i;
+        std::list<Vertex>::reverse_iterator i;
         
         i = c.rbegin();
         while( i != c.rend() )

@@ -34,6 +34,7 @@ public:
             boost::no_property, boost::property<boost::edge_kind_t,EdgeKindType> > Graph;
     typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
     typedef boost::graph_traits<Graph>::vertex_iterator VertexIterator;
+    typedef boost::graph_traits<Graph>::adjacency_iterator AdjacencyIterator;
     typedef boost::graph_traits<Graph>::edge_descriptor Edge;
     typedef std::map< IdType, StrandProbability > StrandProbMap;
     
@@ -135,7 +136,9 @@ public:
     const AssemblyGraph& operator=( const AssemblyGraph &orig );
     
     std::ostream& writeGraphviz(std::ostream& os);
-
+    
+    static void agTopologicalSort( const AssemblyGraph &g, std::list<Vertex> &tsList );
+    static void agTopologicalSort( const AssemblyGraph &g, Vertex v, std::vector<char> &colors, std::list<Vertex> &tsList );    
 };
 
 #endif	/* ASSEMBLYGRAPH_HPP */
