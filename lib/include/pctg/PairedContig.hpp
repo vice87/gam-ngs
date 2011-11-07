@@ -17,6 +17,8 @@
 #include <map>
 #include <algorithm>
 
+#include "api/BamAux.h"
+
 #include "types.hpp"
 #include "assembly/contig.hpp"
 #include "pctg/ContigInPctgInfo.hpp"
@@ -176,9 +178,9 @@ PairedContig shiftOf(const PairedContig& pctg, const UIntType& shiftSize);
 
 bool orderPctgsByName(const PairedContig &a, const PairedContig &b);
 
-std::ostream& writePctgDescriptors(std::ostream &os, const std::list<PairedContig> &pctgs);
+std::ostream& writePctgDescriptors(std::ostream &os, const std::list<PairedContig> &pctgs, BamTools::RefVector &mcRef, BamTools::RefVector &scRef);
 
-std::ostream& writePctgDescriptor(std::ostream &os, const PairedContig &pctg);
+std::ostream& writePctgDescriptor(std::ostream &os, const PairedContig &pctg, BamTools::RefVector &mcRef, BamTools::RefVector &scRef);
 
 #endif	/* PAIREDCONTIG_HPP */
 

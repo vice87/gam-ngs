@@ -1,6 +1,4 @@
-
 #include "pctg/PairedContig.hpp"
-
 
 PairedContig::PairedContig() {} 
 
@@ -210,18 +208,18 @@ bool orderPctgsByName(const PairedContig &a, const PairedContig &b)
 }
 
 
-std::ostream& writePctgDescriptors( std::ostream &os, const std::list<PairedContig> &pctgs )
+std::ostream& writePctgDescriptors( std::ostream &os, const std::list<PairedContig> &pctgs, BamTools::RefVector &mcRef, BamTools::RefVector &scRef )
 {
     os << "#Name\tSize\tAssembly\tContigID\tBeginInPctg\tEndInPctg" << std::endl;
     
     std::list< PairedContig >::const_iterator i;
-    for( i = pctgs.begin(); i != pctgs.end(); i++ ) writePctgDescriptor(os,*i);
+    for( i = pctgs.begin(); i != pctgs.end(); i++ ) writePctgDescriptor(os,*i, mcRef, scRef);
     
     return os;
 }
 
 
-std::ostream& writePctgDescriptor( std::ostream &os, const PairedContig &pctg )
+std::ostream& writePctgDescriptor( std::ostream &os, const PairedContig &pctg, BamTools::RefVector &mcRef, BamTools::RefVector &scRef )
 {
     typedef std::map< IdType, ContigInPctgInfo > ContigInfoMap;
     
@@ -234,7 +232,7 @@ std::ostream& writePctgDescriptor( std::ostream &os, const PairedContig &pctg )
         os << pctg.name() << "\t"
                 << pctg.size() << "\t"
                 << "Master" << "\t"
-                << ctg->first << "\t"
+                << mcRef.at( ctg->first ).RefName << "\t"
                 << pctg.getContigBegin( ctg->second ) << "\t"
                 << pctg.getContigEnd( ctg->second ) << "\t"
                 << std::endl;
@@ -245,7 +243,7 @@ std::ostream& writePctgDescriptor( std::ostream &os, const PairedContig &pctg )
         os << pctg.name() << "\t"
                 << pctg.size() << "\t"
                 << "Slave" << "\t"
-                << ctg->first << "\t"
+                << scRef.at( ctg->first ).RefName << "\t"
                 << pctg.getContigBegin( ctg->second ) << "\t"
                 << pctg.getContigEnd( ctg->second ) << "\t"
                 << std::endl;

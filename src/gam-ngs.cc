@@ -284,7 +284,7 @@ int main(int argc, char** argv)
         slavePool.clear(); // slave contigs pool is no more needed
 
         std::list<IdType> ctgIds;
-        
+                
         for(IdType i = 0; i < result.second.size(); i++) 
             if( !result.second.at(i) ) ctgIds.push_back(i);
 
@@ -303,8 +303,29 @@ int main(int argc, char** argv)
         // save paired contigs descriptors to file
         std::cout << "[writing paired contigs descriptors on file: " << getPathBaseName( outFilePrefix + ".pctgs" ) << "]" << std::endl << std::flush;
         std::fstream pctgDescFile( (outFilePrefix + ".pctgs").c_str(), std::fstream::out );
-        writePctgDescriptors( pctgDescFile, result.first );
+        writePctgDescriptors( pctgDescFile, result.first, mcRef, scRef );
         pctgDescFile.close();
+        
+        // save IDs of (slave) contigs NOT merged
+        std::cout << "[writing unused slave contigs on file: " << getPathBaseName( outFilePrefix + ".unused" ) << "]" << std::endl << std::flush;
+        std::fstream unusedCtgsFile( (outFilePrefix + ".unused").c_str(), std::fstream::out );
+        std::vector<bool> usedCtgs( scRef.size(), false );
+        
+        for( std::list< PairedContig >::const_iterator pctg = result.first.begin(); pctg != result.first.end(); pctg++ ) 
+        {
+            typedef std::map< IdType, ContigInPctgInfo > ContigInfoMap;
+            ContigInfoMap slaveCtgs = pctg->getSlaveCtgMap();
+            
+            for( ContigInfoMap::const_iterator ctg = slaveCtgs.begin(); ctg != slaveCtgs.end(); ctg++ ) 
+                usedCtgs[ctg->first] = true;
+        }
+        
+        for( unsigned int i = 0; i < usedCtgs.size(); i++ )
+        {
+            if( !usedCtgs[i] ){ unusedCtgsFile << scRef[i].RefName << std::endl; }
+        }
+        
+        unusedCtgsFile.close();
         
         inBamM.Close();
         inBamS.Close();
