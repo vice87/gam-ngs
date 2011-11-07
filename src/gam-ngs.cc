@@ -109,6 +109,36 @@ int main(int argc, char** argv)
         
         if( minBlockSize < 1 ) minBlockSize = 1;
         
+        struct stat st;
+        
+        /* Check for master bam files existence */
+        
+        if( stat(bamFileM.c_str(),&st) != 0 )
+        {
+            std::cerr << "File " << bamFileM << " (BAM Master CoordinateSorted) doesn't exist." << std::endl;
+            return 1;
+        }
+        
+        if( stat(bamMasterSorted.c_str(),&st) != 0 )
+        {
+            std::cerr << "File " << bamMasterSorted << " (BAM Master ReadNameSorted) doesn't exist." << std::endl;
+            return 1;
+        }
+        
+        /* Check for slave bam files existence */
+        
+        if( stat(bamFileS.c_str(),&st) != 0 )
+        {
+            std::cerr << "File " << bamFileS << " (BAM Slave CoordinateSorted) doesn't exist." << std::endl;
+            return 1;
+        }
+        
+        if( stat(bamSlaveSorted.c_str(),&st) != 0 )
+        {
+            std::cerr << "File " << bamSlaveSorted << " (BAM Slave ReadNameSorted) doesn't exist." << std::endl;
+            return 1;
+        }
+            
         BamReader inBamMasterSorted;
         inBamMasterSorted.Open( bamMasterSorted );
 
@@ -124,8 +154,6 @@ int main(int argc, char** argv)
         
         inBamMasterSorted.Close();
         inBamSlaveSorted.Close();
-        
-        struct stat st;
         
         BamReader inBamM;
         inBamM.Open( bamFileM );
@@ -169,6 +197,44 @@ int main(int argc, char** argv)
         threadsNum = atoi(argv[9]);
         
         if( threadsNum < 1 ) threadsNum = 1;
+        
+        struct stat st;
+        
+        /* Check blocks file existence */
+        
+        if( stat(inBlocksFile.c_str(),&st) != 0 )
+        {
+            std::cerr << "Blocks file " << inBlocksFile << " doesn't exist." << std::endl;
+            return 1;
+        }
+        
+        /* Check BAM files existence */
+        
+        if( stat(bamFileM.c_str(),&st) != 0 )
+        {
+            std::cerr << "File " << bamFileM << " (BAM Master CoordinateSorted) doesn't exist." << std::endl;
+            return 1;
+        }
+        
+        if( stat(bamFileS.c_str(),&st) != 0 )
+        {
+            std::cerr << "File " << bamFileS << " (BAM Slave CoordinateSorted) doesn't exist." << std::endl;
+            return 1;
+        }
+        
+        /* Check FASTA files existence */
+        
+        if( stat(masterFasta.c_str(),&st) != 0 )
+        {
+            std::cerr << "File " << masterFasta << " (Master FASTA) doesn't exist." << std::endl;
+            return 1;
+        }
+        
+        if( stat(slaveFasta.c_str(),&st) != 0 )
+        {
+            std::cerr << "File " << slaveFasta << " (Slave FASTA) doesn't exist." << std::endl;
+            return 1;
+        }
         
         BamReader inBamM, inBamS;
         inBamM.Open( bamFileM );
