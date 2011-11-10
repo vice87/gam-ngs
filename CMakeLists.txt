@@ -57,6 +57,16 @@ add_executable(n50 src/n50.cc)
 # - FOLLOWING EXECUTABLES ARE FOR TESTING ONLY
 # ----------------------------------------------------------
 
+# executable for getting unused contigs from "old-format" pctgs file
+add_executable(unused-contigs 
+    src/test/unused-contigs.cc
+    lib/src/assembly/Block.cc
+    lib/src/assembly/Read.cc
+    lib/src/assembly/Frame.cc
+)
+
+target_link_libraries(unused-contigs BamTools)
+
 # executable for memory usage debugging
 #add_executable(memory-usage src/test/memory-usage.cc 
 #    lib/src/pool/HashContigMemPool.cc 
