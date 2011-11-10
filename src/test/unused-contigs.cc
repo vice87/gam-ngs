@@ -49,10 +49,11 @@ int main(int argc, char** argv)
         else
         {
             std::string trash;
+            std::string type;
             UIntType ctgID;
-            input >> trash >> trash >> trash >> ctgID >> trash >> trash;
+            input >> trash >> trash >> type >> ctgID >> trash >> trash;
             
-            usedCtgs[ctgID] = true;
+            if( type == "Slave" ) usedCtgs[ctgID] = true;
         }
     }
     
