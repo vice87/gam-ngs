@@ -107,6 +107,14 @@ public:
      */
     bool addReads( Read &mRead, Read &sRead, int minOverlap = 1 );
     
+    //! Removes adjacent (either on master or on slave) blocks whose frames overlaps.
+    /*!
+     *  Overlapping frames witnesses probable inconsistences due to repeats.
+     * \param blocks    vector of blocks.
+     * \return vector of blocks filtered.
+     */
+    static std::vector<Block> filterBlocksByOverlaps( std::vector<Block> &blocks );
+    
     //! Finds the blocks over two assemblies.
     /*!
      * \param master            BamReader object of the master assembly.

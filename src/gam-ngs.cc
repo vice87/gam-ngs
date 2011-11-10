@@ -245,7 +245,12 @@ int main(int argc, char** argv)
         std::cout << "[blocks loaded: " << blocks.size() << "]" << std::endl << std::flush;
         
         // keep only blocks between contigs that share at least minEvidence blocks.
-        // std::vector< Block > outBlocks = filterBlocksByPairingEvidences( blocks, minEvidence );
+        //std::vector< Block > outBlocks = filterBlocksByPairingEvidences( blocks, minEvidence );
+        
+        std::cout << "[filtering blocks by frames overlap]" << std::endl << std::flush;
+        // remove adjacent blocks if their frames overlap
+        blocks = Block::filterBlocksByOverlaps( blocks );
+        std::cout << "[blocks filtered: " << blocks.size() << "]" << std::endl << std::flush;
         
         // create the graph of assemblies, remove cycles and keep remaining blocks.
         std::cout << "[removing cycles from assemblies graph]" << std::endl << std::flush;

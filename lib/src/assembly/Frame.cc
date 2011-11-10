@@ -59,6 +59,23 @@ UIntType Frame::getLength() const
     return _end - _begin + 1;
 }
 
+
+bool Frame::frameOverlap( const Frame& a, const Frame& b, double minOverlap )
+{
+    if( a.getContigId() != b.getContigId() ) return false;
+    
+    if( a.getBegin() <= b.getBegin() )
+    {
+        double overlap = (a.getEnd()>=b.getBegin()) ? (100.0 * (double)(a.getEnd() - b.getBegin() + 1) / b.getLength()) : 0.0;
+        return ( overlap >= minOverlap );
+    }
+    else
+    {
+        double overlap = (b.getEnd()>=a.getBegin()) ? (100.0 * (double)(b.getEnd() - a.getBegin() + 1) / b.getLength()) : 0.0;
+        return ( overlap >= minOverlap );
+    }
+}
+
 const Frame& 
 Frame::operator=(const Frame& frame) 
 {

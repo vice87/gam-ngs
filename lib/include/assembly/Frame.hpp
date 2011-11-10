@@ -102,6 +102,9 @@ public:
     
     //! Equality operator for the Frame class.
     bool operator ==( const Frame &frame ) const;
+    
+    //! Returns whether two frames overlap.
+    static bool frameOverlap( const Frame &a, const Frame &b, double minOverlap = 50.0 );
 };
 
 #endif	/* FRAME_HPP */

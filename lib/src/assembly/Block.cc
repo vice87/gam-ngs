@@ -7,9 +7,11 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <list>
 #include <unistd.h>
-#include <boost/pool/pool_alloc.hpp>
+
 #include "assembly/Block.hpp"
+#include "OrderingFunctions.hpp"
 
 Block::Block():
         _numReads(0) 
@@ -120,6 +122,72 @@ bool Block::addReads( Read &mRead, Read &sRead, int minOverlap )
     return false;
 }
 
+std::vector< Block > Block::filterBlocksByOverlaps(std::vector<Block>& blocks)
+{
+    std::list< Block > sortedBlocks;
+    std::list< Block >::iterator block, cur, next;
+    
+    for( UIntType i = 0; i < blocks.size(); i++ ) sortedBlocks.push_back( blocks[i] );
+    
+    MasterBlocksOrderer mbo;
+    sortedBlocks.sort( mbo );
+    
+    block = sortedBlocks.begin();
+        
+    while( block != sortedBlocks.end() )
+    {
+        cur = block;
+        next = ++block;
+                
+        if( next != sortedBlocks.end() )
+        {
+            if ( Frame::frameOverlap(cur->getMasterFrame(), next->getMasterFrame()) )
+            {
+                sortedBlocks.erase( next );
+                block = cur;
+            }
+        }
+        else
+        {
+            block = next;
+        }
+    }
+    
+    SlaveBlocksOrderer sbo;
+    sortedBlocks.sort( sbo );
+    
+    block = sortedBlocks.begin();
+    while( block != sortedBlocks.end() )
+    {
+        cur = block;
+        next = ++block;
+                
+        if( next != sortedBlocks.end() )
+        {
+            if ( Frame::frameOverlap(cur->getSlaveFrame(), next->getSlaveFrame(), 100) )
+            {
+                sortedBlocks.erase( next );
+                block = cur;
+            }
+        }
+        else
+        {
+            block = next;
+        }
+    }
+    
+    std::vector< Block > outBlocks( sortedBlocks.size() );
+    
+    UIntType idx = 0;
+    for( block = sortedBlocks.begin(); block != sortedBlocks.end(); block++ )
+    {
+        outBlocks[idx] = *block;
+        idx++;
+    }
+    
+    return outBlocks;
+}
+
 std::vector< Block > Block::findBlocks( BamReader &inBamMaster, 
                                         BamReader &inBamSlave, 
                                         const int minBlockSize,
@@ -182,7 +250,7 @@ std::vector< Block > Block::findBlocks( BamReader &inBamMaster,
             
             while( block != curblocks.end() )
             {
-                if( block->addReads( masterRead, ref->second ) )
+                if( block->addReads( masterRead, ref->second, 0 ) )
                 {
                     readsAdded = true;
                     readlist->push_back(ref->first); // aggiungo un riferimento alla read in posizione corrisponende al blocco
@@ -192,7 +260,7 @@ std::vector< Block > Block::findBlocks( BamReader &inBamMaster,
                 else // if reads not added to the block
                 {
                     // if block is "out of scope" save it or delete it.
-                    if( block->getMasterFrame().getEnd() - masterRead.getStartPos() + 1 < 1 || block->getMasterFrame().getContigId() != masterRead.getContigId() )
+                    if( block->getMasterFrame().getEnd() - masterRead.getStartPos() + 1 < 0 || block->getMasterFrame().getContigId() != masterRead.getContigId() )
                     {
                         if( block->getReadsNumber() >= minBlockSize ) outblocks.push_back( *block );
                         
@@ -217,7 +285,7 @@ std::vector< Block > Block::findBlocks( BamReader &inBamMaster,
             if( !readsAdded ) // crea un nuovo blocco ed aggiungilo alla lista dei blocchi correnti
             {
                 Block newBlock;
-                newBlock.addReads( masterRead, ref->second );
+                newBlock.addReads( masterRead, ref->second, 0 );
                 
                 ReadNameList newReadMapIterList;
                 newReadMapIterList.push_back(ref->first);
