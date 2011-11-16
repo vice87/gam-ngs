@@ -44,7 +44,8 @@ partitionBlocks( const std::vector<Block> &blocks )
                 boost::topological_sort( ag, std::back_inserter(c) );
                 done = true;
                 
-                /* DEBUG - Assembly graph with "fork" nodes */
+                // remove forks from graph to allow only safe merges.
+                
                 typedef boost::graph_traits<AssemblyGraph>::vertex_iterator VertexIterator;
                 VertexIterator vbegin,vend;
                 boost::tie(vbegin,vend) = boost::vertices(ag);
@@ -56,26 +57,27 @@ partitionBlocks( const std::vector<Block> &blocks )
                     
                     if( in > 1 || out > 1)
                     {
+                        // DEBUG - Assembly graph with forks
                         std::stringstream ff1;
                         ff1 << "./tmp/Partition_" << z << "_forks.dot";
                         std::ofstream ss1( ff1.str().c_str() );
                         ag.writeGraphviz(ss1);
                         ss1.close();
+                        // END of DEBUG
+                        
+                        ag.removeForks();
+                        
+                        // DEBUG - Assembly graph with forks removed
+                        std::stringstream ff2;
+                        ff2 << "./tmp/Partition_" << z << "_forks_removed.dot";
+                        std::ofstream ss2( ff2.str().c_str() );
+                        ag.writeGraphviz(ss2);
+                        ss2.close();
+                        // END of DEBUG
                         
                         break;
                     }
                 }
-                /* END DEBUG */
-                
-                ag.removeForks();
-                
-                /* DEBUG: OUTPUT ASSEMBLY GRAPH WITHOUT FORKS */
-                std::stringstream ff1;
-                ff1 << "./tmp/Partition_" << z << "_forks_removed.dot";
-                std::ofstream ss1( ff1.str().c_str() );
-                ag.writeGraphviz(ss1);
-                ss1.close();
-                /* END DEBUG*/
             }
             catch( boost::not_a_dag ) // if the graph is not a DAG, remove cycles.
             {
