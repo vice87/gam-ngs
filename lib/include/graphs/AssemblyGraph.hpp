@@ -132,6 +132,9 @@ public:
     
     std::list<Block> removeCyclesFromSCC( std::list<Block> &sccBlocks );
     
+    //! Remove nodes with in/out degree greater than 1, to perform only safe merges.
+    void removeForks();
+    
     //! Assign operator of the AssemblyGraph class.
     const AssemblyGraph& operator=( const AssemblyGraph &orig );
     

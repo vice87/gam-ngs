@@ -45,33 +45,43 @@ partitionBlocks( const std::vector<Block> &blocks )
                 done = true;
                 
                 /* DEBUG - Assembly graph with "fork" nodes */
-//                typedef boost::graph_traits<AssemblyGraph>::vertex_iterator VertexIterator;
-//                VertexIterator vbegin,vend;
-//                boost::tie(vbegin,vend) = boost::vertices(ag);
-//                
-//                for (VertexIterator v=vbegin; v!=vend; v++) 
-//                {
-//                    int in = boost::in_degree(*v,ag);
-//                    int out = boost::out_degree(*v,ag);
-//                    
-//                    if( in > 1 || out > 1)
-//                    {
+                typedef boost::graph_traits<AssemblyGraph>::vertex_iterator VertexIterator;
+                VertexIterator vbegin,vend;
+                boost::tie(vbegin,vend) = boost::vertices(ag);
+                
+                for (VertexIterator v=vbegin; v!=vend; v++) 
+                {
+                    int in = boost::in_degree(*v,ag);
+                    int out = boost::out_degree(*v,ag);
+                    
+                    if( in > 1 || out > 1)
+                    {
                         std::stringstream ff1;
-                        ff1 << "./tmp/Partition_" << z << ".dot";
+                        ff1 << "./tmp/Partition_" << z << "_forks.dot";
                         std::ofstream ss1( ff1.str().c_str() );
                         ag.writeGraphviz(ss1);
                         ss1.close();
                         
-//                        break;
-//                    }
-//                }
+                        break;
+                    }
+                }
+                /* END DEBUG */
+                
+                ag.removeForks();
+                
+                /* DEBUG: OUTPUT ASSEMBLY GRAPH WITHOUT FORKS */
+                std::stringstream ff1;
+                ff1 << "./tmp/Partition_" << z << "_forks_removed.dot";
+                std::ofstream ss1( ff1.str().c_str() );
+                ag.writeGraphviz(ss1);
+                ss1.close();
                 /* END DEBUG*/
             }
             catch( boost::not_a_dag ) // if the graph is not a DAG, remove cycles.
             {
                 /* DEBUG - Assembly graph with cycles */
                 std::stringstream ff1;
-                ff1 << "./tmp/Partition_" << z << "_has_cycles.dot";
+                ff1 << "./tmp/Partition_" << z << "_cycles.dot";
                 std::ofstream ss1( ff1.str().c_str() );
                 ag.writeGraphviz(ss1);
                 ss1.close();

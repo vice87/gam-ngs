@@ -128,7 +128,7 @@ AssemblyGraph::removeCycles()
     UIntType sccNum = boost::strong_components( *this, &component[0], 
             boost::root_map(&root[0]).color_map(&color[0]).discover_time_map(&discoverTime[0]) );
     
-    ////////////////////////////////////////////////////////// NEW CODE
+    ////////////////////////////////////////////////////////// EXPERIMENTAL CODE
     
     /*std::list< Block > newBlocks;
     
@@ -209,6 +209,40 @@ AssemblyGraph::removeCycles()
     //std::cout << "Filtered blocks after cycles removal = " << newBlockVector.size() << std::endl << std::flush;
     
     //return sComponents;
+}
+
+
+void
+AssemblyGraph::removeForks()
+{
+    // remove nodes with in-degree greater than 1
+    std::set< std::pair<IdType,IdType> > badBlocks;
+    
+    VertexIterator vbegin,vend;
+    boost::tie(vbegin,vend) = boost::vertices(*this);
+    
+    for( VertexIterator v = vbegin; v != vend; v++ ) 
+    {
+        if( boost::in_degree(*v,*this) > 1 || boost::out_degree(*v,*this) > 1 )
+        {
+            IdType mID = this->_blockVector[*v].getMasterFrame().getContigId();
+            IdType sID = this->_blockVector[*v].getSlaveFrame().getContigId();
+            badBlocks.insert( std::make_pair(mID,sID) );
+        }
+    }
+    
+    std::vector<Block> newBlocks;
+    
+    for( VertexIterator v = vbegin; v != vend; v++ ) 
+    {
+        IdType mID = this->_blockVector[*v].getMasterFrame().getContigId();
+        IdType sID = this->_blockVector[*v].getSlaveFrame().getContigId();
+        
+        if( badBlocks.find( std::make_pair(mID,sID) ) == badBlocks.end() )
+            newBlocks.push_back( this->_blockVector[*v] );
+    }
+    
+    this->initGraph( newBlocks );
 }
 
 

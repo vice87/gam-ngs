@@ -16,13 +16,13 @@ std::list< PairedContig > buildPctg(
         const AssemblyGraph& AG, 
         const PctgBuilder& builder )
 {
-    std::list< PairedContig > pctgList; //add
+    std::list< PairedContig > pctgList; // add
     PairedContig pctg(pctgId);
     
     if( boost::num_vertices(AG) == 0 ) return pctgList;
     
     //typedef std::vector< UIntType > container;
-    //container c;//, c_new;
+    //container c;
     
     typedef boost::graph_traits<AssemblyGraph>::vertex_descriptor Vertex;
     std::list< Vertex > c;
@@ -30,71 +30,7 @@ std::list< PairedContig > buildPctg(
     
     try
     {
-		AssemblyGraph::agTopologicalSort( AG, c ); //boost::topological_sort(AG,std::back_inserter(c));
-		
-		/* new code: weaving sul longest path */
-		/*IntType pathLength[ boost::num_vertices(AG) ];
-		IntType prev[ boost::num_vertices(AG) ];
-		bool done[ boost::num_vertices(AG) ];
-		
-		for( int i=0; i < boost::num_vertices(AG); i++ )
-		{
-			pathLength[i] = 0;
-			prev[i] = -1;
-			done[i] = false;
-		}
-		
-		typedef boost::graph_traits<AssemblyGraph>::adjacency_iterator AdjacencyIterator;
-		AdjacencyIterator begin, end;
-		
-		for( container::reverse_iterator i = c.rbegin(); i != c.rend(); ++i )
-		{
-			boost::tie(begin,end) = boost::adjacent_vertices(*i,AG);
-			for( AdjacencyIterator v = begin; v != end; v++ )
-			{
-				if( pathLength[*v] <= pathLength[*i] + AG.getBlock(*v).getReadsNumber() )
-				{
-					pathLength[*v] = pathLength[*i] + AG.getBlock(*v).getReadsNumber();
-					prev[*v] = *i; // update back-pointer of the path
-				}
-			}
-		}
-		
-		IntType longest = -1; int path_node = -1;
-		
-		// find longest path end
-		for( int i=0; i < boost::num_vertices(AG); i++ )
-		{
-			if(!done[i] && pathLength[i] > longest)
-			{
-				longest = pathLength[i];
-				path_node = i;
-			}
-		}
-		
-		while( longest != -1 )
-		{
-			int cur_node = path_node;
-			
-			while(cur_node != -1 && !done[cur_node])
-			{
-				done[cur_node] = true;
-				c_new.push_back(cur_node);
-				cur_node = prev[cur_node];
-			}
-			
-			// find longest path end
-			longest = -1;
-			for( int i=0; i < boost::num_vertices(AG); i++ )
-			{
-				if(!done[i] && pathLength[i] > longest)
-				{
-					longest = pathLength[i];
-					path_node = i;
-				}
-			}
-		}*/
-		/* end new code */
+	AssemblyGraph::agTopologicalSort( AG, c ); //boost::topological_sort(AG,std::back_inserter(c));
     }
     catch( boost::not_a_dag )
     {
