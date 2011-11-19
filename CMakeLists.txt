@@ -57,15 +57,11 @@ add_executable(n50 src/n50.cc)
 # - FOLLOWING EXECUTABLES ARE FOR TESTING ONLY
 # ----------------------------------------------------------
 
-# executable for getting unused contigs from "old-format" pctgs file
-add_executable(unused-contigs 
-    src/test/unused-contigs.cc
-    lib/src/assembly/Block.cc
-    lib/src/assembly/Read.cc
-    lib/src/assembly/Frame.cc
-)
+# executable to get number of paired-end reads correctly placed.
 
-target_link_libraries(unused-contigs BamTools)
+# executable for getting unused contigs from "old-format" pctgs file
+add_executable(pe-stats src/pe-stats.cc)
+target_link_libraries(pe-stats BamTools)
 
 # executable for memory usage debugging
 #add_executable(memory-usage src/test/memory-usage.cc 
