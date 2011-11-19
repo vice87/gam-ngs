@@ -38,15 +38,13 @@ int main(int argc, char** argv)
     int32_t minTemplateLen = insertLength - (insertLength/2);
     int32_t maxTemplateLen = insertLength + (insertLength/2);
     
-    std::cout << "minimum template length = " << minTemplateLen << "\n"
-              << "maximum template length = " << maxTemplateLen << "\n"
-              << std::endl;
+    std::cout << "Insert Size = " << minTemplateLen << " - " << maxTemplateLen << std::endl;
     
     BamReader inBam;
     inBam.Open( bamFile );
     
     BamAlignment align;
-    uint32_t reads = 0, mapped = 0, uniMapped = 0, peCorrectlyMapped = 0, peCorrectlyMapped2 = 0;
+    uint32_t reads = 0, mapped = 0, uniMapped = 0, peCorrectlyMapped = 0;
     int8_t type;
         
     while( inBam.GetNextAlignment(align) )
@@ -61,21 +59,18 @@ int main(int argc, char** argv)
             if( type == 'U' ) uniMapped++;
         }
         
-        if( align.InsertSize >= minTemplateLen && align.InsertSize <= maxTemplateLen ) peCorrectlyMapped++;
-        
-        if( align.IsMapped() && align.IsMateMapped() )
+        if( align.IsMapped() )
         {
-            if( align.IsPaired() && align.IsProperPair() && align.InsertSize >= minTemplateLen && align.InsertSize <= maxTemplateLen ) peCorrectlyMapped2++;
+            if( align.IsPaired() && align.IsProperPair() && align.InsertSize >= minTemplateLen && align.InsertSize <= maxTemplateLen ) peCorrectlyMapped++;
         }
     }
     
     inBam.Close();
     
     std::cout << "Reads: " << reads << "\n"
-              << "Mapped: " << mapped << "\n"
-              << "Uniquely Mapped: " << uniMapped << "\n"
-              << "Correctly Mapped: " << peCorrectlyMapped << "\n"
-              << "Correctly Mapped: " << peCorrectlyMapped2 << "\n"
+              << "Reads Mapped: " << mapped << "\n"
+              << "Reads Uniquely Mapped: " << uniMapped << "\n"
+              << "PE Correctly Mapped: " << peCorrectlyMapped << "\n"
               << std::endl;
     
     return 0;
