@@ -297,7 +297,7 @@ int main(int argc, char** argv)
         generateSingleCtgPctgs( result.first, ctgIds, &pctgPool, &masterPool, &mcRef, pctgNum);
 
         // save paired contig pool to disk
-        std::cout << "[writing paired contigs on file: " << getPathBaseName( outFilePrefix + ".fasta" ) << "]" << std::endl << std::flush;
+        std::cout << "[writing paired contigs on file: " << ( outFilePrefix + ".fasta" ) << "]" << std::endl << std::flush;
         //pctgPool.savePool( outFilePrefix + ".fasta" );
         result.first.sort( orderPctgsByName );
         std::ofstream outFasta((outFilePrefix + ".fasta").c_str(),std::ios::out);
@@ -306,13 +306,13 @@ int main(int argc, char** argv)
         outFasta.close();
         
         // save paired contigs descriptors to file
-        std::cout << "[writing paired contigs descriptors on file: " << getPathBaseName( outFilePrefix + ".pctgs" ) << "]" << std::endl << std::flush;
+        std::cout << "[writing paired contigs descriptors on file: " << ( outFilePrefix + ".pctgs" ) << "]" << std::endl << std::flush;
         std::fstream pctgDescFile( (outFilePrefix + ".pctgs").c_str(), std::fstream::out );
         writePctgDescriptors( pctgDescFile, result.first, mcRef, scRef );
         pctgDescFile.close();
         
         // save IDs of (slave) contigs NOT merged
-        std::cout << "[writing unused slave contigs on file: " << getPathBaseName( outFilePrefix + ".unused" ) << "]" << std::endl << std::flush;
+        std::cout << "[writing unused slave contigs on file: " << ( outFilePrefix + ".unused" ) << "]" << std::endl << std::flush;
         std::fstream unusedCtgsFile( (outFilePrefix + ".unused").c_str(), std::fstream::out );
         std::vector<bool> usedCtgs( scRef.size(), false );
         
