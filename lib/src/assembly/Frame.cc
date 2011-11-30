@@ -12,11 +12,11 @@
 Frame::Frame() {}
 
 Frame::Frame( IdType ctg, char strand, UIntType begin, UIntType end )
-        : _ctgId(ctg), _strand(strand), _begin(begin), _end(end) {}
+        : _ctgId(ctg), _strand(strand), _begin(begin), _end(end), _readsLen(0) {}
 
 Frame::Frame(const Frame& orig)
         : _ctgId(orig._ctgId), _strand(orig._strand), _begin(orig._begin),
-          _end(orig._end) {}
+          _end(orig._end), _readsLen(orig._readsLen) {}
 
 
 void Frame::setStrand( char strand )
@@ -32,6 +32,16 @@ void Frame::setBegin( UIntType begin )
 void Frame::setEnd( UIntType end )
 {
     _end = end;
+}
+
+void Frame::setReadsLen( UIntType readLen )
+{
+    _readsLen = readLen;
+}
+
+void Frame::increaseReadsLen( UIntType readLen )
+{
+    _readsLen += readLen;
 }
 
 IdType Frame::getContigId() const
@@ -52,6 +62,11 @@ UIntType Frame::getBegin() const
 UIntType Frame::getEnd() const
 {
     return _end;
+}
+
+UIntType Frame::getReadsLen() const
+{
+    return _readsLen;
 }
 
 UIntType Frame::getLength() const

@@ -413,14 +413,16 @@ AssemblyGraph::writeGraphviz(std::ostream& os)
         IdType masterCtgId = this->_blockVector[*v].getMasterFrame().getContigId();
         UIntType masterFrameLen = this->_blockVector[*v].getMasterFrame().getLength();
         UIntType masterFrameBeg = this->_blockVector[*v].getMasterFrame().getBegin();
+        double masterCov = ((double) this->_blockVector[*v].getMasterFrame().getReadsLen()) / ((double) this->_blockVector[*v].getMasterFrame().getLength());
         
         IdType slaveCtgId = this->_blockVector[*v].getSlaveFrame().getContigId();
         UIntType slaveFrameLen = this->_blockVector[*v].getSlaveFrame().getLength();
         UIntType slaveFrameBeg = this->_blockVector[*v].getSlaveFrame().getBegin();
+        double slaveCov = ((double) this->_blockVector[*v].getSlaveFrame().getReadsLen()) / ((double) this->_blockVector[*v].getSlaveFrame().getLength());
         
         os << "   " << *v << "[label=\"" 
-                        << masterCtgId << ":" << masterFrameBeg << ":" << masterFrameLen << "\\n"
-                        << slaveCtgId << ":" << slaveFrameBeg << ":" << slaveFrameLen 
+                        << masterCtgId << ":" << masterFrameBeg << ":" << masterFrameLen << " (" << masterCov << ")" << "\\n"
+                        << slaveCtgId << ":" << slaveFrameBeg << ":" << slaveFrameLen << " (" << slaveCov << ")" 
                     << "\""
                     << ((boost::in_degree(*v,*this) > 1 || boost::out_degree(*v,*this) > 1) ? ", color = blue" : "") << "];"
                     << std::endl;

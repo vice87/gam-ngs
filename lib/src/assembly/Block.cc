@@ -14,12 +14,12 @@
 #include "OrderingFunctions.hpp"
 
 Block::Block():
-        _numReads(0) 
+        _numReads(0)
 {}
 
 Block::Block(const Block &block):
-        _numReads(block._numReads), _masterFrame(block._masterFrame),
-        _slaveFrame(block._slaveFrame)
+        _numReads(block._numReads), 
+        _masterFrame(block._masterFrame), _slaveFrame(block._slaveFrame)
 {}
 
 void Block::setReadsNumber( IntType nr )
@@ -81,8 +81,11 @@ bool Block::addReads( Read &mRead, Read &sRead, int minOverlap )
     {
         _numReads = 1;
         
-        _masterFrame = Frame( mRead.getContigId(), '?', mRead.getStartPos(), mRead.getLength() );
-        _slaveFrame  = Frame( sRead.getContigId(), '?', sRead.getStartPos(), sRead.getLength() );
+        _masterFrame = Frame( mRead.getContigId(), '?', mRead.getStartPos(), mRead.getEndPos() );
+        _slaveFrame  = Frame( sRead.getContigId(), '?', sRead.getStartPos(), sRead.getEndPos() );
+        
+        _masterFrame.setReadsLen( (UIntType)mRead.getLength() );
+        _slaveFrame.setReadsLen( (UIntType)sRead.getLength() );
 
         return true;
     }
@@ -91,6 +94,9 @@ bool Block::addReads( Read &mRead, Read &sRead, int minOverlap )
     if( this->overlaps( mRead, sRead, minOverlap ) )
     {    
         _numReads++;
+        
+        _masterFrame.increaseReadsLen( (UIntType)mRead.getLength() );
+        _slaveFrame.increaseReadsLen( (UIntType)sRead.getLength() );
             
         if( mRead.getStartPos() < _masterFrame.getBegin() )
         {
