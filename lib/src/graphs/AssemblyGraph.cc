@@ -411,14 +411,14 @@ AssemblyGraph::writeGraphviz(std::ostream& os)
     for (VertexIterator v=vbegin; v!=vend; v++) 
     {
         IdType masterCtgId = this->_blockVector[*v].getMasterFrame().getContigId();
-        UIntType masterFrameLen = this->_blockVector[*v].getMasterFrame().getLength();
-        UIntType masterFrameBeg = this->_blockVector[*v].getMasterFrame().getBegin();
-        IntType masterCov = this->_blockVector[*v].getMasterFrame().getReadsLen() / this->_blockVector[*v].getMasterFrame().getLength();
+        IntType masterFrameLen = this->_blockVector[*v].getMasterFrame().getLength();
+        IntType masterFrameBeg = this->_blockVector[*v].getMasterFrame().getBegin();
+        IntType masterCov = this->_blockVector[*v].getMasterFrame().getReadsLen() / masterFrameLen;
         
         IdType slaveCtgId = this->_blockVector[*v].getSlaveFrame().getContigId();
-        UIntType slaveFrameLen = this->_blockVector[*v].getSlaveFrame().getLength();
-        UIntType slaveFrameBeg = this->_blockVector[*v].getSlaveFrame().getBegin();
-        IntType slaveCov = this->_blockVector[*v].getSlaveFrame().getReadsLen() / this->_blockVector[*v].getSlaveFrame().getLength();
+        IntType slaveFrameLen = this->_blockVector[*v].getSlaveFrame().getLength();
+        IntType slaveFrameBeg = this->_blockVector[*v].getSlaveFrame().getBegin();
+        IntType slaveCov = this->_blockVector[*v].getSlaveFrame().getReadsLen() / slaveFrameLen;
         
         os << "   " << *v << "[label=\"" 
                         << masterCtgId << ":" << masterFrameBeg << ":" << masterFrameLen << " (" << masterCov << ")" << "\\n"

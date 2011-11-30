@@ -126,7 +126,8 @@ Frame::operator ==(const Frame& frame) const
 std::ostream &operator<<( std::ostream &output, const Frame &frame )
 {
     output << frame.getContigId() << "\t" << frame.getStrand() << "\t" 
-           << frame.getBegin() << "\t" << frame.getEnd();
+           << frame.getBegin() << "\t" << frame.getEnd() << "\t"
+           << frame.getReadsLen();
     
     return output;
 }
@@ -136,10 +137,12 @@ std::istream &operator>>( std::istream &input, Frame &frame )
     IdType ctgId;
     char strand;
     UIntType begin, end;
+    IntType readsLen;
     
-    input >> ctgId >> strand >> begin >> end;
+    input >> ctgId >> strand >> begin >> end >> readsLen;
     
     frame = Frame( ctgId, strand, begin, end);
+    frame.setReadsLen(readsLen);
     
     return input;
 }
