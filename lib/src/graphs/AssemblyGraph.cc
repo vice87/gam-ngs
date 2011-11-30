@@ -413,12 +413,12 @@ AssemblyGraph::writeGraphviz(std::ostream& os)
         IdType masterCtgId = this->_blockVector[*v].getMasterFrame().getContigId();
         UIntType masterFrameLen = this->_blockVector[*v].getMasterFrame().getLength();
         UIntType masterFrameBeg = this->_blockVector[*v].getMasterFrame().getBegin();
-        double masterCov = ((double) this->_blockVector[*v].getMasterFrame().getReadsLen()) / ((double) this->_blockVector[*v].getMasterFrame().getLength());
+        IntType masterCov = this->_blockVector[*v].getMasterFrame().getReadsLen() / this->_blockVector[*v].getMasterFrame().getLength();
         
         IdType slaveCtgId = this->_blockVector[*v].getSlaveFrame().getContigId();
         UIntType slaveFrameLen = this->_blockVector[*v].getSlaveFrame().getLength();
         UIntType slaveFrameBeg = this->_blockVector[*v].getSlaveFrame().getBegin();
-        double slaveCov = ((double) this->_blockVector[*v].getSlaveFrame().getReadsLen()) / ((double) this->_blockVector[*v].getSlaveFrame().getLength());
+        IntType slaveCov = this->_blockVector[*v].getSlaveFrame().getReadsLen() / this->_blockVector[*v].getSlaveFrame().getLength();
         
         os << "   " << *v << "[label=\"" 
                         << masterCtgId << ":" << masterFrameBeg << ":" << masterFrameLen << " (" << masterCov << ")" << "\\n"

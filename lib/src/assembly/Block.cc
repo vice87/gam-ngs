@@ -84,8 +84,8 @@ bool Block::addReads( Read &mRead, Read &sRead, int minOverlap )
         _masterFrame = Frame( mRead.getContigId(), '?', mRead.getStartPos(), mRead.getEndPos() );
         _slaveFrame  = Frame( sRead.getContigId(), '?', sRead.getStartPos(), sRead.getEndPos() );
         
-        _masterFrame.setReadsLen( (UIntType)mRead.getLength() );
-        _slaveFrame.setReadsLen( (UIntType)sRead.getLength() );
+        _masterFrame.setReadsLen( mRead.getLength() );
+        _slaveFrame.setReadsLen( sRead.getLength() );
 
         return true;
     }
@@ -95,8 +95,8 @@ bool Block::addReads( Read &mRead, Read &sRead, int minOverlap )
     {    
         _numReads++;
         
-        _masterFrame.increaseReadsLen( (UIntType)mRead.getLength() );
-        _slaveFrame.increaseReadsLen( (UIntType)sRead.getLength() );
+        _masterFrame.increaseReadsLen( mRead.getLength() );
+        _slaveFrame.increaseReadsLen( sRead.getLength() );
             
         if( mRead.getStartPos() < _masterFrame.getBegin() )
         {

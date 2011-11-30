@@ -25,7 +25,7 @@ private:
     char     _strand;     //!< strand of the frame
     UIntType _begin;      //!< position (0-based) where the block begins in contig
     UIntType _end;        //!< position (0-based) where the block ends in contig
-    UIntType _readsLen;   //!< sum of the lengths of block's reads
+    IntType _readsLen;   //!< sum of the lengths of block's reads
 
 public:
     //! A constructor with no arguments.
@@ -65,9 +65,9 @@ public:
      */
     void setEnd( UIntType end );
     
-    void setReadsLen( UIntType readLen );
+    void setReadsLen( IntType readLen );
     
-    void increaseReadsLen( UIntType readLen );
+    void increaseReadsLen( IntType readLen );
     
     //! Gets contig identifier.
     /*!
@@ -93,7 +93,7 @@ public:
      */
     UIntType getEnd() const;
     
-    UIntType getReadsLen() const;
+    IntType getReadsLen() const;
     
     //! Gets the frame's length.
     /*!

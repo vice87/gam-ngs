@@ -34,12 +34,12 @@ void Frame::setEnd( UIntType end )
     _end = end;
 }
 
-void Frame::setReadsLen( UIntType readLen )
+void Frame::setReadsLen( IntType readLen )
 {
     _readsLen = readLen;
 }
 
-void Frame::increaseReadsLen( UIntType readLen )
+void Frame::increaseReadsLen( IntType readLen )
 {
     _readsLen += readLen;
 }
@@ -64,7 +64,7 @@ UIntType Frame::getEnd() const
     return _end;
 }
 
-UIntType Frame::getReadsLen() const
+IntType Frame::getReadsLen() const
 {
     return _readsLen;
 }
