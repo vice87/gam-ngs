@@ -66,8 +66,8 @@ void Read::getReadMap( BamReader &bamMaster, BamReader &bamSlave, sparse_hash_ma
                 if( !align.GetTag(std::string("NH"),nh) ) nh = 1; // se molteplicità in un campo non standard assumo che sia pari ad 1
                 if( nh == 1 && align.IsMapped() )
                 {
-                    if( !slaveAlign.GetTag(std::string("NH"),nh) ) nh = 1; // se molteplicità in un campo non standard assumo che sia pari ad 1
-                    if( nh == 1 && slaveAlign.IsMapped() )
+                    if( !prevSlaveAlign.GetTag(std::string("NH"),nh) ) nh = 1; // se molteplicità in un campo non standard assumo che sia pari ad 1
+                    if( nh == 1 && prevSlaveAlign.IsMapped() )
                     {
                         Read slaveRead(IdType(prevSlaveAlign.RefID), IdType(prevSlaveAlign.Position), IdType(prevSlaveAlign.GetEndPosition()), prevSlaveAlign.IsReverseStrand());
                         std::string readName = prevSlaveAlign.Name + (prevSlaveAlign.IsFirstMate() ? "1" : "2");
