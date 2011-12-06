@@ -98,6 +98,7 @@ Frame::operator=(const Frame& frame)
     this->_begin = frame._begin;
     this->_end = frame._end;
     this->_strand = frame._strand;
+    this->_readsLen = frame._readsLen;
     
     return *this;
 }

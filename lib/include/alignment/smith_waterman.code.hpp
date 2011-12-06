@@ -252,7 +252,7 @@ SmithWaterman::apply(const Contig& a, SmithWaterman::size_type begin_a,
   ScoreType* a_matrix[y_size];
 
   for (SmithWaterman::size_type y=0; y<y_size; y++) {
-    a_matrix[y]=(ScoreType *)malloc(sizeof(ScoreType)*x_size);
+    a_matrix[y] = new (std::nothrow) ScoreType[x_size]; //(ScoreType *)malloc(sizeof(ScoreType)*x_size);
 
     if (a_matrix[y]==NULL) {
       throw std::runtime_error("SmithWaterman function cannot allocate enough memory.");
@@ -271,7 +271,7 @@ SmithWaterman::apply(const Contig& a, SmithWaterman::size_type begin_a,
                                 a_matrix, y_size, x_size, b_rev)); 
 
   for (SmithWaterman::size_type y=0; y<y_size; y++) {
-    free(a_matrix[y]);
+    delete[] a_matrix[y]; //free(a_matrix[y]);
   }
 
   return result;

@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <iostream>
+#include <iomanip>
 
 #include <boost/graph/strong_components.hpp> 
 #include <boost/graph/topological_sort.hpp> 
@@ -411,18 +412,18 @@ AssemblyGraph::writeGraphviz(std::ostream& os)
     for (VertexIterator v=vbegin; v!=vend; v++) 
     {
         IdType masterCtgId = this->_blockVector[*v].getMasterFrame().getContigId();
-        IntType masterFrameLen = this->_blockVector[*v].getMasterFrame().getLength();
-        IntType masterFrameBeg = this->_blockVector[*v].getMasterFrame().getBegin();
-        IntType masterCov = this->_blockVector[*v].getMasterFrame().getReadsLen() / masterFrameLen;
+        UIntType masterFrameLen = this->_blockVector[*v].getMasterFrame().getLength();
+        UIntType masterFrameBeg = this->_blockVector[*v].getMasterFrame().getBegin();
+        RealType masterCov = ((RealType) this->_blockVector[*v].getMasterFrame().getReadsLen()) / ((RealType)masterFrameLen);
         
         IdType slaveCtgId = this->_blockVector[*v].getSlaveFrame().getContigId();
-        IntType slaveFrameLen = this->_blockVector[*v].getSlaveFrame().getLength();
-        IntType slaveFrameBeg = this->_blockVector[*v].getSlaveFrame().getBegin();
-        IntType slaveCov = this->_blockVector[*v].getSlaveFrame().getReadsLen() / slaveFrameLen;
+        UIntType slaveFrameLen = this->_blockVector[*v].getSlaveFrame().getLength();
+        UIntType slaveFrameBeg = this->_blockVector[*v].getSlaveFrame().getBegin();
+        RealType slaveCov = ((RealType) this->_blockVector[*v].getSlaveFrame().getReadsLen()) / ((RealType)slaveFrameLen);
         
         os << "   " << *v << "[label=\"" 
-                        << masterCtgId << ":" << masterFrameBeg << ":" << masterFrameLen << " (" << masterCov << ")" << "\\n"
-                        << slaveCtgId << ":" << slaveFrameBeg << ":" << slaveFrameLen << " (" << slaveCov << ")" 
+                    << masterCtgId << ":" << masterFrameBeg << ":" << masterFrameLen << " (" << std::setiosflags(std::ios::fixed) << std::setprecision(2) << masterCov << ")" << "\\n"
+                    << slaveCtgId << ":" << slaveFrameBeg << ":" << slaveFrameLen << " (" << std::setiosflags(std::ios::fixed) << std::setprecision(2) << slaveCov << ")" 
                     << "\""
                     << ((boost::in_degree(*v,*this) > 1 || boost::out_degree(*v,*this) > 1) ? ", color = blue" : "") << "];"
                     << std::endl;
