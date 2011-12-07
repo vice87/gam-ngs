@@ -27,7 +27,7 @@ class RelativeStrandEvidencesGraph : public PairedContigGraph< unsigned short in
         WHITE,
         GREY,
         BLACK
-    };
+    } __attribute__((packed));
     
     typedef boost::property<boost::edge_weight_t, RelativeStrandEvidences> EdgeStrandProbabilityProperty; 
     typedef RelativeStrandEvidences EdgeWeightType;     

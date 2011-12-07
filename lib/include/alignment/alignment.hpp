@@ -19,7 +19,7 @@ typedef enum {
   GAP_B,
   MATCH,
   MISMATCH
-} AlignmentAlphabet;
+} __attribute__((packed)) AlignmentAlphabet;
 
 class Alignment {
  public:
