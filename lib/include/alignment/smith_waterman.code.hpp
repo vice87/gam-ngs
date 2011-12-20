@@ -8,6 +8,8 @@
 
 #include "alignment/smith_waterman.hpp"
 
+pthread_mutex_t mutex_new = PTHREAD_MUTEX_INITIALIZER;
+
 void
 SmithWaterman::compute_alignment_matrix(
                          const Contig& a, SmithWaterman::size_type& begin_a, 
@@ -251,6 +253,8 @@ SmithWaterman::apply(const Contig& a, SmithWaterman::size_type begin_a,
 
   ScoreType* a_matrix[y_size];
 
+  pthread_mutex_lock(&mutex_new);
+  
   for (SmithWaterman::size_type y=0; y<y_size; y++) {
     a_matrix[y] = new (std::nothrow) ScoreType[x_size]; //(ScoreType *)malloc(sizeof(ScoreType)*x_size);
 
@@ -262,6 +266,8 @@ SmithWaterman::apply(const Contig& a, SmithWaterman::size_type begin_a,
       a_matrix[y][x]=0;
     }
   }
+  
+  pthread_mutex_unlock(&mutex_new);
 
   compute_alignment_matrix(a, begin_a, b, begin_b, 
                                a_matrix, y_size, x_size); 
@@ -270,9 +276,13 @@ SmithWaterman::apply(const Contig& a, SmithWaterman::size_type begin_a,
                                begin_a, b, begin_b,
                                 a_matrix, y_size, x_size, b_rev)); 
 
+  pthread_mutex_lock(&mutex_new);
+  
   for (SmithWaterman::size_type y=0; y<y_size; y++) {
     delete[] a_matrix[y]; //free(a_matrix[y]);
   }
+  
+  pthread_mutex_unlock(&mutex_new);
 
   return result;
 }
