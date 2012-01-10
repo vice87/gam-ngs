@@ -185,7 +185,7 @@ complement(const Contig& ctg)
     //quality.at(i)=ctg.qual(i);
   }
 
-  return Contig(name,sequence); //return Contig(name,sequence,quality);
+  return Contig(ctg.name(),sequence); //return Contig(name,sequence,quality);
 }
 
 Contig 
@@ -228,7 +228,7 @@ chop_end(const Contig& ctg, const size_t& preserve_until)
   return chop_borders(ctg, 0, preserve_until);
 }
 
-Contig
+/*Contig
 merge(const Contig& a, const Contig& b, 
                          const Alignment& alignment)
 {
@@ -270,6 +270,6 @@ merge(const Contig& a, const Contig& b,
   }
 
   return Contig(a.name(),new_seq); //return Contig(a.name(),new_seq,new_qual);
-}
+}*/
 
 #endif // CONTIG_CODE_

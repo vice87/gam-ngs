@@ -89,10 +89,10 @@ Contig chop_borders(const Contig& ctg,
 
 Contig reverse_complement(const Contig& ctg); 
 
-class Alignment;
+/*class Alignment;
 
 Contig
 merge(const Contig& a, const Contig& b, 
-              const Alignment& alignment);
+              const Alignment& alignment); */
 
 #endif // CONTIG_

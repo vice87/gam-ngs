@@ -64,7 +64,7 @@ std::list< PairedContig > buildPctg(
                     try
                     {
                         //std::cout << "Extending pctg with " << AG.getBlock(notMerged.front()).getMasterFrame().getContigId() << "-" << AG.getBlock(notMerged.front()).getSlaveFrame().getContigId() << std::endl << std::flush;
-                        pctg = builder.extendByBlock(pctg,AG.getBlock(notMerged.front()));
+                        pctg = builder.extendByBlock( pctg, AG.getBlock(notMerged.front()), AG.getBlock(notMerged.back()) );
                         notMerged.clear();
                     }
                     catch( std::logic_error &e )
@@ -97,7 +97,7 @@ std::list< PairedContig > buildPctg(
             try
             {
                 //std::cout << "Extending (last) pctg with " << AG.getBlock(notMerged.front()).getMasterFrame().getContigId() << "-" << AG.getBlock(notMerged.front()).getSlaveFrame().getContigId() << std::endl << std::flush;
-                pctg = builder.extendByBlock(pctg,AG.getBlock(notMerged.front()));
+                pctg = builder.extendByBlock( pctg, AG.getBlock(notMerged.front()), AG.getBlock(notMerged.back()) );
                 notMerged.clear();
             }
             catch( std::logic_error &e )

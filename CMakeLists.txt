@@ -15,10 +15,10 @@ include_directories( ${Boost_INCLUDE_DIRS} )
 
 # sorgenti da compilare
 file(GLOB GAMNGSLIB_SRC_FILES 
-    ${PROJECT_SOURCE_DIR}/lib/src/alignment/ablast.cc
-    ${PROJECT_SOURCE_DIR}/lib/src/alignment/aligner.cc
-    ${PROJECT_SOURCE_DIR}/lib/src/alignment/alignment.cc
-    ${PROJECT_SOURCE_DIR}/lib/src/alignment/smith_waterman.cc
+    ${PROJECT_SOURCE_DIR}/lib/src/alignment/ablast_new.cc
+    ${PROJECT_SOURCE_DIR}/lib/src/alignment/my_alignment.cc
+    ${PROJECT_SOURCE_DIR}/lib/src/alignment/full_smith_waterman.cc
+    ${PROJECT_SOURCE_DIR}/lib/src/alignment/banded_smith_waterman.cc
     ${PROJECT_SOURCE_DIR}/lib/src/assembly/contig.cc
     ${PROJECT_SOURCE_DIR}/lib/src/assembly/io_contig.cc
     ${PROJECT_SOURCE_DIR}/lib/src/assembly/nucleotide.cc
@@ -62,6 +62,17 @@ add_executable(n50 src/n50.cc)
 # executable for getting unused contigs from "old-format" pctgs file
 add_executable(pe-stats src/pe-stats.cc)
 target_link_libraries(pe-stats BamTools)
+
+# executable for testing new aligners
+add_executable(new-aligners src/test/new-alignments.cc
+    lib/src/assembly/contig.cc
+    lib/src/assembly/io_contig.cc
+    lib/src/assembly/nucleotide.cc
+    lib/src/alignment/my_alignment.cc
+    lib/src/alignment/full_smith_waterman.cc
+    lib/src/alignment/banded_smith_waterman.cc
+    lib/src/alignment/ablast_new.cc
+)
 
 # executable for memory usage debugging
 #add_executable(memory-usage src/test/memory-usage.cc 

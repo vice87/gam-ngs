@@ -1,13 +1,13 @@
 #include "pctg/BestPctgCtgAlignment.hpp"
 
 
-BestPctgCtgAlignment::BestPctgCtgAlignment(const Alignment& a, const bool isCtgReverse):
+BestPctgCtgAlignment::BestPctgCtgAlignment(const MyAlignment& a, const bool isCtgReverse):
         _a(a), _isCtgReverse(isCtgReverse) {}
 
 BestPctgCtgAlignment::BestPctgCtgAlignment(const BestPctgCtgAlignment& orig):
         _a(orig._a), _isCtgReverse(orig._isCtgReverse) {}
 
-const Alignment&
+const MyAlignment&
 BestPctgCtgAlignment::getAlignment() const
 {
     return this->_a;

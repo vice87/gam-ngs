@@ -8,14 +8,14 @@
 #ifndef BESTPCTGALIGNMENT_HPP
 #define	BESTPCTGALIGNMENT_HPP
 
-#include "alignment/alignment.hpp"
+#include "alignment/my_alignment.hpp"
 
 //! Class implementing a best pctg-contig alignment
 class BestPctgCtgAlignment
 {
 
 private:
-    Alignment _a;       //!< an alignment
+    MyAlignment _a;       //!< an alignment
     bool _isCtgReverse; //!< whether the contig is reverse complemented or not.
     
 public:
@@ -24,7 +24,7 @@ public:
      * \param a an alignment.
      * \param isCtgReverse whether the contig is reverse complemented or not.
      */
-    BestPctgCtgAlignment(const Alignment& a, const bool isCtgReverse);
+    BestPctgCtgAlignment(const MyAlignment& a, const bool isCtgReverse);
     
     //! A copy constructor.
     /*!
@@ -37,7 +37,7 @@ public:
     /*!
      * \return a reference to the Alignment object.
      */
-    const Alignment& getAlignment() const;
+    const MyAlignment& getAlignment() const;
     
     //! Tells whether the contig is reverse complemented or not.
     const bool& isCtgReversed() const;
