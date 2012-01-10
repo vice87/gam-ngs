@@ -113,6 +113,8 @@ int main(int argc, char** argv)
     
     // compute N50 and L50
     long int N50 = 0, L50 = 0;
+    length = 0;
+    
     for( rit = seqLenList.rbegin() ; rit != seqLenList.rend(); ++rit )
     {
         if( 2*length >= tot_length ) break;
