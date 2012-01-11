@@ -115,6 +115,8 @@ int main(int argc, char** argv)
     long int N50 = 0, L50 = 0;
     length = 0;
     
+    long int max_length = (seqLenList.rbegin() != seqLenList.rend()) ? *(seqLenList.rbegin()) : 0;
+    
     for( rit = seqLenList.rbegin() ; rit != seqLenList.rend(); ++rit )
     {
         if( 2*length >= tot_length ) break;
@@ -124,7 +126,9 @@ int main(int argc, char** argv)
     }
     
     cout << getBaseName(argv[1]) << " statistics:" << endl 
-         << "Total length = " << tot_length << "\tAverage = " << (tot_length * 1.0) / seqLenList.size() << endl
+         << "Total length = " << tot_length 
+            << "\tAverage = " << (tot_length * 1.0) / seqLenList.size() 
+            << "\tMax = " << max_length << endl
          << "Sequences = " << seqLenList.size() << endl
          << "N50 = " << N50 << endl 
          << "L50 = " << L50 << endl;

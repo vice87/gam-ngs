@@ -2,10 +2,9 @@
 #include <stdexcept>
 #include <iostream>
 #include <algorithm>
+#include <stdio.h>
 
 #include "alignment/banded_smith_waterman.hpp"
-
-pthread_mutex_t mutex_new = PTHREAD_MUTEX_INITIALIZER;
 
 BandedSmithWaterman::BandedSmithWaterman() : 
         _match_score(MATCH_SCORE), 
@@ -41,7 +40,7 @@ BandedSmithWaterman::find_alignment(
         size_type begin_b, 
         size_type end_b ) const
 {
-    int BLOSUM62[5][5] =
+    int SCORING_MATRIX[5][5] =
     {
        // A   T   C   G   N
        {  8, -4, -4, -4,  0 }, // A
@@ -51,15 +50,16 @@ BandedSmithWaterman::find_alignment(
        {  0,  0,  0,  0,  8 }, // N
     };
     
+    if( end_b < begin_b ) return MyAlignment(a,b);
+    
     size_type x_size = end_b - begin_b + 1;
+    x_size = std::min( x_size, a.size() + this->_band_size - begin_a );
+    x_size = std::min( x_size, size_type(BSW_MAX_ALIGNMENT) );
+    
     size_type y_size = (2 * this->_band_size) + 1;
     
     // allocate smith waterman matrix
-    ScoreType* sw[x_size];
-    
-    pthread_mutex_lock(&mutex_new);
-    for( size_type i = 0; i < x_size; i++ ) sw[i] = new ScoreType[y_size];
-    pthread_mutex_unlock(&mutex_new);
+    std::vector< std::vector<ScoreType> > sw( x_size, std::vector<ScoreType>(y_size) );
     
     // initialization of the first row
     for( size_type j = 0; j < y_size; j++ )
@@ -68,7 +68,7 @@ BandedSmithWaterman::find_alignment(
         
         if( pos >= 0 && pos < a.size() )
         {
-            ScoreType diag = BLOSUM62[a.at(pos).base()][b.at(begin_b).base()]; //(a.at(pos) == b.at(begin_b)) ? this->_match_score : this->_mismatch_score;
+            ScoreType diag = SCORING_MATRIX[a.at(pos).base()][b.at(begin_b).base()]; //(a.at(pos) == b.at(begin_b)) ? this->_match_score : this->_mismatch_score;
             ScoreType up = this->_gap_score;
             ScoreType left = (pos > 0 && j > 0) ? sw[0][j-1] : this->_gap_score;
             
@@ -87,7 +87,7 @@ BandedSmithWaterman::find_alignment(
             {
                 if( pos == 0 )
                 {
-                    ScoreType diag = BLOSUM62[a.at(pos).base()][b.at(begin_b+i).base()]; // ((a.at(pos) == b.at(begin_b+i)) ? this->_match_score : this->_mismatch_score);
+                    ScoreType diag = SCORING_MATRIX[a.at(pos).base()][b.at(begin_b+i).base()]; // ((a.at(pos) == b.at(begin_b+i)) ? this->_match_score : this->_mismatch_score);
                     ScoreType up = (j < y_size-1) ? sw[i-1][j+1] + this->_gap_score : this->_gap_score; 
                     ScoreType left = this->_gap_score;
                                         
@@ -95,7 +95,7 @@ BandedSmithWaterman::find_alignment(
                 }
                 else
                 {
-                    ScoreType diag = sw[i-1][j] + BLOSUM62[a.at(pos).base()][b.at(begin_b+i).base()]; //((a.at(pos) == b.at(begin_b+i)) ? this->_match_score : this->_mismatch_score);
+                    ScoreType diag = sw[i-1][j] + SCORING_MATRIX[a.at(pos).base()][b.at(begin_b+i).base()]; //((a.at(pos) == b.at(begin_b+i)) ? this->_match_score : this->_mismatch_score);
                     ScoreType up = (j < y_size-1) ? sw[i-1][j+1] + this->_gap_score : this->_gap_score;
                     ScoreType left = (j > 0) ? sw[i][j-1] + this->_gap_score : this->_gap_score;
                     
@@ -158,7 +158,7 @@ BandedSmithWaterman::find_alignment(
     {
         if( pos == 0 )
         {
-            ScoreType diag = BLOSUM62[a.at(pos).base()][b.at(begin_b+x).base()]; // ((a.at(pos) == b.at(begin_b+x)) ? this->_match_score : this->_mismatch_score);
+            ScoreType diag = SCORING_MATRIX[a.at(pos).base()][b.at(begin_b+x).base()]; // ((a.at(pos) == b.at(begin_b+x)) ? this->_match_score : this->_mismatch_score);
             ScoreType up = (x > 0 && y < y_size-1) ? sw[x-1][y+1] + this->_gap_score : this->_gap_score; 
             ScoreType left = this->_gap_score;
             
@@ -181,7 +181,7 @@ BandedSmithWaterman::find_alignment(
         }
         else
         {
-            ScoreType diag = (x > 0 ? sw[x-1][y] : 0) + BLOSUM62[a.at(pos).base()][b.at(begin_b+x).base()]; //((a.at(pos) == b.at(begin_b + x)) ? this->_match_score : this->_mismatch_score);
+            ScoreType diag = (x > 0 ? sw[x-1][y] : 0) + SCORING_MATRIX[a.at(pos).base()][b.at(begin_b+x).base()]; //((a.at(pos) == b.at(begin_b + x)) ? this->_match_score : this->_mismatch_score);
             ScoreType up = (x > 0 && y < y_size-1) ? sw[x-1][y+1] + this->_gap_score : this->_gap_score;
             ScoreType left = (y > 0) ? sw[x][y-1] + this->_gap_score : this->_gap_score;
 
@@ -216,10 +216,6 @@ BandedSmithWaterman::find_alignment(
         
         pos = begin_a + x + y - this->_band_size;
     }
-    
-    pthread_mutex_lock(&mutex_new);
-    for( size_type i=0; i < x_size; i++ ) delete[] sw[i];
-    pthread_mutex_unlock(&mutex_new);
     
     MyAlignment sw_alignment( a, pos+1, b, begin_b+x+1, max_score, edit_string );
     return sw_alignment;
