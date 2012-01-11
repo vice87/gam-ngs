@@ -5,7 +5,7 @@
 #include "assembly/contig.hpp"
 
 #define DEFAULT_BAND_SIZE 150
-#define BSW_MAX_ALIGNMENT 3000000
+#define BSW_MAX_ALIGNMENT 2000000
 
 class BandedSmithWaterman 
 {
