@@ -86,19 +86,6 @@ public:
      MyAlignment 
      apply(const Contig& a, const Contig& b, const bool& b_rev) const;
 
-     //! Apply ABlast aligner
-     /*! 
-       Apply the current ABlast aligner to two Contig, <i>a</i> and 
-       <i>b</i>. It return the ``best'' alignment between <i>a</i>, <i>b</i>,
-       and the reverse complement of <i>b</i>.
-       @param a A contig to be aligned.
-       @param b A contig to be aligned.
-       @return The ``best'' alignment between <i>a</i>, <i>b</i>, and 
-               the reverse complement of <i>b</i>.
-      */
-     MyAlignment
-     apply(const Contig& a, const Contig& b) const;
-
      //! Find the ``best'' alignment.
      /*! 
        Find the ``best'' alignment between contigs <i>a</i> and <i>b</i>.

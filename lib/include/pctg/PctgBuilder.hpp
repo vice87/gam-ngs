@@ -94,7 +94,7 @@ public:
      * \param lastBlock last block in common between the contigs
      * \return the paired contig \c pctg extended using \c block.
      */
-    PairedContig extendByBlock(const PairedContig &pctg, const Block &firstBlock, const Block& lastBlock) const;
+    PairedContig& extendByBlock(PairedContig &pctg, const Block &firstBlock, const Block& lastBlock) const;
     
     //! Adds the first block to a paired contig.
     /*!
@@ -106,7 +106,7 @@ public:
      * 
      * \throws std::invalid_argument if the \c pctg is not empty.
      */
-    PairedContig addFirstBlockTo(PairedContig pctg, const Block &firstBlock, const Block &lastBlock) const;
+    PairedContig& addFirstBlockTo(PairedContig &pctg, const Block &firstBlock, const Block &lastBlock) const;
     
     //! Adds the first contig to a paired contig.
     /*!
@@ -117,7 +117,7 @@ public:
      * 
      * \throws std::invalid_argument if the \c pctg is not empty.
      */
-    PairedContig addFirstContigTo(const PairedContig &pctg, const IdType &ctgId) const;
+    PairedContig& addFirstContigTo(PairedContig &pctg, const IdType &ctgId) const;
     
     //! Returns a paired contig extended with a contig.
     /*!
@@ -129,7 +129,7 @@ public:
      * \param isMasterCtg whether \c ctg is a master or a slave contig
      * \return the extended paired contig
      */
-    const PairedContig& extendPctgWithCtgFrom(
+    PairedContig& extendPctgWithCtgFrom(
         PairedContig &orig,
         const Contig &ctg,
         ContigInPctgInfo &ctgInfo,
@@ -160,7 +160,7 @@ public:
      * \param shiftSize shift amount
      * \return the paired contig \c orig which has been shifted of \c shiftSize positions.
      */
-    PairedContig shiftPctgOf( const PairedContig &orig, const UIntType shiftSize ) const;
+    PairedContig& shiftPctgOf( PairedContig &orig, const UIntType shiftSize ) const;
     
     //! Merge a paired contig with a single contig.
     /*!
@@ -170,7 +170,7 @@ public:
      * \param mergeMasterCtg whether to merge the master or slave contig of \c block
      * \return the paired contig obtained from merging.
      */
-    PairedContig mergeContig( PairedContig pctg, const Block &firstBlock, const Block &lastBlock, bool mergeMasterCtg ) const;    
+    PairedContig& mergeContig( PairedContig &pctg, const Block &firstBlock, const Block &lastBlock, bool mergeMasterCtg ) const;    
     
     //! Merge a paired contig with a contig, using an alignment.
     /*!
@@ -181,7 +181,7 @@ public:
      * \param mergeMaster whether \c ctg is a master or a slave contig
      * \return the paired contig obtained from merging \c pctg and \c ctg.
      */
-    const PairedContig& mergeCtgInPos(
+    PairedContig& mergeCtgInPos(
         PairedContig &pctg,
         const Contig &ctg,
         const IdType &ctgId,
@@ -196,7 +196,7 @@ public:
      * \param bestAlign best alignment of \c pctg and \c ctg
      * \return the paired contig obtained from merging \c pctg and \c ctg.
      */
-    const PairedContig& mergeMasterCtgInPos(
+    PairedContig& mergeMasterCtgInPos(
         PairedContig &pctg,
         const Contig &ctg,
         const IdType &ctgId,
@@ -210,7 +210,7 @@ public:
      * \param bestAlign best alignment of \c pctg and \c ctg
      * \return the paired contig obtained from merging \c pctg and \c ctg.
      */
-    const PairedContig& mergeSlaveCtgInPos(
+    PairedContig& mergeSlaveCtgInPos(
         PairedContig &pctg,
         const Contig &ctg,
         const IdType &ctgId,

@@ -111,7 +111,7 @@ int main(int argc, char** argv)
     loadMap( fasta2, pool2 );
     std::cout << "done.\n" << std::endl;
     
-    std::map< std::string, Contig >::const_iterator i,j;
+    std::map< std::string, Contig >::iterator i,j;
     for( i = pool1.begin(); i != pool1.end(); i++ )
     {
         for( j = pool2.begin(); j != pool2.end(); j++ )
@@ -123,14 +123,13 @@ int main(int argc, char** argv)
             //std::cout << swa << std::endl;
             
             ABlast ablast;
-            MyAlignment alignment = ablast.find_alignment( reverse_complement(i->second), j->second );
+            MyAlignment alignment = ablast.find_alignment( i->second, j->second );
             std::cout << alignment << std::endl;
                     //sw.find_alignment( i->second, 200, (i->second).size()-1, j->second, 0, (j->second).size()-1 );
             
             std::cout << "(Reversed)"  << j->first << "(" << (j->second).size() << ")" << " vs. " << i->first << "(" << (i->second).size() << ")" << ":" << std::endl;
-            Contig revC = reverse_complement(j->second);
-            
-            alignment = ablast.find_alignment( reverse_complement(i->second), revC );
+                        
+            alignment = ablast.find_alignment( i->second, reverse_complement(j->second) );
             std::cout << alignment << std::endl;
         }
     }

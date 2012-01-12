@@ -87,7 +87,7 @@ Contig chop_borders(const Contig& ctg,
                     const size_t& preserve_from,
                     const size_t& preserve_until);
 
-Contig reverse_complement(const Contig& ctg); 
+Contig& reverse_complement(Contig& ctg); 
 
 /*class Alignment;
 

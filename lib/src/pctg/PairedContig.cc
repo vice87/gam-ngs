@@ -178,24 +178,24 @@ bool sameAssemblyCtgsOverlapedBy(const PairedContig &pctg, const Contig &ctg,
 }
 
 
-PairedContig shiftOf(const PairedContig& pctg, const UIntType& shiftSize)
+PairedContig& shiftOf(PairedContig& pctg, const UIntType& shiftSize)
 {
     typedef std::map< IdType, ContigInPctgInfo > ContigInfoMap;
     
-    PairedContig out(pctg);
+    //PairedContig out(pctg);
     ContigInfoMap::iterator j;
     
-    for(j = out.getMasterCtgMap().begin(); j != out.getMasterCtgMap().end(); j++)
+    for(j = pctg.getMasterCtgMap().begin(); j != pctg.getMasterCtgMap().end(); j++)
     {
         (j->second).setPosition((j->second).getFirstNucleotidePos() + shiftSize);
     }
     
-    for(j = out.getSlaveCtgMap().begin(); j != out.getSlaveCtgMap().end(); j++)
+    for(j = pctg.getSlaveCtgMap().begin(); j != pctg.getSlaveCtgMap().end(); j++)
     {
         (j->second).setPosition((j->second).getFirstNucleotidePos() + shiftSize);
     }
     
-    return out;
+    return pctg;
 }
 
 

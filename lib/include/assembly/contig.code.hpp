@@ -154,42 +154,46 @@ Contig::sequence(const size_t& index, const size_t& length) const
   return out_seq;
 }
 
-inline
-Contig reverse(const Contig& ctg)
+Contig &
+reverse(Contig& ctg)
 {
-  std::string name;
-  SeqType sequence(ctg.size());
   //QualSeqType quality(ctg.size());
+  if( ctg.size() == 0 ) return ctg;
+  
+  unsigned int i = 0, j = ctg.size()-1;
+  Nucleotide temp;
 
-  name="Reversed "+ctg.name();
-  for (unsigned int i=0; i< ctg.size(); i++) {
-    unsigned int orig_pos=ctg.size()-i-1;
-
-    sequence.at(i)=ctg.at(orig_pos);
-    //quality.at(i)=ctg.qual(orig_pos);
+  ctg.set_name( "Reversed "+ctg.name() );
+  while( i < j )
+  {
+      temp = ctg.at(i);
+      ctg.at(i) = ctg.at(j);
+      ctg.at(j) = temp;
+      i++;
+      j--;
   }
 
-  return Contig(name,sequence); //return Contig(name,sequence,quality);
+  return ctg;
+  //return Contig(name,sequence); //return Contig(name,sequence,quality);
 }
 
-inline
-Contig 
-complement(const Contig& ctg)  
+Contig &
+complement(Contig& ctg)  
 {
-  std::string name;
-  SeqType sequence(ctg.size());
+  //SeqType sequence(ctg.size());
   //QualSeqType quality(ctg.size());
 
   for (unsigned int i=0; i< ctg.size(); i++) {
-    sequence.at(i)=complement(ctg.at(i));
+    ctg.at(i)=complement(ctg.at(i));
     //quality.at(i)=ctg.qual(i);
   }
 
-  return Contig(ctg.name(),sequence); //return Contig(name,sequence,quality);
+  return ctg;
+  //return Contig(ctg.name(),sequence); //return Contig(name,sequence,quality);
 }
 
-Contig 
-reverse_complement(const Contig& ctg)  
+Contig &
+reverse_complement(Contig& ctg)  
 {
   return reverse(complement(ctg));
 }

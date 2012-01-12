@@ -164,19 +164,6 @@ ABlast::apply(const Contig& a, const Contig& b, const bool& b_rev) const
 }
 
 MyAlignment
-ABlast::apply(const Contig& a, const Contig& b) const
-{
-  MyAlignment align(apply(a,b,false)), 
-            align_r(apply(a,reverse_complement(b),true));
-
-  if (align.score()>align_r.score()) {
-    return align;
-  }
-
-  return align_r;
-}
-
-MyAlignment
 ABlast::find_alignment( const Contig& a, const Contig& b ) const
 {
   return apply(a,b,false); 

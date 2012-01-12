@@ -40,7 +40,7 @@ PairedContig PctgBuilder::initByContig(const IdType& pctgId, const IdType& ctgId
 }
 
 
-const PairedContig& PctgBuilder::extendPctgWithCtgFrom(
+PairedContig& PctgBuilder::extendPctgWithCtgFrom(
         PairedContig& orig, 
         const Contig& ctg, 
         ContigInPctgInfo& ctgInfo, 
@@ -97,34 +97,35 @@ const PairedContig& PctgBuilder::extendPctgWithCtgUpto(
 }
 
 
-PairedContig PctgBuilder::shiftPctgOf(const PairedContig& orig, const UIntType shiftSize) const
+PairedContig& PctgBuilder::shiftPctgOf(PairedContig& orig, const UIntType shiftSize) const
 {
-    Contig contigOut(orig.size() + shiftSize);
+    orig.resize( orig.size() + shiftSize );
     
-    for( UIntType i=0; i < orig.size(); i++ )
+    for( IntType i = orig.size()-1; i >= shiftSize; i-- )
     {
-        contigOut.at(shiftSize + i) = orig.at(i);
+        orig.at(i) = orig.at(i-shiftSize);
+        //orig.at(shiftSize + i) = orig.at(i);
         //contigOut.qual(shiftSize + i) = orig.qual(i);
     }
     
-    return PairedContig( shiftOf(orig,shiftSize), contigOut );
+    return shiftOf(orig,shiftSize);
 }
 
 
 
-PairedContig PctgBuilder::addFirstContigTo(const PairedContig& pctg, const IdType &ctgId) const
+PairedContig& PctgBuilder::addFirstContigTo(PairedContig& pctg, const IdType &ctgId) const
 {
     if( pctg.size() != 0 ) throw std::invalid_argument( "Paired contig is not empty" );
-    PairedContig out(pctg.getId());
+    //PairedContig out(pctg.getId());
     Contig ctg = this->loadMasterContig(ctgId);
     ContigInPctgInfo ctgInfo(ctgId,ctg.size(),0);
     
-    return this->extendPctgWithCtgFrom(out,ctg,ctgInfo,std::pair<UIntType,UIntType>(0,0),
+    return this->extendPctgWithCtgFrom(pctg,ctg,ctgInfo,std::pair<UIntType,UIntType>(0,0),
             std::pair<UIntType,UIntType>(0,0),true);
 }
 
 
-PairedContig PctgBuilder::addFirstBlockTo(PairedContig pctg, const Block& firstBlock, const Block& lastBlock) const
+PairedContig& PctgBuilder::addFirstBlockTo(PairedContig& pctg, const Block& firstBlock, const Block& lastBlock) const
 {
     IdType masterCtgId = firstBlock.getMasterFrame().getContigId();
     pctg = addFirstContigTo(pctg,masterCtgId);
@@ -133,7 +134,7 @@ PairedContig PctgBuilder::addFirstBlockTo(PairedContig pctg, const Block& firstB
 }
 
 
-PairedContig PctgBuilder::extendByBlock(const PairedContig& pctg, const Block& firstBlock, const Block& lastBlock) const
+PairedContig& PctgBuilder::extendByBlock(PairedContig& pctg, const Block& firstBlock, const Block& lastBlock) const
 {
     if( pctg.size() == 0 ) return this->addFirstBlockTo(pctg,firstBlock,lastBlock);
     
@@ -168,7 +169,7 @@ PairedContig PctgBuilder::extendByBlock(const PairedContig& pctg, const Block& f
 }
 
 
-PairedContig PctgBuilder::mergeContig(PairedContig pctg, const Block& firstBlock, const Block& lastBlock, bool mergeMasterCtg) const
+PairedContig& PctgBuilder::mergeContig(PairedContig &pctg, const Block& firstBlock, const Block& lastBlock, bool mergeMasterCtg) const
 {
     IdType firstCtgId,  // identifier of the contig to be merged
            secondCtgId; // identifier of the contig already inside the paired contig
@@ -237,7 +238,7 @@ PairedContig PctgBuilder::mergeContig(PairedContig pctg, const Block& firstBlock
 }
 
 
-const PairedContig& PctgBuilder::mergeCtgInPos(
+PairedContig& PctgBuilder::mergeCtgInPos(
         PairedContig& pctg, 
         const Contig& ctg, 
         const IdType& ctgId, 
@@ -250,7 +251,7 @@ const PairedContig& PctgBuilder::mergeCtgInPos(
 }
 
 
-const PairedContig& PctgBuilder::mergeMasterCtgInPos(
+PairedContig& PctgBuilder::mergeMasterCtgInPos(
         PairedContig& pctg, 
         const Contig& ctg, 
         const IdType& ctgId, 
@@ -280,7 +281,7 @@ const PairedContig& PctgBuilder::mergeMasterCtgInPos(
 }
 
 
-const PairedContig& PctgBuilder::mergeSlaveCtgInPos(
+PairedContig& PctgBuilder::mergeSlaveCtgInPos(
         PairedContig& pctg, 
         const Contig& ctg, 
         const IdType& ctgId, 
@@ -326,7 +327,7 @@ BestPctgCtgAlignment PctgBuilder::findBestAlignment(
         const Frame lastFrame) const
 {
     BandedSmithWaterman aligner( DEFAULT_BAND_SIZE ); //ABlast aligner; //(this->_maxAlignment, this->_maxPctgGap, this->_maxCtgGap);
-    Contig workingCopy(ctg), origCtg(ctg);
+    Contig workingCopy(ctg);
     
     MyAlignment af;
     UIntType beginAlignFwd = std::min( firstFrame.getBegin(), lastFrame.getBegin() );
@@ -343,7 +344,7 @@ BestPctgCtgAlignment PctgBuilder::findBestAlignment(
     
     MyAlignment ar;
     UIntType beginAlignRev = ctg.size() - std::max( firstFrame.getEnd(), lastFrame.getEnd() );
-    workingCopy = reverse_complement(origCtg);
+    reverse_complement(workingCopy);
     
     if( pctgPos < beginAlignRev ) 
         ar = aligner.find_alignment( (Contig)pctg, 0, pctg.size()-1, workingCopy, beginAlignRev-pctgPos, workingCopy.size()-1 );
@@ -361,16 +362,16 @@ BestPctgCtgAlignment PctgBuilder::findBestAlignment(
     
     if( ar.homology() > af.homology() && ar.length() >= std::min(firstFrame.getLength(),lastFrame.getLength()) )
     { 
-        ctg=workingCopy; 
+        reverse_complement(ctg);
         return BestPctgCtgAlignment(ar,true); 
     }
     
     if( af.score() > ar.score() ) return BestPctgCtgAlignment( af,false );
     
-    if( ar.score() > af.score() ){ ctg = workingCopy; return BestPctgCtgAlignment( ar,true ); }
+    if( ar.score() > af.score() ){ reverse_complement(ctg);; return BestPctgCtgAlignment( ar,true ); }
     
     if( af.length() >= ar.length() ) return BestPctgCtgAlignment( af,false );
             
-    ctg = workingCopy;
+    reverse_complement(ctg);
     return BestPctgCtgAlignment( ar,true );
 }

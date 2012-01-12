@@ -174,7 +174,7 @@ bool sameAssemblyCtgsOverlapedBy(const PairedContig &pctg, const Contig &ctg,
  * \param shiftSize shift amount.
  * \return a copy of \c pctg where all the contigs inside it are shifted by \c shiftSize.
  */
-PairedContig shiftOf(const PairedContig& pctg, const UIntType& shiftSize);
+PairedContig& shiftOf(PairedContig& pctg, const UIntType& shiftSize);
 
 bool orderPctgsByName(const PairedContig &a, const PairedContig &b);
 
