@@ -187,7 +187,7 @@ buildPctgThread(void* argv)
             }
             catch(...)
             {
-                std::cerr << "I cannot build a pctg from a cycle graph." <<std::endl;
+                std::cerr << "I cannot build a pctg from a cycle graph." << std::endl;
             }
         }
         
