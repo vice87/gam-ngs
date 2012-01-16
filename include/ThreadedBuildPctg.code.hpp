@@ -172,13 +172,12 @@ buildPctgThread(void* argv)
                     if( pctg->size() != 0 )
                     {
                         pctg->setId( tbp->readPctgNumAndIncrease() );
+                        ++pctg;
                     }
                     else
                     {
                         pctg = pctgList.erase(pctg);
                     }
-                    
-                    ++pctg;
                 }
                 
                 tbp->memorizeNewPctg( pctgList );
