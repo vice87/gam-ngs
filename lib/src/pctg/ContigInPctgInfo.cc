@@ -15,7 +15,7 @@ ContigInPctgInfo::ContigInPctgInfo(const ContigInPctgInfo &orig):
 ContigInPctgInfo::ContigInPctgInfo(const IdType& ctgId, const BestPctgCtgAlignment& bestAlign):
         _ctgId(ctgId), _gaps(0)
 {
-    this->_size = bestAlign.getAlignment().b().size();
+    this->_size = bestAlign.getAlignment().b_size();
     this->_position = bestAlign.getAlignment().b_position_in_a();
     this->_reversed = bestAlign.isCtgReversed();
 }

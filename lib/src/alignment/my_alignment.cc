@@ -8,51 +8,35 @@
 #define NUCLEOTIDE_PER_LINE 65 
 
 MyAlignment::MyAlignment() : 
-              _a(0),
-              _b(0),
               _begin_a(0),
               _begin_b(0), 
+              _a_size(0),
+              _b_size(0),
               _sequence(0), 
               _score(0) 
 {}
 
 MyAlignment::MyAlignment( const MyAlignment& orig ) : 
-              _a(orig._a),
-              _b(orig._b),
               _begin_a(orig._begin_a),
               _begin_b(orig._begin_b), 
+              _a_size(orig._a_size),
+              _b_size(orig._b_size),
               _sequence(orig._sequence), 
               _score(orig._score) 
 {}
 
-MyAlignment::MyAlignment( const Contig &a, const Contig &b ) : 
-        _a(a), _b(b), _begin_a(0), _begin_b(0), _sequence(0) 
+MyAlignment::MyAlignment( size_type begin_a, size_type begin_b, size_type a_size, size_type b_size ) :
+        _begin_a(begin_a), _begin_b(begin_b), _a_size(a_size), _b_size(b_size), _sequence(0)
 {}
 
-MyAlignment::MyAlignment( const Contig &a, size_type begin_a, const Contig &b, size_type begin_b ) :
-        _a(a), _b(b), _begin_a(begin_a), _begin_b(begin_b), _sequence(0)
-{}
-
-MyAlignment::MyAlignment( const Contig &a, size_type begin_a, const Contig &b, size_type begin_b, ScoreType score, const std::list<AlignmentAlphabet> edit_string ) :
-        _a(a), _b(b), _begin_a(begin_a), _begin_b(begin_b), _score(score)
+MyAlignment::MyAlignment( size_type begin_a, size_type begin_b, size_type a_size, size_type b_size, ScoreType score, const std::list<AlignmentAlphabet> edit_string ) :
+        _begin_a(begin_a), _begin_b(begin_b), _a_size(a_size), _b_size(b_size), _score(score)
 {
     _sequence.reserve( edit_string.size() );
     
     std::list<AlignmentAlphabet>::const_iterator i;
     for( i = edit_string.begin(); i != edit_string.end(); i++ )
         _sequence.push_back( *i );
-}
-
-const Contig&
-MyAlignment::a() const
-{
-    return this->_a;
-}
-
-const Contig&
-MyAlignment::b() const
-{
-    return this->_b;
 }
 
 MyAlignment::size_type
@@ -65,6 +49,18 @@ MyAlignment::size_type
 MyAlignment::begin_b() const 
 {
     return this->_begin_b; 
+}
+
+MyAlignment::size_type
+MyAlignment::a_size() const
+{
+    return this->_a_size;
+}
+
+MyAlignment::size_type
+MyAlignment::b_size() const
+{
+    return this->_b_size;
 }
 
 const MyAlignment::SeqType&
@@ -207,7 +203,7 @@ last_match_pos( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignme
 
 
 bool
-gaps_before_last_match( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignment::size_type> gaps ) 
+gaps_before_last_match( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignment::size_type> &gaps ) 
 {
     MyAlignment::size_type gaps_a_last(0), gaps_b_last(0);
     MyAlignment::size_type gaps_a(0), gaps_b(0);
@@ -256,23 +252,23 @@ MyAlignment::a_position_in_b() const
 MyAlignment::int_type 
 MyAlignment::end_a_in_b() const 
 {
-    return this->a_position_in_b()+this->_a.size(); 
+    return this->a_position_in_b() + this->_a_size; 
 }
 
 MyAlignment::int_type 
 MyAlignment::end_b_in_a() const 
 {
-    return this->b_position_in_a()+this->_b.size(); 
+    return this->b_position_in_a() + this->_b_size; 
 }
 
 
 const MyAlignment &
 MyAlignment::operator=(const MyAlignment& orig) 
 {
-    this->_a = orig._a;
-    this->_b = orig._b;
     this->_begin_a = orig._begin_a;
     this->_begin_b = orig._begin_b;
+    this->_a_size = orig._a_size;
+    this->_b_size = orig._b_size;
     this->_score = orig._score;
     this->_sequence = orig._sequence;
     
@@ -280,7 +276,7 @@ MyAlignment::operator=(const MyAlignment& orig)
 }
 
 
-std::ostream& operator<<( std::ostream& os, const MyAlignment& a ) 
+/*std::ostream& operator<<( std::ostream& os, const MyAlignment& a ) 
 {
     os << "Contig A: " 
        << "Name=\"" << a.a().name() << "\"" 
@@ -396,4 +392,4 @@ std::ostream& operator<<( std::ostream& os, const MyAlignment& a )
     std::cout << "\n\nGaps=" << gap_num << "\tMismatches=" << mismatch_num << "\n" << std::endl;
     
     return os;
-}
+}*/

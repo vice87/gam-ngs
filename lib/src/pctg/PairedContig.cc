@@ -1,6 +1,7 @@
 #include "pctg/PairedContig.hpp"
 
-PairedContig::PairedContig() {} 
+PairedContig::PairedContig() : _pctgId(0) 
+{} 
 
 
 PairedContig::PairedContig(const IdType& id) : _pctgId(id)

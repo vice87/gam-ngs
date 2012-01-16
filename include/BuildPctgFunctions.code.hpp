@@ -10,14 +10,12 @@
 
 #include "BuildPctgFunctions.hpp"
 
-std::list< PairedContig > buildPctg(
-        IdType& pctgId,
-        ThreadedBuildPctg *tbp,
+std::list< PairedContig >& buildPctg(
         const AssemblyGraph& AG, 
-        const PctgBuilder& builder )
+        const PctgBuilder& builder,
+        std::list< PairedContig > &pctgList )
 {
-    std::list< PairedContig > pctgList; // add
-    PairedContig pctg(pctgId);
+    PairedContig pctg;
     
     if( boost::num_vertices(AG) == 0 ) return pctgList;
     
@@ -119,21 +117,20 @@ std::list< PairedContig > buildPctg(
 }
 
 
-std::list< PairedContig > buildPctg( 
+std::list< PairedContig >& buildPctg( 
         const AssemblyGraph &ag,
         const HashContigMemPool *masterPool, 
         const HashContigMemPool *slavePool, 
         const BamTools::RefVector *masterRefVector,
         const BamTools::RefVector *slaveRefVector,
-        IdType &pctgId,
-        ThreadedBuildPctg *tbp )
+        std::list< PairedContig > &pctgList )
 {
     PctgBuilder builder( masterPool, slavePool, masterRefVector, slaveRefVector );
     
     //std::cout << "Building pctg " << pctgId << std::endl << std::flush;
     
-    std::list< PairedContig > pctgList;
-    pctgList = buildPctg( pctgId, tbp, ag, builder );
+    pctgList.clear();
+    pctgList = buildPctg( ag, builder, pctgList );
     
     return pctgList;
 }

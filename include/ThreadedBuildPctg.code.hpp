@@ -62,21 +62,25 @@ ThreadedBuildPctg::readPctgNumAndIncrease()
 
     
 void 
-ThreadedBuildPctg::memorizeNewPctg(const PairedContig &pctg)
+ThreadedBuildPctg::memorizeNewPctg( std::list< PairedContig > &pctgList )
 {
     pthread_mutex_lock(&(this->_mutexRemoveCtgId));
     
     //(this->_pctgPool)->set( pctg.name(), pctg ); // aggiungi il paired contig al rispettivo pool
     
-    // aggiungi il paired contig alla lista dei paired contigs trovati
-    this->_pctgList.push_back(pctg);
-    
-    // rimuovi i contigs del master assembly che sono stati inseriti in un paired contig
-    std::map< IdType, ContigInPctgInfo >::const_iterator ctg_id;
-    for( ctg_id = pctg.getMasterCtgMap().begin(); ctg_id != pctg.getMasterCtgMap().end(); ctg_id++ )
+    // segna i contigs del master assembly che sono stati inseriti in un paired contig
+    std::list< PairedContig >::iterator pctg;
+    for( pctg = pctgList.begin(); pctg != pctgList.end(); pctg++ )
     {
-        this->_removedCtgs[ ctg_id->first ] = true;
+        std::map< IdType, ContigInPctgInfo >::const_iterator ctg_id;
+        for( ctg_id = (pctg->getMasterCtgMap()).begin(); ctg_id != (pctg->getMasterCtgMap()).end(); ctg_id++ )
+        {
+            this->_removedCtgs[ ctg_id->first ] = true;
+        }
     }
+    
+    // aggiorna la lista dei paired contig trovati, inserendo quelli nuovi
+    (this->_pctgList).splice( (this->_pctgList).end(), pctgList );
     
     pthread_mutex_unlock(&(this->_mutexRemoveCtgId));
 }
@@ -157,20 +161,28 @@ buildPctgThread(void* argv)
             
             try
             {
-                std::list< PairedContig > pctgList = buildPctg( graph, tbp->_masterPool, tbp->_slavePool,
-                        tbp->_masterRefVector, tbp->_slaveRefVector, pctgId, tbp );
+                std::list< PairedContig > pctgList;
                 
-                for( std::list< PairedContig >::iterator pctg = pctgList.begin(); pctg != pctgList.end(); pctg++ )
+                buildPctg( graph, tbp->_masterPool, tbp->_slavePool,
+                        tbp->_masterRefVector, tbp->_slaveRefVector, pctgList );
+                
+                std::list< PairedContig >::iterator pctg = pctgList.begin();
+                while( pctg != pctgList.end() )
                 {
                     if( pctg->size() != 0 )
                     {
                         pctg->setId( tbp->readPctgNumAndIncrease() );
-                        
-                        //(tbp->_pctgPool)->set( pctg->name(), *pctg ); // aggiungi il paired contig al rispettivo pool (moved to memorizeNewPctg)
-                        tbp->memorizeNewPctg( *pctg );
                     }
+                    else
+                    {
+                        pctg = pctgList.erase(pctg);
+                    }
+                    
+                    ++pctg;
                 }
                 
+                tbp->memorizeNewPctg( pctgList );
+                                
                 //newPctgIdRequired = true;
                 //std::cout << std::endl << std::flush;
             }

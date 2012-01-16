@@ -105,6 +105,6 @@ FullSmithWaterman::find_alignment(
     
     for( size_type i=0; i < x_size; i++ ) delete[] sw_matrix[i];
     
-    MyAlignment sw_alignment( a, j, b, i, max_score, edit_string );
+    MyAlignment sw_alignment( j, i, a.size(), b.size(), max_score, edit_string );
     return sw_alignment;
 }

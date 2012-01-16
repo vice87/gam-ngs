@@ -64,15 +64,15 @@ add_executable(pe-stats src/pe-stats.cc)
 target_link_libraries(pe-stats BamTools)
 
 # executable for testing new aligners
-add_executable(new-aligners src/test/new-alignments.cc
-    lib/src/assembly/contig.cc
-    lib/src/assembly/io_contig.cc
-    lib/src/assembly/nucleotide.cc
-    lib/src/alignment/my_alignment.cc
-    lib/src/alignment/full_smith_waterman.cc
-    lib/src/alignment/banded_smith_waterman.cc
-    lib/src/alignment/ablast_new.cc
-)
+#add_executable(new-aligners src/test/new-alignments.cc
+#    lib/src/assembly/contig.cc
+#    lib/src/assembly/io_contig.cc
+#    lib/src/assembly/nucleotide.cc
+#    lib/src/alignment/my_alignment.cc
+#    lib/src/alignment/full_smith_waterman.cc
+#    lib/src/alignment/banded_smith_waterman.cc
+#    lib/src/alignment/ablast_new.cc
+#)
 
 # executable for memory usage debugging
 #add_executable(memory-usage src/test/memory-usage.cc 

@@ -27,21 +27,19 @@
 #include "assembly/io_contig.hpp"
 
 
-std::list< PairedContig > buildPctg( 
-        IdType &pctgId,
-        ThreadedBuildPctg *tbp,
+std::list< PairedContig >& buildPctg( 
         const AssemblyGraph &ag, 
-        const PctgBuilder &builder );
+        const PctgBuilder &builder,
+        std::list< PairedContig > &pctgList );
 
 
-std::list< PairedContig > buildPctg( 
+std::list< PairedContig >& buildPctg( 
         const AssemblyGraph &ag,
         const HashContigMemPool *masterPool, 
         const HashContigMemPool *slavePool, 
         const BamTools::RefVector *masterRefVector,
         const BamTools::RefVector *slaveRefVector,
-        IdType &pctgId,
-        ThreadedBuildPctg *tbp );
+        std::list< PairedContig > &pctgList );
 
 
 void generateSingleCtgPctgs(

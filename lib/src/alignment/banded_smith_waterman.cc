@@ -50,7 +50,7 @@ BandedSmithWaterman::find_alignment(
        {  0,  0,  0,  0,  8 }, // N
     };
     
-    if( end_b < begin_b ) return MyAlignment(a,b);
+    if( end_b < begin_b ) return MyAlignment();
     
     size_type x_size = end_b - begin_b + 1;
     x_size = std::min( x_size, a.size() + this->_band_size - begin_a );
@@ -143,7 +143,7 @@ BandedSmithWaterman::find_alignment(
         j--;
     }
     
-    if( !found_max ) return MyAlignment(a,b); // this case shouldn't happen
+    if( !found_max ) return MyAlignment(); // this case shouldn't happen
     
     std::list< AlignmentAlphabet > edit_string;
     
@@ -217,6 +217,6 @@ BandedSmithWaterman::find_alignment(
         pos = begin_a + x + y - this->_band_size;
     }
     
-    MyAlignment sw_alignment( a, pos+1, b, begin_b+x+1, max_score, edit_string );
+    MyAlignment sw_alignment( pos+1, begin_b+x+1, a.size(), b.size(), max_score, edit_string );
     return sw_alignment;
 }

@@ -9,6 +9,7 @@
 #define	THREADEDBUILDPCTG_HPP
 
 #include <pthread.h>
+#include <list>
 
 void *
 buildPctgThread(void *argv);
@@ -40,7 +41,7 @@ private:
     
     std::pair< std::vector<Block>, bool > extractNextPctg();
     
-    void memorizeNewPctg(const PairedContig &pctg);
+    void memorizeNewPctg( std::list< PairedContig > &pctgList );
     
 public:
     

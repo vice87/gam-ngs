@@ -33,7 +33,7 @@ typedef enum {
 
 class MyAlignment 
 {
-    friend std::ostream& operator<<(std::ostream& os, const MyAlignment& a);
+    //friend std::ostream& operator<<(std::ostream& os, const MyAlignment& a);
     
 public:
     typedef long int int_type;
@@ -41,10 +41,10 @@ public:
     typedef std::vector<AlignmentAlphabet> SeqType;
 
 private:
-    Contig _a;
-    Contig _b;
     size_type _begin_a;
     size_type _begin_b;
+    size_type _a_size;
+    size_type _b_size;
     //bool _b_rev;
     SeqType _sequence;
     ScoreType _score;
@@ -53,15 +53,14 @@ public:
     
     MyAlignment();
     MyAlignment( const MyAlignment& orig );
-    MyAlignment( const Contig &a, const Contig &b );
-    MyAlignment( const Contig &a, size_type begin_a, const Contig &b, size_type begin_b );
-    MyAlignment( const Contig &a, size_type begin_a, const Contig &b, size_type begin_b, ScoreType score, const std::list<AlignmentAlphabet> edit_string );
-    
-    const Contig& a() const;
-    const Contig& b() const;
+    MyAlignment( size_type begin_a, size_type begin_b, size_type a_size, size_type b_size );
+    MyAlignment( size_type begin_a, size_type begin_b, size_type a_size, size_type b_size, ScoreType score, const std::list<AlignmentAlphabet> edit_string );
     
     size_type begin_a() const;
     size_type begin_b() const;
+    
+    size_type a_size() const;
+    size_type b_size() const;
     
     const SeqType& sequence() const;
     
@@ -83,6 +82,6 @@ public:
 bool first_match_pos( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignment::size_type> &pos );
 bool last_pos( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignment::size_type> &pos );
 bool last_match_pos( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignment::size_type> &pos ); 
-bool gaps_before_last_match( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignment::size_type> gaps );
+bool gaps_before_last_match( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignment::size_type> &gaps );
 
 #endif // _MY_ALIGNMENT_
