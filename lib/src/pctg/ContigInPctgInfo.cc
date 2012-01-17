@@ -33,7 +33,8 @@ UIntType ContigInPctgInfo::getFirstNucleotidePos() const
 
 UIntType ContigInPctgInfo::getLastNucleotidePos() const
 {
-    return this->_position + this->_size - this->_gaps - 1;
+    return ((this->_position + this->_size > 0) ? (this->_position + this->_size - 1) : 0);
+    //return this->_position + this->_size - this->_gaps - 1;
 }
 
 const bool& ContigInPctgInfo::isReversed() const

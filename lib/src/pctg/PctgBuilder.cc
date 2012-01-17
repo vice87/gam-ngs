@@ -48,7 +48,7 @@ PairedContig& PctgBuilder::extendPctgWithCtgFrom(
         const std::pair<UIntType,UIntType>& gaps, 
         bool isMasterCtg) const
 {
-    ctgInfo.setGaps((UIntType)gaps.first - (UIntType)gaps.second);
+    //ctgInfo.setGaps((UIntType)gaps.first - (UIntType)gaps.second);
     
     if(isMasterCtg) orig.getMasterCtgMap()[ctgInfo.getId()] = ctgInfo;
     else orig.getSlaveCtgMap()[ctgInfo.getId()] = ctgInfo;
@@ -203,6 +203,8 @@ PairedContig& PctgBuilder::mergeContig(PairedContig &pctg, const Block& firstBlo
         
         pctgPos = pctg.getBasePosition(secondCtgId, beginInCtg, !mergeMasterCtg);
     }
+    
+    if(pctgPos >= pctg.size()) pctgPos = pctg.size()-1;
     
     // load contig that should be merged with pctg.
     Contig ctg = (mergeMasterCtg) ? this->loadMasterContig(firstCtgId) : this->loadSlaveContig(firstCtgId);    

@@ -110,7 +110,9 @@ UIntType PairedContig::getBasePosition(
     
     if( !ctgInfo.isReversed() ) return ctgInfo.getFirstNucleotidePos() + pos;
     
-    return ctgInfo.getLastNucleotidePos() - pos;
+    //return ctgInfo.getLastNucleotidePos() - pos;
+    UIntType lnp = ctgInfo.getLastNucleotidePos();
+    return ( lnp >= pos ? lnp-pos : 0 );
 }
 
 
