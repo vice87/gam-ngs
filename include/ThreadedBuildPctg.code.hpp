@@ -34,7 +34,7 @@ ThreadedBuildPctg::extractNextPctg()
         if( this->_lastPerc < perc )
         {
             this->_lastPerc = perc;
-            //if( perc % 5 == 0 ) std::cerr << "Weaving " << perc << "% done." << std::endl << std::flush;
+            if( perc % 5 == 0 ) std::cerr << "[merging " << perc << "% done.]" << std::endl << std::flush;
         }
     }
     else
@@ -192,6 +192,7 @@ buildPctgThread(void* argv)
         }
         
         nextPctg = tbp->extractNextPctg();
+        graph.clear();
     }
     
     pthread_exit((void *)0);
