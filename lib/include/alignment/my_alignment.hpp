@@ -33,7 +33,7 @@ typedef enum {
 
 class MyAlignment 
 {
-    //friend std::ostream& operator<<(std::ostream& os, const MyAlignment& a);
+    friend void printAlignment( std::ostream& os, const Contig& a, const Contig& b, const MyAlignment& aln );
     
 public:
     typedef long int int_type;

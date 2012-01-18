@@ -5,7 +5,7 @@
 
 #include "alignment/my_alignment.hpp"
 
-#define NUCLEOTIDE_PER_LINE 65 
+#define NUCLEOTIDE_PER_LINE 60 
 
 MyAlignment::MyAlignment() : 
               _begin_a(0),
@@ -276,45 +276,45 @@ MyAlignment::operator=(const MyAlignment& orig)
 }
 
 
-/*std::ostream& operator<<( std::ostream& os, const MyAlignment& a ) 
+void printAlignment( std::ostream& os, const Contig& a, const Contig& b, const MyAlignment& aln )
 {
     os << "Contig A: " 
-       << "Name=\"" << a.a().name() << "\"" 
-       << "\tLength=" << a.a().size() << std::endl;
+       << "Name=\"" << a.name() << "\"" 
+       << "\tLength=" << a.size() << std::endl;
     
     os << "Contig B: "
-       << "Name=\"" << a.b().name() << "\"" 
-       << "\tLength=" << a.b().size() << std::endl;
+       << "Name=\"" << b.name() << "\"" 
+       << "\tLength=" << b.size() << std::endl;
     
     os << std::endl;
     
     os << "Alignment: " 
        //<< "Score=" << a.score() 
-       << "\tHomology=" << a.homology() 
-       << "\tLength=" << a.length() 
-       << "\tScore=" << a.score()
+       << "\tHomology=" << aln.homology() 
+       << "\tLength=" << aln.length() 
+       << "\tScore=" << aln.score()
        << std::endl;
     
     os << std::endl;
     
     unsigned int gap_num = 0, mismatch_num = 0;
     
-    MyAlignment::size_type a_pos = a.begin_a();
-    MyAlignment::size_type b_pos = a.begin_b();
+    MyAlignment::size_type a_pos = aln.begin_a();
+    MyAlignment::size_type b_pos = aln.begin_b();
     
     MyAlignment::SeqType::const_iterator i, begin_i;
     
-    i = a.sequence().begin();
+    i = aln.sequence().begin();
     
-    while( i != a.sequence().end() )
+    while( i != aln.sequence().end() )
     {
-        if( i != a.sequence().begin() ) os << std::endl;
+        if( i != aln.sequence().begin() ) os << std::endl;
         
         begin_i = i;
         unsigned int count = 0;
         
         os << a_pos << ":\t";
-        while( count < NUCLEOTIDE_PER_LINE && i != a.sequence().end() )
+        while( count < NUCLEOTIDE_PER_LINE && i != aln.sequence().end() )
         {
             switch(*i)
             {
@@ -324,7 +324,7 @@ MyAlignment::operator=(const MyAlignment& orig)
                 case GAP_B:
                 case MATCH:
                 case MISMATCH:
-                    os << a.a().at(a_pos);
+                    os << a.at(a_pos);
                     a_pos++;
                     break;
             }
@@ -339,7 +339,7 @@ MyAlignment::operator=(const MyAlignment& orig)
         i = begin_i;
         count = 0;
         
-        while( count < NUCLEOTIDE_PER_LINE && i != a.sequence().end() )
+        while( count < NUCLEOTIDE_PER_LINE && i != aln.sequence().end() )
         {
             switch(*i)
             {
@@ -367,7 +367,7 @@ MyAlignment::operator=(const MyAlignment& orig)
         i = begin_i;
         count = 0;
         
-        while( count < NUCLEOTIDE_PER_LINE && i != a.sequence().end() )
+        while( count < NUCLEOTIDE_PER_LINE && i != aln.sequence().end() )
         {
             switch(*i)
             {
@@ -377,7 +377,7 @@ MyAlignment::operator=(const MyAlignment& orig)
                 case GAP_A:
                 case MATCH:
                 case MISMATCH:
-                    os << a.b().at(b_pos);
+                    os << b.at(b_pos);
                     b_pos++;
                     break;
             }
@@ -390,6 +390,4 @@ MyAlignment::operator=(const MyAlignment& orig)
     }
     
     std::cout << "\n\nGaps=" << gap_num << "\tMismatches=" << mismatch_num << "\n" << std::endl;
-    
-    return os;
-}*/
+}
