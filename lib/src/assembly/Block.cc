@@ -64,13 +64,17 @@ void Block::clear()
 
 bool Block::overlaps( Read &mRead, Read &sRead, int minOverlap )
 {
-    if( this->isEmpty() ) return true;
+    if( this->isEmpty() ) return true;          
     
     // reads must share master and slave contigs of the block.
     if( mRead.getContigId() != _masterFrame.getContigId() || sRead.getContigId() != _slaveFrame.getContigId() ) return false;
     
-    return _masterFrame.getEnd() - mRead.getStartPos() + 1 >= minOverlap && mRead.getEndPos() - _masterFrame.getBegin() + 1 >= minOverlap &&
-            _slaveFrame.getEnd() - sRead.getStartPos() + 1 >= minOverlap && sRead.getEndPos() - _slaveFrame.getBegin() + 1 >= minOverlap;
+    IntType mStartDiff = IntType(_masterFrame.getEnd()) - IntType(mRead.getStartPos()) + 1;
+    IntType mEndDiff = IntType(mRead.getEndPos()) - IntType(_masterFrame.getBegin()) + 1;
+    IntType sStartDiff = IntType(_slaveFrame.getEnd()) - IntType(sRead.getStartPos()) + 1;
+    IntType sEndDiff = IntType(sRead.getEndPos()) - IntType(_slaveFrame.getBegin()) + 1;
+    
+    return (mStartDiff >= minOverlap && mEndDiff >= minOverlap && sStartDiff >= minOverlap && sEndDiff >= minOverlap);
 }
 
 bool Block::addReads( Read &mRead, Read &sRead, int minOverlap )
@@ -266,7 +270,7 @@ std::vector< Block > Block::findBlocks( BamReader &inBamMaster,
                 else // if reads not added to the block
                 {
                     // if block is "out of scope" save it or delete it.
-                    if( block->getMasterFrame().getEnd() - masterRead.getStartPos() + 1 < 0 || block->getMasterFrame().getContigId() != masterRead.getContigId() )
+                    if( block->getMasterFrame().getEnd() + 1 < masterRead.getStartPos() || block->getMasterFrame().getContigId() != masterRead.getContigId() )
                     {
                         if( block->getReadsNumber() >= minBlockSize ) outblocks.push_back( *block );
                         
@@ -334,10 +338,12 @@ bool Block::shareSlaveContig(const Block& a, const Block& b)
     return a.getSlaveFrame().getContigId() == b.getSlaveFrame().getContigId();
 }
 
+
 bool Block::shareContig(const Block& a, const Block& b)
 {
     return (shareMasterContig(a,b) && shareSlaveContig(a,b));
 }
+
 
 std::vector< Block > Block::readBlocks( const std::string& blockFile, int minBlockSize )
 {
@@ -352,6 +358,7 @@ std::vector< Block > Block::readBlocks( const std::string& blockFile, int minBlo
     
     return blocks;
 }
+
 
 void Block::writeBlocks( const std::string& blockFile, std::vector< Block >& blocks  )
 {

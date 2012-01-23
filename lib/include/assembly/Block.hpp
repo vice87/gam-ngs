@@ -95,7 +95,7 @@ public:
     //! Clears the block.
     void clear();
     
-    bool overlaps( Read &mRead, Read &sRead, int minOverlap = 1 );
+    bool overlaps( Read &mRead, Read &sRead, int minOverlap = 0 );
    
     //! Adds master and slave reads to the block.
     /*!
@@ -105,7 +105,7 @@ public:
      * \param minOverlap minimum number of bases shared with the block.
      * \return \c true if reads have been added successfully,\c false otherwise.
      */
-    bool addReads( Read &mRead, Read &sRead, int minOverlap = 1 );
+    bool addReads( Read &mRead, Read &sRead, int minOverlap = 0 );
     
     //! Removes adjacent (either on master or on slave) blocks whose frames overlaps.
     /*!

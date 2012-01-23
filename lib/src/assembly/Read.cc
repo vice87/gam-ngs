@@ -81,7 +81,11 @@ void Read::getReadMap( BamReader &bamMaster, BamReader &bamSlave, sparse_hash_ma
         
         if( strnum_cmp( align.Name.c_str(), slaveAlign.Name.c_str()) > 0 ) // align.Name > slaveAlign.Name
         {
-            while( bamSlave.GetNextAlignment(slaveAlign) && align.Name > slaveAlign.Name );
+            do
+            {
+                bamSlave.GetNextAlignment(slaveAlign);
+            }
+            while( strnum_cmp(align.Name.c_str(), slaveAlign.Name.c_str()) > 0 );
         }
         
         if( strnum_cmp( align.Name.c_str(), slaveAlign.Name.c_str()) == 0 && align.IsPaired() && align.IsFirstMate() != slaveAlign.IsFirstMate() )
