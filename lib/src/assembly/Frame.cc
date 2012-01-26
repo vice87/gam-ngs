@@ -11,7 +11,7 @@
 
 Frame::Frame() {}
 
-Frame::Frame( IdType ctg, char strand, UIntType begin, UIntType end )
+Frame::Frame( int32_t ctg, char strand, int32_t begin, int32_t end )
         : _ctgId(ctg), _strand(strand), _begin(begin), _end(end), _readsLen(0) {}
 
 Frame::Frame(const Frame& orig)
@@ -24,12 +24,12 @@ void Frame::setStrand( char strand )
     _strand = strand;
 }
 
-void Frame::setBegin( UIntType begin )
+void Frame::setBegin( int32_t begin )
 {
     _begin = begin;
 }
 
-void Frame::setEnd( UIntType end )
+void Frame::setEnd( int32_t end )
 {
     _end = end;
 }
@@ -44,7 +44,7 @@ void Frame::increaseReadsLen( IntType readLen )
     _readsLen += readLen;
 }
 
-IdType Frame::getContigId() const
+int32_t Frame::getContigId() const
 {
     return _ctgId;
 }
@@ -54,12 +54,12 @@ char Frame::getStrand() const
     return _strand;
 }
 
-UIntType Frame::getBegin() const
+int32_t Frame::getBegin() const
 {
     return _begin;
 }
 
-UIntType Frame::getEnd() const
+int32_t Frame::getEnd() const
 {
     return _end;
 }
@@ -69,7 +69,7 @@ IntType Frame::getReadsLen() const
     return _readsLen;
 }
 
-UIntType Frame::getLength() const
+int32_t Frame::getLength() const
 {
     return _end - _begin + 1;
 }
@@ -135,9 +135,9 @@ std::ostream &operator<<( std::ostream &output, const Frame &frame )
 
 std::istream &operator>>( std::istream &input, Frame &frame )
 {
-    IdType ctgId;
+    int32_t ctgId;
     char strand;
-    UIntType begin, end;
+    int32_t begin, end;
     IntType readsLen;
     
     input >> ctgId >> strand >> begin >> end >> readsLen;

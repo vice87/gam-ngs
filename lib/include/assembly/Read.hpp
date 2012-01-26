@@ -23,9 +23,9 @@ class Read
 {
 
 private: 
-    IdType _contigId;   //!< contig's identifier.
-    IdType _startPos;   //!< starting position (0-based) of the read inside the contig.
-    IdType _endPos;     //!< ending position (0-based) of the read inside the contig (half-open interval).
+    int32_t _contigId;   //!< contig's identifier.
+    int32_t _startPos;   //!< starting position (0-based) of the read inside the contig.
+    int32_t _endPos;     //!< ending position (0-based) of the read inside the contig (half-open interval).
     bool _isRev;        //!< whether the read is reverse complemented or not.
 
 public:
@@ -46,31 +46,31 @@ public:
      * \param ePos      end position (0-based) inside the contig
      * \param rev       \c true if the read is reverse complemented
      */
-    Read(const IdType ctg, const IdType sPos, const IdType ePos, const bool rev = false);
+    Read(const int32_t ctg, const int32_t sPos, const int32_t ePos, const bool rev = false);
     
     //! Returns contig's identifier.
     /*!
      * \return contig's identifier.
      */
-    IdType getContigId() const;
+    int32_t getContigId() const;
     
     //! Returns starting position of the read in the contig
     /*!
      * \return starting position (0-based)
      */
-    IdType getStartPos() const;
+    int32_t getStartPos() const;
     
     //! Returns ending position of the read in the contig
     /*!
      * \return ending position (0-based)
      */
-    IdType getEndPos() const;
+    int32_t getEndPos() const;
     
     //! Returns the length of the read.
     /*!
      * \return read's length
      */
-    IntType getLength() const;
+    int32_t getLength() const;
     
     //! Returns whether the read is reverse complemented or not.
     /*!

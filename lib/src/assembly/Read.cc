@@ -18,26 +18,26 @@ Read::Read(const Read &orig):
         _endPos(orig._endPos), _isRev(orig._isRev)
 { }
 
-Read::Read(const IdType ctg, const IdType sPos, const IdType ePos, const bool rev):
+Read::Read(const int32_t ctg, const int32_t sPos, const int32_t ePos, const bool rev):
         _contigId(ctg), _startPos(sPos), _endPos(ePos), _isRev(rev)
 { }
 
-IdType Read::getContigId() const
+int32_t Read::getContigId() const
 {
     return _contigId;
 }
 
-IdType Read::getStartPos() const
+int32_t Read::getStartPos() const
 {
     return _startPos;
 }
 
-IdType Read::getEndPos() const
+int32_t Read::getEndPos() const
 {
     return (_endPos - 1);
 }
 
-IntType Read::getLength() const
+int32_t Read::getLength() const
 {
     return _endPos - _startPos;
 }
@@ -69,7 +69,7 @@ void Read::getReadMap( BamReader &bamMaster, BamReader &bamSlave, sparse_hash_ma
                     if( !prevSlaveAlign.GetTag(std::string("NH"),nh) ) nh = 1; // se molteplicità in un campo non standard assumo che sia pari ad 1
                     if( nh == 1 && prevSlaveAlign.IsMapped() )
                     {
-                        Read slaveRead(IdType(prevSlaveAlign.RefID), IdType(prevSlaveAlign.Position), IdType(prevSlaveAlign.GetEndPosition()), prevSlaveAlign.IsReverseStrand());
+                        Read slaveRead(prevSlaveAlign.RefID, prevSlaveAlign.Position, prevSlaveAlign.GetEndPosition(), prevSlaveAlign.IsReverseStrand());
                         std::string readName = prevSlaveAlign.Name + (prevSlaveAlign.IsFirstMate() ? "1" : "2");
                         readMap.insert( std::make_pair(readName,slaveRead) );
                     }
@@ -102,7 +102,7 @@ void Read::getReadMap( BamReader &bamMaster, BamReader &bamSlave, sparse_hash_ma
                 if( !slaveAlign.GetTag(std::string("NH"),nh) ) nh = 1; // se molteplicità in un campo non standard assumo che sia pari ad 1
                 if( nh == 1 && slaveAlign.IsMapped() )
                 {
-                    Read slaveRead(IdType(slaveAlign.RefID), IdType(slaveAlign.Position), IdType(slaveAlign.GetEndPosition()), slaveAlign.IsReverseStrand());
+                    Read slaveRead(slaveAlign.RefID, slaveAlign.Position, slaveAlign.GetEndPosition(), slaveAlign.IsReverseStrand());
                     std::string readName = slaveAlign.Name;
                     
                     if( align.IsPaired() )

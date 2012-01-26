@@ -246,7 +246,7 @@ std::vector< Block > Block::findBlocks( BamReader &inBamMaster,
         if( align.IsMapped() )
         {            
             std::string readName = align.Name;
-            Read masterRead(IdType(align.RefID), IdType(align.Position), IdType(align.GetEndPosition()), align.IsReverseStrand());
+            Read masterRead(align.RefID, align.Position, align.GetEndPosition(), align.IsReverseStrand());
             
             if( align.IsPaired() ) readName = readName + (align.IsFirstMate() ? "1" : "2");
             

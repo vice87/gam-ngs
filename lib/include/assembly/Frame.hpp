@@ -21,10 +21,10 @@ class Frame
     friend std::istream &operator>>( std::istream &input, Frame &frame );
     
 private:
-    IdType   _ctgId;      //!< contig identifier
+    int32_t   _ctgId;      //!< contig identifier
     char     _strand;     //!< strand of the frame
-    UIntType _begin;      //!< position (0-based) where the block begins in contig
-    UIntType _end;        //!< position (0-based) where the block ends in contig
+    int32_t _begin;      //!< position (0-based) where the block begins in contig
+    int32_t _end;        //!< position (0-based) where the block ends in contig
     IntType _readsLen;   //!< sum of the lengths of block's reads
 
 public:
@@ -45,7 +45,7 @@ public:
      * \param begin     beginning of the frame in contig (0-based)
      * \param length    length of the frame
      */
-    Frame( IdType ctg, char strand, UIntType begin, UIntType end );
+    Frame( int32_t ctg, char strand, int32_t begin, int32_t end );
     
     //! Sets frame's strand
     /*!
@@ -57,13 +57,13 @@ public:
     /*!
      * \param begin position where the frame starts.
      */
-    void setBegin( UIntType begin );
+    void setBegin( int32_t begin );
     
     //! Sets the end of the frame.
     /*!
      * \param end position where the frame ends.
      */
-    void setEnd( UIntType end );
+    void setEnd( int32_t end );
     
     void setReadsLen( IntType readLen );
     
@@ -73,7 +73,7 @@ public:
     /*!
      * \return the identifier of the contig containing the frame.
      */
-    IdType getContigId() const;
+    int32_t getContigId() const;
     
     //! Gets frame's strand.
     /*!
@@ -85,13 +85,13 @@ public:
     /*!
      * \return the position where the frame starts.
      */
-    UIntType getBegin() const;
+    int32_t getBegin() const;
     
     //! Gets the position (0-based) where the frame ends in contig
     /*!
      * \return the position where the frame ends.
      */
-    UIntType getEnd() const;
+    int32_t getEnd() const;
     
     IntType getReadsLen() const;
     
@@ -99,7 +99,7 @@ public:
     /*!
      * \return frame's length.
      */
-    UIntType getLength() const;
+    int32_t getLength() const;
     
     //! Overloaded assig operator for the Frame class.
     const Frame& operator=(const Frame& frame); 

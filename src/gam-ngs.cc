@@ -62,7 +62,7 @@ int main(int argc, char** argv)
     
     time_t t1,t2;
     t1 = time(NULL);
-    
+        
     if( argc < 2 )
     {
         std::cerr << std::endl << "Usage:   " << getPathBaseName(argv[0]) << " <command> [options]" << std::endl;
