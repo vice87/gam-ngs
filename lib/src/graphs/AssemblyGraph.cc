@@ -244,6 +244,8 @@ AssemblyGraph::removeForks()
     }
     
     this->initGraph( newBlocks );
+    
+    this->removeForks();
 }
 
 

@@ -41,14 +41,15 @@ partitionBlocks( const std::vector<Block> &blocks )
         {
             try
             {
-                boost::topological_sort( ag, std::back_inserter(c) );
-                done = true;
+                //boost::topological_sort( ag, std::back_inserter(c) );
+                //done = true;
                 
                 // remove forks from graph to allow only safe merges.
                 
                 typedef boost::graph_traits<AssemblyGraph>::vertex_iterator VertexIterator;
                 VertexIterator vbegin,vend;
                 boost::tie(vbegin,vend) = boost::vertices(ag);
+                
                 bool has_forks = false;
                 
                 for (VertexIterator v=vbegin; v!=vend; v++) 
@@ -90,6 +91,9 @@ partitionBlocks( const std::vector<Block> &blocks )
                     ag.writeGraphviz(ss1);
                     ss1.close();
                 }
+                
+                boost::topological_sort( ag, std::back_inserter(c) );
+                done = true;
             }
             catch( boost::not_a_dag ) // if the graph is not a DAG, remove cycles.
             {

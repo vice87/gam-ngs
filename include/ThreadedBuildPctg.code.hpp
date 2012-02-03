@@ -93,16 +93,18 @@ ThreadedBuildPctg::ThreadedBuildPctg(
         const HashContigMemPool* slavePool, 
         const BamTools::RefVector* masterRefVector, 
         const BamTools::RefVector* slaveRefVector):
+                _pctgNum(0),
                 _blocksList(blocksList),
                 _pctgPool(pctgPool),
                 _masterPool(masterPool),
                 _slavePool(slavePool),
                 _masterRefVector(masterRefVector),
-                _slaveRefVector(slaveRefVector)
+                _slaveRefVector(slaveRefVector),
+                _removedCtgs(masterRefVector->size(),false)
 {
-    this->_pctgNum = 0;
-    this->_pctgList = std::list< PairedContig >();
-    this->_removedCtgs = std::vector<bool>( masterRefVector->size(), false );
+    //this->_pctgNum = 0;
+    //this->_pctgList = std::list< PairedContig >();
+    //this->_removedCtgs = std::vector<bool>( masterRefVector->size(), false );
     
     this->_pctgPool->clear();
     
