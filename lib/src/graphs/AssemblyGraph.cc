@@ -218,6 +218,7 @@ AssemblyGraph::removeForks()
 {
     // remove nodes with in-degree greater than 1
     std::set< std::pair<IdType,IdType> > badBlocks;
+    bool has_forks = false;
     
     VertexIterator vbegin,vend;
     boost::tie(vbegin,vend) = boost::vertices(*this);
@@ -229,6 +230,8 @@ AssemblyGraph::removeForks()
             IdType mID = this->_blockVector[*v].getMasterFrame().getContigId();
             IdType sID = this->_blockVector[*v].getSlaveFrame().getContigId();
             badBlocks.insert( std::make_pair(mID,sID) );
+            
+            has_forks = true;
         }
     }
     
@@ -245,7 +248,7 @@ AssemblyGraph::removeForks()
     
     this->initGraph( newBlocks );
     
-    this->removeForks();
+    if(has_forks) this->removeForks();
 }
 
 
