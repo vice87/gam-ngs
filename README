@@ -13,15 +13,30 @@ $ cd build
 $ cmake ..
 $ make
 
-Usage:
+########################
+USAGE
+########################
 
-$ ./gam-ngs blocks <BAM Master CoordinateSorted> <BAM Master NameSorted> <BAM Slave CoordinateSorted> <BAM Slave NameSorted> <Min Block Size> <Min Pairing Evidence> <Master.fasta> <Slave.fasta> <Number of Threads>
+------------------------
+BLOCK CONSTRUCTION
+------------------------
 
-Explanation of the arguments:
-- <Min Block Size>: number of reads supporting a block (lower values imply longer computation time)
-- <Min Pairing Evidence>: this can be set to 1 (higher values imply that some blocks are discarded)
+$ gam-ngs blocks <BAM Master CoordinateSorted> <BAM Master ReadNameSorted> <BAM Slave CoordinateSorted> <BAM Slave ReadNameSorted> <Min Block Size> <Output.filename>
+
+where <Min Block Size> is the number of reads supporting a block (lower values imply longer computation time).
+This command outputs the file <Output FileName>.blocks.
+
+------------------------
+MERGE
+------------------------
+
+$ gam-ngs merge <Input.blocks> <Min Block Size> <BAM Master CoordinateSorted> <BAM Slave CoordinateSorted> <Master FASTA> <Slave FASTA> <Output.filename> <Threads>
+
+where:
+- <Input.blocks> is the blocks file created with the previous command.
+- <Min Block Size> specifies the minimum number of reads a block must have.
 
 It will output the following files: 
-- blocks.txt: description of the similar regions in the assemblies
-- pctgs.fasta: fasta file of the output assembly
-- pctgs-descriptors.txt: description on how the contigs in pctgs.fasta are built
+- Output.filename.fasta: output sequence. 
+- Output.filename.pctgs: description on how the contigs in pctgs.fasta are built.
+- Output.filename.unused: slave contigs which were not used.
