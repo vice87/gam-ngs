@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   BuildPctgFunctions.hpp
  * Author: vice
  *
@@ -8,6 +8,7 @@
 #ifndef BUILDPCTGFUNCTIONS_HPP
 #define	BUILDPCTGFUNCTIONS_HPP
 
+#include <iostream>
 #include <vector>
 #include <list>
 #include <map>
@@ -27,26 +28,28 @@
 #include "assembly/io_contig.hpp"
 
 
-std::list< PairedContig >& buildPctg( 
-        const AssemblyGraph &ag, 
-        const PctgBuilder &builder,
-        std::list< PairedContig > &pctgList );
-
-
-std::list< PairedContig >& buildPctg( 
+std::list< PairedContig >& buildPctg(
         const AssemblyGraph &ag,
-        const HashContigMemPool *masterPool, 
-        const HashContigMemPool *slavePool, 
+        const PctgBuilder &builder,
+        std::list< PairedContig > &pctgList,
+		const Options &options );
+
+
+std::list< PairedContig >& buildPctg(
+        const AssemblyGraph &ag,
+        const ExtContigMemPool *masterPool,
+        const ExtContigMemPool *slavePool,
         const BamTools::RefVector *masterRefVector,
-        const BamTools::RefVector *slaveRefVector,
-        std::list< PairedContig > &pctgList );
+        const std::vector<BamTools::RefVector> *slaveRefVector,
+        std::list< PairedContig > &pctgList,
+		const Options &options );
 
 
 void generateSingleCtgPctgs(
         std::list<PairedContig> &pctgList,
         const std::list<IdType> &ctgIds,
-        HashContigMemPool *pctgPool,
-        HashContigMemPool *masterPool,
+        //HashContigMemPool *pctgPool,
+        ExtContigMemPool *masterPool,
         BamTools::RefVector *masterRefVector,
         IdType &pctgId
 );

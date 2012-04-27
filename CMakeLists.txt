@@ -3,7 +3,7 @@ project(GamNgs)
 
 add_definitions( -Wno-deprecated )
 
-find_package(Boost COMPONENTS graph REQUIRED)
+find_package(Boost COMPONENTS graph program_options REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 
@@ -11,6 +11,7 @@ include_directories("${PROJECT_SOURCE_DIR}/include")
 include_directories("${PROJECT_SOURCE_DIR}/lib")
 include_directories("${PROJECT_SOURCE_DIR}/lib/include")
 include_directories("${PROJECT_SOURCE_DIR}/lib/bamtools-2.0.5/src")
+include_directories("${PROJECT_SOURCE_DIR}/lib/murmur3")
 include_directories( ${Boost_INCLUDE_DIRS} )
 
 # sorgenti da compilare
@@ -35,20 +36,29 @@ file(GLOB GAMNGSLIB_SRC_FILES
     ${PROJECT_SOURCE_DIR}/lib/src/strand_fixer/RelativeStrand.cc
     ${PROJECT_SOURCE_DIR}/lib/src/strand_fixer/RelativeStrandEvidences.cc
     ${PROJECT_SOURCE_DIR}/lib/src/strand_fixer/StrandProbability.cc
-    ${PROJECT_SOURCE_DIR}/lib/src/OrderingFunctions.cc
     ${PROJECT_SOURCE_DIR}/lib/src/PartitionFunctions.cc
+    ${PROJECT_SOURCE_DIR}/lib/src/UtilityFunctions.cc
+    ${PROJECT_SOURCE_DIR}/lib/murmur3/murmur3.cc
 )
 
 # sottocartella dove si trova la libreria BamTools
 add_subdirectory(lib)
 
-# add the executable
-add_executable(gam-ngs src/gam-ngs.cc ${GAMNGSLIB_SRC_FILES})
+# GAM-NGS EXECUTABLE
+add_executable(gam-ngs src/gam-exp.cc src/Merge.cc src/CreateBlocks.cc src/Options.cc src/OptionsStandard.cc ${GAMNGSLIB_SRC_FILES})
 
 target_link_libraries(gam-ngs ${ZLIB_LIBRARIES})
 target_link_libraries(gam-ngs ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(gam-ngs BamTools) #target_link_libraries(gam-ngs ${PROJECT_SOURCE_DIR}/lib/BamFile/libbamtools.a)
 target_link_libraries(gam-ngs ${Boost_LIBRARIES})
+
+# GAM-NGS FOR FOSMID POOLS EXECUTABLE
+#add_executable(gam-fp src/gam-fp.cc ${GAMNGSLIB_SRC_FILES})
+#
+#target_link_libraries(gam-fp ${ZLIB_LIBRARIES})
+#target_link_libraries(gam-fp ${CMAKE_THREAD_LIBS_INIT})
+#target_link_libraries(gam-fp BamTools)
+#target_link_libraries(gam-fp ${Boost_LIBRARIES})
 
 # executable for computing fasta statistics
 add_executable(n50 src/n50.cc)
@@ -62,6 +72,12 @@ add_executable(n50 src/n50.cc)
 # executable for getting unused contigs from "old-format" pctgs file
 add_executable(pe-stats src/pe-stats.cc)
 target_link_libraries(pe-stats BamTools)
+
+add_executable(hash-test src/test/hash_test.cc lib/src/assembly/Read.cc lib/src/UtilityFunctions.cc lib/murmur3/murmur3.cc)
+target_link_libraries(hash-test BamTools)
+
+add_executable(pe-test src/test/pe-test.cc)
+target_link_libraries(pe-test BamTools)
 
 # executable for testing new aligners
 #add_executable(new-aligners src/test/new-alignments.cc

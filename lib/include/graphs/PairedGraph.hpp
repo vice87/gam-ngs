@@ -35,10 +35,10 @@ public:
     typedef typename boost::graph_traits<Graph>::vertex_descriptor Vertex; //!< Vertex descriptor type.
     
 protected:
-    Vertex _firstSlaveVertex;           //!< vertex descriptor of the first slave vertex.
-    std::map<IdType,Vertex> _masterMap; //!< associates a master contig to its vertex.
-    std::map<IdType,Vertex> _slaveMap;  //!< associates a slave contig to its vertex.
-    std::vector<IdType> _vertexToCtg;   //!< associates a vertex to its contig identifier.
+    Vertex _firstSlaveVertex;                               //!< vertex descriptor of the first slave vertex.
+    std::map< std::pair<IdType,IdType>,Vertex > _masterMap; //!< associates a master contig to its vertex.
+    std::map< std::pair<IdType,IdType>,Vertex > _slaveMap;  //!< associates a slave contig to its vertex.
+    std::vector< std::pair<IdType,IdType> > _vertexToCtg;   //!< associates a vertex to its contig identifier.
     
 public:
     //! A constructor.
@@ -96,7 +96,14 @@ class PairedContigGraph : public PairedGraph<VERTEX_PROP,EDGE_WEIGHT>
 {
     
 public:
+    typedef boost::adjacency_list< boost::setS, boost::vecS, boost::undirectedS,
+                boost::property< boost::vertex_color_t, VERTEX_PROP >,
+                boost::property< boost::edge_weight_t, EDGE_WEIGHT > > Graph;
+    
     typedef typename PairedGraph<VERTEX_PROP,EDGE_WEIGHT>::Edge Edge; //!< Edge descriptor type.
+    
+    typedef typename boost::graph_traits< Graph >::vertex_iterator VertexIterator;
+    typedef typename boost::graph_traits< Graph >::edge_iterator EdgeIterator;
     
 private:
     //! Initialises the graph.
@@ -132,7 +139,13 @@ public:
      * Creates and initialises a PairedContigGraph, given a vector of blocks.
      * \param blocks a vector of blocks.
      */
-    PairedContigGraph( const std::vector<Block> &blocks );	   
+    PairedContigGraph( const std::vector<Block> &blocks );
+    
+    //! Write the graph in dot format.
+    /*!
+     * \param os output stream
+     */
+    std::ostream& writeGraphviz(std::ostream& os);
 };
 
 #endif // PAIRED_GRAPH_

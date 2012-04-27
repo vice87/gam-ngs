@@ -43,18 +43,47 @@ void printGamCmdError( char** argv )
     std::cerr << std::endl << "Usage:   " << getPathBaseName(argv[0]) << " <command> [options]\n";
     std::cerr << "\n";
     std::cerr << "Command: " << "blocks" << "\t" << "generate blocks file\n"
-              << "         " << "merge" << "\t" << "merge two assemblies given a blocks file\n"
+              << "         " << "merge" << "\t" << "merge an assembly with a set of fosmid-pool assemblies\n"
               << std::endl;
 }
 
 void printBlocksCmdError( char** argv )
 {
     std::cerr << "Usage: " << getPathBaseName(argv[0]) << " blocks "
-            << "[--readsorted-bams <master.readname-sorted.bam> <slave.readname-sorted.bam>] "
             << "<master.coordinate-sorted.bam> " 
-            << "<slave.coordinate-sorted.bam> "
+            << "<fosmid.pools.bams.paths.txt> "
             << "<min-block-size> <output.filename>"
             << std::endl;
+}
+
+void printMergeCmdError( char** argv )
+{
+    std::cerr << "Usage: " << getPathBaseName(argv[0]) << " merge"
+            << " [-t threads]"
+            << " [-b min-block-size]"
+            << " <input.blocks>"
+            << " <master.coordinate-sorted.bam>" 
+            << " <fosmid.pools.bams.paths.txt>"
+            << " <master.fasta>"
+            << " <fosmid.pools.fasta.paths.txt>"
+            << " <output.filename>"
+            << std::endl;
+}
+
+std::vector<std::string> loadFileList( std::string file_list )
+{
+    std::ifstream ifs( file_list.c_str(), std::ifstream::in );
+    std::vector< std::string > output;
+    
+    while (ifs.good())
+    {
+        std::string file_str;
+        getline(ifs,file_str);
+        
+        if( file_str != "" ) output.push_back( file_str );
+    }
+    
+    return output;
 }
 
 /*
@@ -66,18 +95,15 @@ int main(int argc, char** argv)
     std::string outFilePrefix;          // output file prefix
     std::string inBlocksFile;           // input blocks file
     
-    std::string bamFileM;               // file BAM (Master)
-    std::string bamMasterSorted;        // file BAM (Master) sorted by read name
-    std::string bamFileS;               // file BAM (Slave)
-    std::string bamSlaveSorted;         // file BAM (Slave) sorted by read name
+    std::string masterBamFile;          // file BAM (Master)
+    std::vector<std::string> fpBamFiles;  // list of fosmid-pool bam files
     
     int minBlockSize = 1;               // dimensione minima (# reads) per i blocchi
-    int minEvidence = 1;
     
     std::string masterFasta;            // FASTA file of the master assembly
-    std::string slaveFasta;             // FASTA file of the slave assembly
+    std::vector<std::string> fpFastas;    // FASTA files of the fosmid-pool assemblies
     
-    int threadsNum = 1;              // Numero di thread da usare per il weaving
+    size_t threadsNum = 1;              // Numero di thread da usare per il weaving
     
     time_t t1,t2;
     t1 = time(NULL);
@@ -102,144 +128,132 @@ int main(int argc, char** argv)
     /* Command to build the blocks */
     if( action.compare("blocks") == 0 )
     {
-        if( argc < 3 ){ printBlocksCmdError(argv); return 1; }
+        if( argc != 6 ){ printBlocksCmdError(argv); return 1; }
         
-        if( std::string(argv[i]) == "--readsorted-bams" )
-        {
-            if( i+3 > argc ){ printBlocksCmdError(argv); return 1; }
-            bamMasterSorted = argv[i+1];
-            bamSlaveSorted = argv[i+2];
-            i += 3;
-        }
+        masterBamFile = argv[2];
+        fpBamFiles = loadFileList( std::string(argv[3]) );
         
-        if( argc - i != 4 ){ printBlocksCmdError(argv); return 1; }
-        
-        bamFileM = argv[i++];
-        bamFileS = argv[i++];
-        minBlockSize = atoi(argv[i++]);
-        outFilePrefix = argv[i++];
+        minBlockSize = atoi(argv[4]);
+        outFilePrefix = argv[5];
         
         if( minBlockSize < 1 ) minBlockSize = 1;
         
         struct stat st;
         
         /* Check for master bam files existence */
-        
-        if( stat(bamFileM.c_str(),&st) != 0 )
+        if( stat(masterBamFile.c_str(),&st) != 0 )
         {
-            std::cerr << "File " << bamFileM << " (Master BAM CoordinateSorted) doesn't exist." << std::endl;
+            std::cerr << "Master BAM file doesn't exist:\n" << masterBamFile << std::endl;
             return 1;
         }
         
-        if( bamMasterSorted != "" && stat(bamMasterSorted.c_str(),&st) != 0 )
+        /* Check for fosmid-pool bam files existence */
+        for( std::vector<std::string>::iterator fp_file = fpBamFiles.begin(); fp_file != fpBamFiles.end(); fp_file++ )
         {
-            std::cerr << "File " << bamMasterSorted << " (Master BAM ReadNameSorted) doesn't exist." << std::endl;
+            if( stat(fp_file->c_str(),&st) != 0 ) 
+            {
+                std::cerr << "[error: fosmid-pool bam file " << *fp_file << "doesn't exist]" << std::endl;
+                return 1;
+            }
+        }
+        
+        if( fpBamFiles.size() == 0 ) // no fosmid-pool bam file exists.
+        {
+            std::cerr << "[error: no fosmid-pool bam has been given in input]" << std::endl;
             return 1;
         }
         
-        /* Check for slave bam files existence */
+        BamReader masterBam;
         
-        if( stat(bamFileS.c_str(),&st) != 0 )
-        {
-            std::cerr << "File " << bamFileS << " (Slave BAM CoordinateSorted) doesn't exist." << std::endl;
-            return 1;
-        }
-        
-        if( bamSlaveSorted != "" && stat(bamSlaveSorted.c_str(),&st) != 0 )
-        {
-            std::cerr << "File " << bamSlaveSorted << " (Slave BAM ReadNameSorted) doesn't exist." << std::endl;
-            return 1;
-        }
-            
-        BamReader inBamM, inBamS, inBamMasterSorted, inBamSlaveSorted;
-        
-        inBamM.Open( bamFileM );
-        if( stat((bamFileM + ".bai").c_str(),&st) == 0 ) inBamM.OpenIndex( bamFileM + ".bai" );
+        masterBam.Open( masterBamFile );
+        if( stat((masterBamFile + ".bai").c_str(),&st) == 0 ) masterBam.OpenIndex( masterBamFile + ".bai" );
 
-        inBamS.Open( bamFileS );
-        if( stat((bamFileS + ".bai").c_str(),&st) == 0 ) inBamM.OpenIndex( bamFileS + ".bai" );
-        
         std::cout << "[loading reads in memory]" << std::endl;
         
         /* load only useful reads of the slave assembly */
         sparse_hash_map< std::string, Read > readMap;
-	readMap.set_deleted_key("");
+        readMap.set_deleted_key("");
         
         // if read-name sorted bams are not provided, load each mapped read.
-        if( bamMasterSorted == "" || bamSlaveSorted == "" )
-        {
-            Read::loadReadsMap(inBamM,readMap);
-        }
-        else
-        {
-            inBamMasterSorted.Open( bamMasterSorted );
-            inBamSlaveSorted.Open( bamSlaveSorted );
-            
-            Read::loadMasterReadsMap(inBamMasterSorted,inBamSlaveSorted,readMap);
-            
-            inBamMasterSorted.Close();
-            inBamSlaveSorted.Close();
-        }
+        Read::loadReadsMap( masterBam, readMap );
         
         std::cout << "[finding blocks]" << std::endl;
-        std::vector<Block> blocks;
-        Block::findBlocks( blocks, inBamM, inBamS, minBlockSize, readMap );
         
-	std::cout << "[blocks found: " << blocks.size() << "]" << std::endl;
-
-	inBamM.Close();
-        inBamS.Close();
-
+        int fp_id = 0;
+        std::vector<Block> blocks;
+        //std::ofstream output( (outFilePrefix + ".ai").c_str() );
+        
+        for( std::vector<std::string>::const_iterator fp_file = fpBamFiles.begin(); fp_file != fpBamFiles.end(); fp_file++ )
+        {
+            BamReader fpBam;
+            fpBam.Open(*fp_file);
+            
+            Block::findBlocks( blocks, masterBam, fpBam, minBlockSize, readMap, fp_id );
+            //output << getBaseFileName( getPathBaseName( *fp_file ) ) << "\t" << fp_id << std::endl;
+            
+            fp_id++;
+        }
+        
+        //output.close();
+        
         std::cout << "[writing blocks on file: " << getPathBaseName( outFilePrefix + ".blocks" ) << "]" << std::endl;
-        Block::writeCoreBlocks( outFilePrefix + ".blocks" , blocks ); // write blocks to file
+        Block::writeBlocks( outFilePrefix + ".blocks" , blocks ); // write blocks to file
+        
+        masterBam.Close();
     }
     
     /* Command to merge assemblies */
     if( action.compare("merge") == 0 )
     {
-        if( argc != 10 )
+        while( i < argc && argv[i][0] == '-') // finchè ci sono parametri opzionali da caricare
         {
-            std::cerr << "Usage: " << getPathBaseName(argv[0]) << " merge "
-                      << "<Input.blocks> <Min Block Size> "
-                      << "<BAM Master CoordinateSorted> <BAM Slave CoordinateSorted> "
-                      << "<Master FASTA> <Slave FASTA> <Output FileName> "
-                      << "<Threads>"
-                      << std::endl;
+            std::string opt = argv[i++];
+            
+            if( opt == "-t" ) // number of threads
+            {
+                if( i >= argc ){ printMergeCmdError(argv); return 1; }
+                threadsNum = atoi(argv[i++]);
+                if(threadsNum < 1) threadsNum = 1;
+            }
+            else if( opt == "-b" )
+            {
+                if( i >= argc ){ printMergeCmdError(argv); return 1; }
+                minBlockSize = atoi(argv[i++]);
+            }
+            else
+            {
+                std::cerr << opt << " is not a valid option." << std::endl;
+                return 1;
+            }
+        }
+        
+        if( argc-i != 6 ) // controllo del numero di argomenti obbligatori del comando "merge"
+        {
+            printMergeCmdError(argv); 
             return 1;
         }
         
-        inBlocksFile = argv[2];
-        minBlockSize = atoi(argv[3]);
-        bamFileM = argv[4];
-        bamFileS = argv[5];
-        masterFasta = argv[6];
-        slaveFasta = argv[7];
-        outFilePrefix = argv[8];
-        threadsNum = atoi(argv[9]);
+        inBlocksFile = argv[i++];
         
-        if( threadsNum < 1 ) threadsNum = 1;
+        masterBamFile = argv[i++];
+        fpBamFiles = loadFileList( std::string(argv[i++]) );
+        
+        masterFasta = argv[i++];
+        fpFastas = loadFileList( std::string(argv[i++]) );
+        
+        outFilePrefix = argv[i++];
         
         struct stat st;
         
         /* Check blocks file existence */
         
-        if( stat(inBlocksFile.c_str(),&st) != 0 )
-        {
-            std::cerr << "Blocks file " << inBlocksFile << " doesn't exist." << std::endl;
-            return 1;
-        }
+        if( stat(inBlocksFile.c_str(),&st) != 0 ){ std::cerr << "The file " << inBlocksFile << " doesn't exist." << std::endl; return 1; }
         
         /* Check BAM files existence */
         
-        if( stat(bamFileM.c_str(),&st) != 0 )
+        if( stat(masterBamFile.c_str(),&st) != 0 )
         {
-            std::cerr << "File " << bamFileM << " (BAM Master CoordinateSorted) doesn't exist." << std::endl;
-            return 1;
-        }
-        
-        if( stat(bamFileS.c_str(),&st) != 0 )
-        {
-            std::cerr << "File " << bamFileS << " (BAM Slave CoordinateSorted) doesn't exist." << std::endl;
+            std::cerr << "File " << masterBamFile << " (BAM Master CoordinateSorted) doesn't exist." << std::endl;
             return 1;
         }
         
@@ -251,40 +265,48 @@ int main(int argc, char** argv)
             return 1;
         }
         
-        if( stat(slaveFasta.c_str(),&st) != 0 )
-        {
-            std::cerr << "File " << slaveFasta << " (Slave FASTA) doesn't exist." << std::endl;
-            return 1;
-        }
-        
-        BamReader inBamM, inBamS;
-        inBamM.Open( bamFileM );
-        inBamS.Open( bamFileS );
-        
-        std::cout << "[loading blocks]" << std::endl << std::flush;
-        std::vector<Block> blocks = Block::readCoreBlocks( inBlocksFile, minBlockSize );
-        std::cout << "[blocks loaded: " << blocks.size() << "]" << std::endl << std::flush;
+        std::cout << "[loading blocks]" << std::endl;
+        std::vector<Block> blocks = Block::readBlocks( inBlocksFile, minBlockSize );
+        std::cout << "[blocks loaded: " << blocks.size() << "]" << std::endl;
         
         // keep only blocks between contigs that share at least minEvidence blocks.
         //std::vector< Block > outBlocks = filterBlocksByPairingEvidences( blocks, minEvidence );
         
-        std::cout << "[filtering blocks by frames overlap]" << std::endl << std::flush;
+        std::cout << "[filtering blocks by frames overlap]" << std::endl;
         // remove adjacent blocks if their frames overlap
         // blocks = Block::filterBlocksByOverlaps( blocks );
         blocks = Block::filterBlocksByCoverage( blocks );
-        std::cout << "[blocks filtered: " << blocks.size() << "]" << std::endl << std::flush;
+        std::cout << "[blocks filtered: " << blocks.size() << "]" << std::endl;
         
         // create the graph of assemblies, remove cycles and keep remaining blocks.
-        std::cout << "[removing cycles from assemblies graph]" << std::endl << std::flush;
+        std::cout << "[removing cycles from assemblies graph]" << std::endl;
         std::list< std::vector<Block> > pcblocks = partitionBlocks( blocks );
         
-        std::cout << "[loading reference data]" << std::endl << std::flush;
-        // load reference data (index => contig name)
-        BamTools::RefVector mcRef = inBamM.GetReferenceData();
-        std::vector<BamTools::RefVector> scRef(1); scRef[0] = inBamS.GetReferenceData();
+        std::cout << "[loading reference data]" << std::endl;
+        
+        //BamReader masterBam;
+        //std::vector< BamReader > fpBams( fpBamFiles.size() );
+        //std::cout << "[opening BAM files]" << std::endl;
+        
+        BamReader bamReader;
+        
+        // load master bam sequences
+        bamReader.Open( masterBamFile );
+        BamTools::RefVector mcRef = bamReader.GetReferenceData();
+        
+        // load fosmid-pools bams sequences
+        std::vector< BamTools::RefVector > scRef( fpBamFiles.size() );
+        
+        for( int i=0; i < fpBamFiles.size(); i++ )
+        {
+            bamReader.Open( fpBamFiles[i] );
+            scRef[i] = bamReader.GetReferenceData();
+        }
+        
+        bamReader.Close();
         
         std::map< std::string, int32_t > masterContigs;
-        std::vector< std::map<std::string,int32_t> > slaveCtgsVect(1);
+        std::vector< std::map<std::string,int32_t> > slaveCtgsVect( fpBamFiles.size() );
         
         BamTools::RefVector::const_iterator ref_iter;
         
@@ -297,23 +319,24 @@ int main(int argc, char** argv)
                 slaveCtgsVect[i][ ref_iter->RefName ] = ref_iter->RefLength;
         }
         
-        std::cout << "[loading contigs in memory]" << std::endl << std::flush;
+        std::cout << "[loading contigs in memory]" << std::endl;
         
-        ExtContigMemPool masterPool, slavePool;
+        ExtContigMemPool masterPool, slavePool(scRef.size());
         HashContigMemPool pctgPool;
         // load master and slave contigs in memory
         masterPool.loadPool( 0, masterFasta, masterContigs );
-        slavePool.loadPool( 0, slaveFasta, slaveCtgsVect[0] );
+        for( int i=0; i < slaveCtgsVect.size(); i++ ) slavePool.loadPool( i, fpFastas[i], slaveCtgsVect[i] );
         
-        std::cout << "[building paired contigs]" << std::endl << std::flush;
+        std::cout << "[building paired contigs]" << std::endl;
         // build paired contigs (threaded)
         ThreadedBuildPctg tbp( pcblocks, &pctgPool, &masterPool, &slavePool, &mcRef, &scRef );
-        std::pair< std::list<PairedContig>, std::vector<bool> > result = tbp.run((size_t)threadsNum);
+        std::pair< std::list<PairedContig>, std::vector<bool> > result = tbp.run(threadsNum);
         
         IdType pctgNum((result.first).size());
-        std::cout << "[paired contigs built: " << pctgNum << "]" << std::endl << std::flush;
+        std::cout << "[paired contigs built: " << pctgNum << "]" << std::endl;
         
-        slavePool.clear(); // slave contigs pool is no more needed
+        //slavePool.clear(); // slave contigs pool is no more needed
+        slavePool.resize(0);
 
         std::list<IdType> ctgIds;
                 
@@ -360,13 +383,10 @@ int main(int argc, char** argv)
         }
         
         unusedCtgsFile.close();
-        
-        inBamM.Close();
-        inBamS.Close();
     }
     
     t2 = time(NULL);
-    std::cout << "[execution time: " << formatTime(t2-t1) << "]" << std::endl;
+    std::cout << "[execution time: " << formatTime(t2-t1) << "]" << std::endl << std::flush;
     
     return 0;
 }

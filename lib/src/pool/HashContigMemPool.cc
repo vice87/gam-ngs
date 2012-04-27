@@ -16,10 +16,10 @@ HashContigMemPool::HashContigMemPool()
     _pool.clear(); //_pool.resize(0);
 }
 
-Contig HashContigMemPool::get(const std::string& name) const
+const Contig& HashContigMemPool::get(const std::string& name) const
 {
     ContigMap::const_iterator pos = (this->_pool).find(name);
-    
+
     if( pos == (this->_pool).end() ) throw std::domain_error("The contig associated to " + name + " is not in the pool");
     return pos->second;
 }
@@ -33,22 +33,22 @@ void HashContigMemPool::set(const std::string &name, const Contig &ctg)
 void HashContigMemPool::loadPool(const std::string &file, RefMap &refMap)
 {
     std::ifstream ifs( file.c_str(), std::ifstream::in );
-    
+
     char buffer[BUFFER_LEN];
     ifs.rdbuf()->pubsetbuf( buffer, BUFFER_LEN );
-        
+
     while( !ifs.eof() )
     {
         std::string ctg_name;
         readNextContigID( ifs, ctg_name );
-        
+
         Contig *ctg = &(this->_pool[ ctg_name ]);
-        
+
         ctg->set_name( ctg_name );
         ctg->resize( refMap[ctg_name] );
         readNextSequence( ifs, *ctg );
     }
-    
+
     ifs.close();
 }
 
@@ -60,53 +60,53 @@ void HashContigMemPool::loadPool(const char *file, RefMap &refMap)
 void HashContigMemPool::readNextContigID( std::istream &is, std::string &ctg_id )
 {
     char c = is.peek();
-    
-    while( !is.eof() and (c == ' ' or c == '\n') ) 
+
+    while( is.good() and (c == ' ' or c == '\n') )
     {
         is.ignore(1);
-        if( !is.eof() ) c = is.peek();
+        if( is.good() ) c = is.peek();
     }
-    
-    if( !is.eof() and c != '>' ) 
+
+    if( is.good() and c != '>' )
     {
         std::stringstream ss;
         ss << "Found invalid character: " << c;
 	throw std::domain_error(ss.str().c_str());
     }
-    
+
     std::string line, id;
-    
-    // get name    
+
+    // get name
     std::getline( is, line );
     id = line.substr(1,line.size()-1);
-    
+
     size_t pos = id.find(' ');
     if( pos != std::string::npos ) id = id.substr(0,pos);
-    
+
     ctg_id = id;
 }
 
 void HashContigMemPool::readNextSequence( std::istream &is, Contig &ctg )
 {
     if( is.eof() ) return;
-    
+
     char c('\n');
     UIntType idx = 0;
-    
+
     // while we do not reach a new contig
     while( !is.eof() and c != '>' )
     {
         // read a new char
         is.get(c);
-        
-        if( c != '\n' and c != '>' and c != ' ' and !is.eof() ) 
+
+        if( c != '\n' and c != '>' and c != ' ' and !is.eof() )
         {
             // copy read nucleotide into sequence
             ctg.at(idx) = c;
             idx++;
         }
     }
-    
+
     if( !is.eof() ) is.unget();
 }
 
@@ -114,13 +114,13 @@ void HashContigMemPool::readNextSequence( std::istream &is, Contig &ctg )
 void HashContigMemPool::savePool(const std::string& poolFile)
 {
     std::ofstream os(poolFile.c_str(),std::ios::out);
-    
+
     ContigMap::const_iterator iter;
     for( iter = (this->_pool).begin(); iter != (this->_pool).end(); ++iter )
     {
         os << iter->second << std::endl;
     }
-    
+
     os.close();
 }
 
@@ -128,8 +128,47 @@ void HashContigMemPool::savePool(const char* poolFile)
 {
     HashContigMemPool::savePool(std::string(poolFile));
 }
-		
+
 void HashContigMemPool::clear()
 {
     (this->_pool).clear();
+}
+
+
+ExtContigMemPool::ExtContigMemPool() :
+        _poolVect(1)
+{}
+
+ExtContigMemPool::ExtContigMemPool(size_t num) :
+        _poolVect(num)
+{}
+
+const Contig& ExtContigMemPool::get(const size_t aId, const std::string& name) const
+{
+    return _poolVect[aId].get(name);
+}
+
+void ExtContigMemPool::set(const size_t aId, const std::string& name, const Contig& ctg)
+{
+    _poolVect[aId].set( name, ctg );
+}
+
+void ExtContigMemPool::loadPool(const size_t aId, const std::string& file, RefMap& refMap)
+{
+    _poolVect[aId].loadPool(file,refMap);
+}
+
+void ExtContigMemPool::resize(size_t num)
+{
+    _poolVect.resize(num);
+}
+
+void ExtContigMemPool::clear()
+{
+    std::vector< HashContigMemPool >::iterator pool;
+
+    for( pool = _poolVect.begin(); pool != _poolVect.end(); pool++ )
+    {
+        pool->clear();
+    }
 }

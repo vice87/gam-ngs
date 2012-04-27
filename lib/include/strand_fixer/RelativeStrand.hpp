@@ -48,7 +48,7 @@ class RelativeStrandEvidencesGraph : public PairedContigGraph< unsigned short in
     typedef std::list<EvidenceProbPair> EvidenceProbPairList;
     typedef std::map< Vertex, EvidenceProbPairList > PathsToProbListMap;
     
-    typedef std::map< IdType, StrandProbability > StrandProbMap;
+    typedef std::map< std::pair<IdType,IdType>, StrandProbability > StrandProbMap;
     typedef std::pair<StrandProbMap, StrandProbMap> StrandProbMapPair;
     
     typedef VertexPropType ColorType;
@@ -92,7 +92,7 @@ public:
 }; // class RelativeStrandEvidencesGraph
 
 
-std::pair< std::map<IdType,StrandProbability>, std::map<IdType,StrandProbability> >
+std::pair< std::map<std::pair<IdType,IdType>,StrandProbability>, std::map<std::pair<IdType,IdType>,StrandProbability> >
 computeRelativeStrandMap( const std::vector<Block> &blocks );
 
 #endif	/* RELATIVESTRAND_HPP */

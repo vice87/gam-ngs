@@ -5,50 +5,74 @@
 
 #include "alignment/my_alignment.hpp"
 
-#define NUCLEOTIDE_PER_LINE 60 
+#define NUCLEOTIDE_PER_LINE 60
 
-MyAlignment::MyAlignment() : 
+MyAlignment::MyAlignment() :
               _begin_a(0),
-              _begin_b(0), 
+              _begin_b(0),
               _a_size(0),
               _b_size(0),
-              _sequence(0), 
-              _score(0) 
+              _sequence(0),
+              _score(0),
+              _homology(0)
 {}
 
-MyAlignment::MyAlignment( const MyAlignment& orig ) : 
+MyAlignment::MyAlignment( const MyAlignment& orig ) :
               _begin_a(orig._begin_a),
-              _begin_b(orig._begin_b), 
+              _begin_b(orig._begin_b),
               _a_size(orig._a_size),
               _b_size(orig._b_size),
-              _sequence(orig._sequence), 
-              _score(orig._score) 
+              _sequence(orig._sequence),
+              _score(orig._score),
+			  _homology(orig._homology)
+{}
+
+MyAlignment::MyAlignment( double homology ):
+		_begin_a(0),
+		_begin_b(0),
+		_a_size(0),
+		_b_size(0),
+		_sequence(0),
+		_score(0),
+		_homology(homology)
 {}
 
 MyAlignment::MyAlignment( size_type begin_a, size_type begin_b, size_type a_size, size_type b_size ) :
-        _begin_a(begin_a), _begin_b(begin_b), _a_size(a_size), _b_size(b_size), _sequence(0)
+        _begin_a(begin_a), _begin_b(begin_b), _a_size(a_size), _b_size(b_size), _sequence(0), _homology(0)
 {}
 
-MyAlignment::MyAlignment( size_type begin_a, size_type begin_b, size_type a_size, size_type b_size, ScoreType score, const std::list<AlignmentAlphabet> edit_string ) :
-        _begin_a(begin_a), _begin_b(begin_b), _a_size(a_size), _b_size(b_size), _score(score)
+MyAlignment::MyAlignment(
+	size_type begin_a,
+	size_type begin_b,
+	size_type a_size,
+	size_type b_size,
+	ScoreType score,
+	double homology,
+	const std::list<AlignmentAlphabet> edit_string ) :
+		_begin_a(begin_a),
+		_begin_b(begin_b),
+		_a_size(a_size),
+		_b_size(b_size),
+		_score(score),
+		_homology(homology)
 {
     _sequence.reserve( edit_string.size() );
-    
+
     std::list<AlignmentAlphabet>::const_iterator i;
     for( i = edit_string.begin(); i != edit_string.end(); i++ )
         _sequence.push_back( *i );
 }
 
 MyAlignment::size_type
-MyAlignment::begin_a() const 
+MyAlignment::begin_a() const
 {
-    return this->_begin_a; 
+    return this->_begin_a;
 }
 
 MyAlignment::size_type
-MyAlignment::begin_b() const 
+MyAlignment::begin_b() const
 {
-    return this->_begin_b; 
+    return this->_begin_b;
 }
 
 MyAlignment::size_type
@@ -84,11 +108,14 @@ MyAlignment::length() const
 RealType
 MyAlignment::homology() const
 {
-    int_type num_of_matches = 0;
-    
-    for( MyAlignment::size_type i = 0; i < _sequence.size(); i++ ) 
+	return this->_homology;
+	/*if( this->length() <= 0 ) return 0;
+
+	uint64_t num_of_matches = 0;
+
+    for( uint64_t i = 0; i < _sequence.size(); i++ )
     {
-        switch(_sequence.at(i)) 
+        switch(_sequence.at(i))
         {
             case MATCH:
                 num_of_matches++;
@@ -97,10 +124,8 @@ MyAlignment::homology() const
                 break;
         }
     }
-    
-    if( this->length() <= 0 ) return 0;
-    
-    return ((RealType)num_of_matches) * 100 / ((RealType) this->length());
+
+    return ((RealType)num_of_matches) * 100 / ((RealType) this->length());*/
 }
 
 
@@ -109,7 +134,7 @@ first_match_pos( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignm
 {
     pos.first = A.begin_a();
     pos.second = A.begin_b();
-    
+
     for( MyAlignment::size_type i=0; i < A.sequence().size(); i++ )
     {
         switch( A.sequence().at(i) )
@@ -128,19 +153,19 @@ first_match_pos( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignm
                 break;
         }
     }
-    
+
     return false;
 }
 
 
 bool
-last_pos( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignment::size_type> &pos ) 
+last_pos( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignment::size_type> &pos )
 {
   pos.first = A.begin_a();
   pos.second = A.begin_b();
   bool at_least_one = false;
 
-  for( MyAlignment::size_type i = 0; i < A.sequence().size(); i++ ) 
+  for( MyAlignment::size_type i = 0; i < A.sequence().size(); i++ )
   {
       switch( A.sequence().at(i) )
       {
@@ -161,22 +186,22 @@ last_pos( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignment::si
               break;
       }
   }
-  
+
   return at_least_one;
 }
 
 bool
-last_match_pos( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignment::size_type> &pos) 
+last_match_pos( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignment::size_type> &pos)
 {
     pos.first = A.begin_a();
     pos.second = A.begin_b();
-    
+
     MyAlignment::size_type a_pos(A.begin_a()), b_pos(A.begin_b());
     bool at_least_one=false;
-    
-    for( MyAlignment::size_type i=0; i<A.sequence().size(); i++ ) 
+
+    for( MyAlignment::size_type i=0; i<A.sequence().size(); i++ )
     {
-        switch(A.sequence().at(i)) 
+        switch(A.sequence().at(i))
         {
             case MATCH:
                 at_least_one = true;
@@ -197,19 +222,19 @@ last_match_pos( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignme
                 break;
         }
     }
-    
+
     return at_least_one;
 }
 
 
 bool
-gaps_before_last_match( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignment::size_type> &gaps ) 
+gaps_before_last_match( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignment::size_type> &gaps )
 {
     MyAlignment::size_type gaps_a_last(0), gaps_b_last(0);
     MyAlignment::size_type gaps_a(0), gaps_b(0);
     bool at_least_one = false;
-    
-    for( MyAlignment::size_type i=0; i< A.sequence().size(); i++ ) 
+
+    for( MyAlignment::size_type i=0; i< A.sequence().size(); i++ )
     {
         switch(A.sequence().at(i))
         {
@@ -228,42 +253,56 @@ gaps_before_last_match( const MyAlignment& A, std::pair<MyAlignment::size_type,M
                 break;
         }
     }
-    
+
     gaps.first = gaps_a_last;
     gaps.second = gaps_b_last;
-    
+
     return at_least_one;
 }
 
 
 MyAlignment::int_type
-MyAlignment::b_position_in_a() const 
+MyAlignment::b_position_in_a() const
 {
     return (MyAlignment::int_type)this->begin_a() - (MyAlignment::int_type)this->begin_b();
 }
 
 MyAlignment::int_type
-MyAlignment::a_position_in_b() const 
+MyAlignment::a_position_in_b() const
 {
-    return (MyAlignment::int_type)this->begin_b() - (MyAlignment::int_type)this->begin_a(); 
+    return (MyAlignment::int_type)this->begin_b() - (MyAlignment::int_type)this->begin_a();
 }
 
 
-MyAlignment::int_type 
-MyAlignment::end_a_in_b() const 
+MyAlignment::int_type
+MyAlignment::end_a_in_b() const
 {
-    return this->a_position_in_b() + this->_a_size; 
+    return this->a_position_in_b() + this->_a_size;
 }
 
-MyAlignment::int_type 
-MyAlignment::end_b_in_a() const 
+MyAlignment::int_type
+MyAlignment::end_b_in_a() const
 {
-    return this->b_position_in_a() + this->_b_size; 
+    return this->b_position_in_a() + this->_b_size;
+}
+
+
+void
+MyAlignment::set_begin_a( size_type begin_a )
+{
+	this->_begin_a = begin_a;
+}
+
+
+void
+MyAlignment::set_begin_b( size_type begin_b )
+{
+	this->_begin_b = begin_b;
 }
 
 
 const MyAlignment &
-MyAlignment::operator=(const MyAlignment& orig) 
+MyAlignment::operator=(const MyAlignment& orig)
 {
     this->_begin_a = orig._begin_a;
     this->_begin_b = orig._begin_b;
@@ -271,48 +310,49 @@ MyAlignment::operator=(const MyAlignment& orig)
     this->_b_size = orig._b_size;
     this->_score = orig._score;
     this->_sequence = orig._sequence;
-    
+	this->_homology = orig._homology;
+
     return *this;
 }
 
 
 void printAlignment( std::ostream& os, const Contig& a, const Contig& b, const MyAlignment& aln )
 {
-    os << "Contig A: " 
-       << "Name=\"" << a.name() << "\"" 
+    os << "Contig A: "
+       << "Name=\"" << a.name() << "\""
        << "\tLength=" << a.size() << std::endl;
-    
+
     os << "Contig B: "
-       << "Name=\"" << b.name() << "\"" 
+       << "Name=\"" << b.name() << "\""
        << "\tLength=" << b.size() << std::endl;
-    
+
     os << std::endl;
-    
-    os << "Alignment: " 
-       //<< "Score=" << a.score() 
-       << "\tHomology=" << aln.homology() 
-       << "\tLength=" << aln.length() 
+
+    os << "Alignment: "
+       //<< "Score=" << a.score()
+       << "\tHomology=" << aln.homology()
+       << "\tLength=" << aln.length()
        << "\tScore=" << aln.score()
        << std::endl;
-    
+
     os << std::endl;
-    
+
     unsigned int gap_num = 0, mismatch_num = 0;
-    
+
     MyAlignment::size_type a_pos = aln.begin_a();
     MyAlignment::size_type b_pos = aln.begin_b();
-    
+
     MyAlignment::SeqType::const_iterator i, begin_i;
-    
+
     i = aln.sequence().begin();
-    
+
     while( i != aln.sequence().end() )
     {
         if( i != aln.sequence().begin() ) os << std::endl;
-        
+
         begin_i = i;
         unsigned int count = 0;
-        
+
         os << a_pos << ":\t";
         while( count < NUCLEOTIDE_PER_LINE && i != aln.sequence().end() )
         {
@@ -328,17 +368,17 @@ void printAlignment( std::ostream& os, const Contig& a, const Contig& b, const M
                     a_pos++;
                     break;
             }
-            
+
             count++;
             i++;
         }
-        
+
         os << std::endl;
         os << "\t";
-        
+
         i = begin_i;
         count = 0;
-        
+
         while( count < NUCLEOTIDE_PER_LINE && i != aln.sequence().end() )
         {
             switch(*i)
@@ -356,17 +396,17 @@ void printAlignment( std::ostream& os, const Contig& a, const Contig& b, const M
                     os << "|";
                     break;
             }
-            
+
             count++;
             i++;
         }
-        
+
         os << std::endl;
         os << b_pos << ":\t";
-        
+
         i = begin_i;
         count = 0;
-        
+
         while( count < NUCLEOTIDE_PER_LINE && i != aln.sequence().end() )
         {
             switch(*i)
@@ -381,13 +421,13 @@ void printAlignment( std::ostream& os, const Contig& a, const Contig& b, const M
                     b_pos++;
                     break;
             }
-            
+
             count++;
             i++;
         }
-        
+
         os << std::endl;
     }
-    
+
     std::cout << "\n\nGaps=" << gap_num << "\tMismatches=" << mismatch_num << "\n" << std::endl;
 }

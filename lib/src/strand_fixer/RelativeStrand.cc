@@ -220,7 +220,7 @@ RelativeStrandEvidencesGraph::computeRelativeStrands()
 }
 
 
-std::pair< std::map<IdType,StrandProbability>, std::map<IdType,StrandProbability> >
+std::pair< std::map<std::pair<IdType,IdType>,StrandProbability>, std::map<std::pair<IdType,IdType>,StrandProbability> >
 computeRelativeStrandMap(const std::vector<Block>& blocks)
 {
     // build strand graph

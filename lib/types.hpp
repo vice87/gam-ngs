@@ -6,9 +6,11 @@
 #ifndef TYPES_
 #define TYPES_
 
-typedef long unsigned int IdType;       //!< unsigned integer for ID type
-typedef long unsigned int UIntType;     //!< unsigned integer type
-typedef long int IntType;               //!< integer type
-typedef double RealType;                //!< real type
+#include "stdint.h"
+
+typedef uint64_t IdType;       //!< unsigned integer for ID type
+typedef uint64_t UIntType;     //!< unsigned integer type
+typedef int64_t IntType;       //!< integer type
+typedef double RealType;       //!< real type
 
 #endif // TYPES_

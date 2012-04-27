@@ -1,4 +1,4 @@
-/*! 
+/*!
  * \file BestPctgCtgAlignment.hpp
  * \brief Definition of BestPctgCtgAlignment class.
  * \details This file contains the definition of the class representing a best
@@ -15,33 +15,61 @@ class BestPctgCtgAlignment
 {
 
 private:
-    MyAlignment _a;       //!< an alignment
-    bool _isCtgReverse; //!< whether the contig is reverse complemented or not.
-    
+    MyAlignment _main;		//!< main alignment
+    MyAlignment _left;		//!< left tail alignment
+	MyAlignment _right;		//!< right tail alignment
+
+    bool _isCtgReverse; 	//!< whether the contig is reverse complemented or not.
+    bool _left_rev;			//!< whether left alignment considers contings in opposite order
+    bool _right_rev;		//!< whether right alignment considers contings in opposite order
+
 public:
     //! A constructor.
     /*!
-     * \param a an alignment.
+     * \param main an alignment.
      * \param isCtgReverse whether the contig is reverse complemented or not.
      */
-    BestPctgCtgAlignment(const MyAlignment& a, const bool isCtgReverse);
-    
+    BestPctgCtgAlignment(const MyAlignment& main, const bool isCtgReverse);
+
+	//! A constructor.
+	/*!
+	 * \param a an alignment.
+	 * \param isCtgReverse whether the contig is reverse complemented or not.
+	 * \param left left tail alignment
+	 * \param right right tail alignment
+	 * \param left_rev whether the left alignment has been done considering contigs in opposite order
+	 * \param right_rev whether the left alignment has been done considering contigs in opposite order
+	 */
+	BestPctgCtgAlignment(
+		const MyAlignment& main,
+		const bool isCtgReverse,
+		const MyAlignment& left,
+		const MyAlignment& right,
+		const bool left_rev = false,
+		const bool right_rev = false
+	);
+
     //! A copy constructor.
     /*!
      * Creates a copy of a given BestPctgCtgAlignment object.
      * \param orig a best pctg-ctg alignment.
      */
     BestPctgCtgAlignment(const BestPctgCtgAlignment &orig);
-    
+
     //! Gets the alignment.
     /*!
      * \return a reference to the Alignment object.
      */
-    const MyAlignment& getAlignment() const;
-    
+    const MyAlignment& main() const;
+	const MyAlignment& left() const;
+	const MyAlignment& right() const;
+
+	bool is_left_rev() const;
+	bool is_right_rev() const;
+
     //! Tells whether the contig is reverse complemented or not.
-    const bool& isCtgReversed() const;
-    
+    bool isCtgReversed() const;
+
     //! Assign operator of the BestPctgCtgAlignment class.
     const BestPctgCtgAlignment& operator =(const BestPctgCtgAlignment &orig);
 };

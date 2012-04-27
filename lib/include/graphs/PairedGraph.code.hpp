@@ -37,7 +37,7 @@ template <class VERTEX_PROP, class EDGE_WEIGHT>
 typename PairedGraph<VERTEX_PROP,EDGE_WEIGHT>::Vertex 
 PairedGraph<VERTEX_PROP,EDGE_WEIGHT>::getMasterVertex( const Block &block ) const
 {
-    IdType ctgid = block.getMasterFrame().getContigId();
+    std::pair< IdType,IdType > ctgid = std::make_pair( block.getMasterFrame().getAssemblyId(), block.getMasterFrame().getContigId() );
     return (this->_masterMap.find(ctgid))->second;
 }
 
@@ -46,7 +46,7 @@ template <class VERTEX_PROP, class EDGE_WEIGHT>
 typename PairedGraph<VERTEX_PROP,EDGE_WEIGHT>::Vertex 
 PairedGraph<VERTEX_PROP,EDGE_WEIGHT>::getSlaveVertex( const Block &block ) const
 {
-    IdType ctgid = block.getSlaveFrame().getContigId();
+    std::pair< IdType,IdType > ctgid = std::make_pair( block.getSlaveFrame().getAssemblyId(), block.getSlaveFrame().getContigId() );
     return (this->_slaveMap.find(ctgid))->second;
 }
 
@@ -94,8 +94,8 @@ PairedContigGraph<VERTEX_PROP,EDGE_WEIGHT>::initGraph( const std::vector<Block> 
     typename std::vector<Block>::const_iterator block;
     for( block = blocks.begin(); block != blocks.end(); block++ )
     {
-        IdType masterCtgId = (block->getMasterFrame()).getContigId();
-        IdType slaveCtgId = block->getSlaveFrame().getContigId();
+        std::pair< IdType,IdType > masterCtgId = std::make_pair( (block->getMasterFrame()).getAssemblyId(), (block->getMasterFrame()).getContigId() );
+        std::pair< IdType,IdType > slaveCtgId = std::make_pair( (block->getSlaveFrame()).getAssemblyId(), (block->getSlaveFrame()).getContigId() );
                 
         add_edge( this->_masterMap[masterCtgId], this->_slaveMap[slaveCtgId], *this );
     }
@@ -107,16 +107,19 @@ void
 PairedContigGraph<VERTEX_PROP,EDGE_WEIGHT>::initVertexLabels( const std::vector<Block>& blocks )
 {
     // collect master and slave contigs
-    std::set< IdType > masterCtgs, slaveCtgs;
+    std::set< std::pair<IdType,IdType> > masterCtgs;
+    std::set< std::pair<IdType,IdType> > slaveCtgs;
     
-    IdType masterCtgId;
-    IdType slaveCtgId;
+    //IdType masterCtgId;
+    //IdType slaveCtgId;
+    std::pair< IdType,IdType > masterCtgId;
+    std::pair< IdType,IdType > slaveCtgId;
     
     typename std::vector<Block>::const_iterator block;
     for( block = blocks.begin(); block != blocks.end(); block++ )
     {
-        masterCtgId = (block->getMasterFrame()).getContigId();
-        slaveCtgId = (block->getSlaveFrame()).getContigId();
+        masterCtgId = std::make_pair( (block->getMasterFrame()).getAssemblyId(), (block->getMasterFrame()).getContigId() );
+        slaveCtgId = std::make_pair( (block->getSlaveFrame()).getAssemblyId(), (block->getSlaveFrame()).getContigId() );
         
         masterCtgs.insert( masterCtgId );
         slaveCtgs.insert( slaveCtgId );
@@ -127,7 +130,7 @@ PairedContigGraph<VERTEX_PROP,EDGE_WEIGHT>::initVertexLabels( const std::vector<
     size_t i = 0;
     
     // insert into the vector the master contig IDs first.
-    typename std::set< IdType >::iterator label;
+    typename std::set< std::pair<IdType,IdType> >::iterator label;
     for( label = masterCtgs.begin(); label != masterCtgs.end(); label++ )
     {
         this->_vertexToCtg.at(i) = *label;
@@ -147,5 +150,35 @@ PairedContigGraph<VERTEX_PROP,EDGE_WEIGHT>::initVertexLabels( const std::vector<
         i++;
     }
 }
+
+
+template <class VERTEX_PROP, class EDGE_WEIGHT>
+std::ostream&
+PairedContigGraph<VERTEX_PROP,EDGE_WEIGHT>::writeGraphviz(std::ostream& os)
+{    
+    os << "graph AssemblyGraph {" << std::endl;
+    //os << "   rankdir=LR;" << std::endl;
+    
+    VertexIterator vbegin,vend;
+    boost::tie(vbegin,vend) = boost::vertices(*this);
+    
+    for (VertexIterator v=vbegin; v!=vend; v++) 
+    {
+        os << "\t" << *v << "[label=\"<" << this->_vertexToCtg[*v].first << "," << this->_vertexToCtg[*v].second << ">\"];" << std::endl;
+    }
+    
+    EdgeIterator ebegin,eend;
+    boost::tie(ebegin,eend) = boost::edges(*this);
+    
+    for( EdgeIterator e = ebegin; e != eend; e++ )
+    {
+        os << "\t" << boost::source(*e,*this) << "--" << boost::target(*e,*this) << "[color=black];" << std::endl;
+    }
+    
+    os << "}" << std::endl;
+    
+    return os;    
+}
+
 
 #endif // PAIRED_GRAPH_CODE_

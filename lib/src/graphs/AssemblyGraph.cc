@@ -260,8 +260,7 @@ AssemblyGraph::initGraph( const std::vector<Block> &blocks )
     
     StrandProbMap masterStrandMap, slaveStrandMap;
       
-    boost::tie( masterStrandMap, slaveStrandMap ) =
-            computeRelativeStrandMap( blocks );
+    boost::tie( masterStrandMap, slaveStrandMap ) = computeRelativeStrandMap( blocks );
     
     // index[i] -> index of i-th element in blocks
     // backIndex[i] -> index in the ordered vector of blocks[i]
@@ -302,6 +301,7 @@ AssemblyGraph::addMasterEdges(
         const std::vector<UIntType>& index, 
         const std::vector<UIntType>& backIndex)
 {
+    IdType aId = (this->_blockVector[vertex]).getMasterFrame().getAssemblyId();
     IdType ctgId = (this->_blockVector[vertex]).getMasterFrame().getContigId();
     UIntType idx = backIndex.at(vertex);
     UIntType next = vertex, prev = vertex;
@@ -309,7 +309,7 @@ AssemblyGraph::addMasterEdges(
     if( idx+1 < index.size() ) next = index.at( idx+1 );
     if( idx > 0 ) prev = index.at( idx-1 );
     
-    char strand = (strandMap.find(ctgId)->second).getStrand();
+    char strand = (strandMap.find(std::make_pair(aId,ctgId))->second).getStrand();
     
     // strand is '-' if it's more likely that the master contig is
     // reverse complemented, '+' otherwise
@@ -330,6 +330,7 @@ AssemblyGraph::addSlaveEdges(
         const std::vector<UIntType>& index, 
         const std::vector<UIntType>& backIndex)
 {
+    IdType aId = (this->_blockVector[vertex]).getSlaveFrame().getAssemblyId();
     IdType ctgId = (this->_blockVector[vertex]).getSlaveFrame().getContigId();
     UIntType idx = backIndex.at(vertex);
     UIntType next = vertex, prev = vertex;
@@ -337,7 +338,7 @@ AssemblyGraph::addSlaveEdges(
     if( idx+1 < index.size() ) next = index.at( idx+1 );
     if( idx > 0 ) prev = index.at( idx-1 );
     
-    char strand = (strandMap.find(ctgId)->second).getStrand();
+    char strand = (strandMap.find(std::make_pair(aId,ctgId))->second).getStrand();
     
     // strand is '-' if it's more likely that the slave contig is
     // reverse complemented, '+' otherwise
@@ -416,19 +417,23 @@ AssemblyGraph::writeGraphviz(std::ostream& os)
     
     for (VertexIterator v=vbegin; v!=vend; v++) 
     {
+        IdType masterAId = this->_blockVector[*v].getMasterFrame().getAssemblyId();
         IdType masterCtgId = this->_blockVector[*v].getMasterFrame().getContigId();
         UIntType masterFrameLen = this->_blockVector[*v].getMasterFrame().getLength();
         UIntType masterFrameBeg = this->_blockVector[*v].getMasterFrame().getBegin();
-        RealType masterCov = ((RealType) this->_blockVector[*v].getMasterFrame().getReadsLen()) / ((RealType)masterFrameLen);
+        RealType mbc = ((RealType) this->_blockVector[*v].getMasterFrame().getBlockReadsLen()) / ((RealType)masterFrameLen);
+        RealType mc = ((RealType) this->_blockVector[*v].getMasterFrame().getReadsLen()) / ((RealType)masterFrameLen);
         
+        IdType slaveAId = this->_blockVector[*v].getSlaveFrame().getAssemblyId();
         IdType slaveCtgId = this->_blockVector[*v].getSlaveFrame().getContigId();
         UIntType slaveFrameLen = this->_blockVector[*v].getSlaveFrame().getLength();
         UIntType slaveFrameBeg = this->_blockVector[*v].getSlaveFrame().getBegin();
-        RealType slaveCov = ((RealType) this->_blockVector[*v].getSlaveFrame().getReadsLen()) / ((RealType)slaveFrameLen);
+        RealType sbc = ((RealType) this->_blockVector[*v].getSlaveFrame().getBlockReadsLen()) / ((RealType)slaveFrameLen);
+        RealType sc = ((RealType) this->_blockVector[*v].getSlaveFrame().getReadsLen()) / ((RealType)slaveFrameLen);
         
         os << "   " << *v << "[label=\"" 
-                    << masterCtgId << ":" << masterFrameBeg << ":" << masterFrameLen << " (" << std::setiosflags(std::ios::fixed) << std::setprecision(2) << masterCov << ")" << "\\n"
-                    << slaveCtgId << ":" << slaveFrameBeg << ":" << slaveFrameLen << " (" << std::setiosflags(std::ios::fixed) << std::setprecision(2) << slaveCov << ")" 
+                    << "<" << masterAId << "," << masterCtgId << "> :" << masterFrameBeg << ":" << masterFrameLen << " (" << std::setiosflags(std::ios::fixed) << std::setprecision(2) << mbc << "/" << mc << ")" << "\\n"
+                    << "<" << slaveAId << "," << slaveCtgId << "> :" << slaveFrameBeg << ":" << slaveFrameLen << " (" << std::setiosflags(std::ios::fixed) << std::setprecision(2) << sbc << "/" << sc << ")" 
                     << "\""
                     << ((boost::in_degree(*v,*this) > 1 || boost::out_degree(*v,*this) > 1) ? ", color = blue" : "") << "];"
                     << std::endl;

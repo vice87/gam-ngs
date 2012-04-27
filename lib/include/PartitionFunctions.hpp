@@ -9,6 +9,9 @@
 
 #include <list>
 #include "assembly/Block.hpp"
+#include "Options.hpp"
+
+using namespace options;
 
 //! Partitions a vector of blocks.
 /*!
@@ -16,10 +19,11 @@
  * be merged together.
  * 
  * \param blocks a vector of blocks.
+ * \param options options of the application.
  * \return a list of block vectors.
  */
 std::list< std::vector< Block > >
-partitionBlocks( const std::vector< Block > &blocks );
+partitionBlocks( const std::vector< Block > &blocks, const Options &options );
 
 
 //! Partitions a vector of blocks by paired contigs.

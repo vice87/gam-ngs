@@ -24,9 +24,10 @@ struct MasterBlocksOrderer
     bool operator()( const Block &a, const Block &b )
     {
         return (
-                a.getMasterFrame().getContigId() < b.getMasterFrame().getContigId() || 
-                (a.getMasterFrame().getContigId() == b.getMasterFrame().getContigId() && a.getMasterFrame().getBegin() < b.getMasterFrame().getBegin()) ||
-                (a.getMasterFrame().getContigId() == b.getMasterFrame().getContigId() && a.getMasterFrame().getBegin() == b.getMasterFrame().getBegin() && a.getMasterFrame().getLength() > b.getMasterFrame().getLength())
+                 a.getMasterFrame().getAssemblyId() < b.getMasterFrame().getAssemblyId() ||
+                (a.getMasterFrame().getAssemblyId() == b.getMasterFrame().getAssemblyId() && a.getMasterFrame().getContigId() < b.getMasterFrame().getContigId()) || 
+                (a.getMasterFrame().getAssemblyId() == b.getMasterFrame().getAssemblyId() && a.getMasterFrame().getContigId() == b.getMasterFrame().getContigId() && a.getMasterFrame().getBegin() < b.getMasterFrame().getBegin()) ||
+                (a.getMasterFrame().getAssemblyId() == b.getMasterFrame().getAssemblyId() && a.getMasterFrame().getContigId() == b.getMasterFrame().getContigId() && a.getMasterFrame().getBegin() == b.getMasterFrame().getBegin() && a.getMasterFrame().getLength() > b.getMasterFrame().getLength())
                );
     }
 };
@@ -43,9 +44,10 @@ struct SlaveBlocksOrderer
     bool operator()( const Block &a, const Block &b )
     {
         return (
-                a.getSlaveFrame().getContigId() < b.getSlaveFrame().getContigId() || 
-                (a.getSlaveFrame().getContigId() == b.getSlaveFrame().getContigId() && a.getSlaveFrame().getBegin() < b.getSlaveFrame().getBegin()) ||
-                (a.getSlaveFrame().getContigId() == b.getSlaveFrame().getContigId() && a.getSlaveFrame().getBegin() == b.getSlaveFrame().getBegin() && a.getSlaveFrame().getLength() > b.getSlaveFrame().getLength()) 
+                 a.getSlaveFrame().getAssemblyId() < b.getSlaveFrame().getAssemblyId() ||
+                (a.getSlaveFrame().getAssemblyId() == b.getSlaveFrame().getAssemblyId() && a.getSlaveFrame().getContigId() < b.getSlaveFrame().getContigId()) || 
+                (a.getSlaveFrame().getAssemblyId() == b.getSlaveFrame().getAssemblyId() && a.getSlaveFrame().getContigId() == b.getSlaveFrame().getContigId() && a.getSlaveFrame().getBegin() < b.getSlaveFrame().getBegin()) ||
+                (a.getSlaveFrame().getAssemblyId() == b.getSlaveFrame().getAssemblyId() && a.getSlaveFrame().getContigId() == b.getSlaveFrame().getContigId() && a.getSlaveFrame().getBegin() == b.getSlaveFrame().getBegin() && a.getSlaveFrame().getLength() > b.getSlaveFrame().getLength()) 
                );
     }
 };

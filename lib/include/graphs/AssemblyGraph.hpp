@@ -36,7 +36,7 @@ public:
     typedef boost::graph_traits<Graph>::vertex_iterator VertexIterator;
     typedef boost::graph_traits<Graph>::adjacency_iterator AdjacencyIterator;
     typedef boost::graph_traits<Graph>::edge_descriptor Edge;
-    typedef std::map< IdType, StrandProbability > StrandProbMap;
+    typedef std::map< std::pair<IdType,IdType>, StrandProbability > StrandProbMap;
     
 private:
     std::vector<Block> _blockVector; //!< vector of the blocks used as nodes in the graph

@@ -1,7 +1,7 @@
-/* 
+/*
  * File:   Frame.cc
  * Author: Riccardo Vicedomini
- * 
+ *
  * Created on 22 maggio 2011, 17.40
  */
 
@@ -9,15 +9,28 @@
 #include <iostream>
 #include "assembly/Frame.hpp"
 
-Frame::Frame() {}
+Frame::Frame()
+        : _assemblyId(0), _ctgId(0), _strand('?'), _begin(0), _end(0), _readsLen(0), _blockReadsLen(0)
+{}
 
 Frame::Frame( int32_t ctg, char strand, int32_t begin, int32_t end )
-        : _ctgId(ctg), _strand(strand), _begin(begin), _end(end), _readsLen(0) {}
+        : _assemblyId(0), _ctgId(ctg), _strand(strand), _begin(begin), _end(end), _readsLen(0), _blockReadsLen(0)
+{}
+
+Frame::Frame( int32_t assemblyId, int32_t ctg, char strand, int32_t begin, int32_t end )
+        : _assemblyId(assemblyId), _ctgId(ctg), _strand(strand), _begin(begin), _end(end), _readsLen(0), _blockReadsLen(0)
+{}
 
 Frame::Frame(const Frame& orig)
-        : _ctgId(orig._ctgId), _strand(orig._strand), _begin(orig._begin),
-          _end(orig._end), _readsLen(orig._readsLen) {}
+        : _assemblyId(orig._assemblyId), _ctgId(orig._ctgId), _strand(orig._strand),
+          _begin(orig._begin),_end(orig._end), _readsLen(orig._readsLen), _blockReadsLen(orig._blockReadsLen)
+{}
 
+
+void Frame::setAssemblyId( int32_t aId )
+{
+    _assemblyId = aId;
+}
 
 void Frame::setStrand( char strand )
 {
@@ -34,14 +47,29 @@ void Frame::setEnd( int32_t end )
     _end = end;
 }
 
-void Frame::setReadsLen( IntType readLen )
+void Frame::setReadsLen( UIntType readLen )
 {
     _readsLen = readLen;
 }
 
-void Frame::increaseReadsLen( IntType readLen )
+void Frame::increaseReadsLen( UIntType readLen )
 {
     _readsLen += readLen;
+}
+
+void Frame::setBlockReadsLen(UIntType len)
+{
+    _blockReadsLen = len;
+}
+
+void Frame::increaseBlockReadsLen(UIntType len)
+{
+    _blockReadsLen += len;
+}
+
+int32_t Frame::getAssemblyId() const
+{
+    return _assemblyId;
 }
 
 int32_t Frame::getContigId() const
@@ -64,21 +92,38 @@ int32_t Frame::getEnd() const
     return _end;
 }
 
-IntType Frame::getReadsLen() const
+UIntType Frame::getReadsLen() const
 {
     return _readsLen;
 }
 
+UIntType Frame::getBlockReadsLen() const
+{
+    return _blockReadsLen;
+}
+
 int32_t Frame::getLength() const
 {
-    return _end - _begin + 1;
+    return (_end < _begin) ? 0 : _end - _begin + 1;
+}
+
+
+bool Frame::overlaps(Read& read, int minOverlap) const
+{
+    if( this->getContigId() != read.getContigId() ) return false;
+
+	IntType startDiff = IntType(this->getEnd()) - IntType(read.getStartPos()) + 1;
+    IntType endDiff = IntType(read.getEndPos()) - IntType(this->getBegin()) + 1;
+
+    return (startDiff >= minOverlap && endDiff >= minOverlap);
 }
 
 
 bool Frame::frameOverlap( const Frame& a, const Frame& b, double minOverlap )
 {
+    if( a.getAssemblyId() != b.getAssemblyId() ) return false;
     if( a.getContigId() != b.getContigId() ) return false;
-    
+
     if( a.getBegin() <= b.getBegin() )
     {
         double overlap = (a.getEnd()>=b.getBegin()) ? (100.0 * (double)(a.getEnd() - b.getBegin() + 1) / b.getLength()) : 0.0;
@@ -91,15 +136,17 @@ bool Frame::frameOverlap( const Frame& a, const Frame& b, double minOverlap )
     }
 }
 
-const Frame& 
-Frame::operator=(const Frame& frame) 
+const Frame&
+Frame::operator=(const Frame& frame)
 {
+    this->_assemblyId = frame._assemblyId;
     this->_ctgId = frame._ctgId;
     this->_begin = frame._begin;
     this->_end = frame._end;
     this->_strand = frame._strand;
     this->_readsLen = frame._readsLen;
-    
+    this->_blockReadsLen = frame._blockReadsLen;
+
     return *this;
 }
 
@@ -107,17 +154,19 @@ Frame::operator=(const Frame& frame)
 bool
 Frame::operator <(const Frame& frame) const
 {
-    return( this->_ctgId < frame.getContigId() || 
-            (this->_ctgId == frame.getContigId() && this->_begin < frame.getBegin()) ||
-            (this->_ctgId == frame.getContigId() && this->_begin == frame.getBegin() && this->_end < frame.getEnd())
-            );
+    return( this->_assemblyId < frame.getAssemblyId() ||
+            (this->_assemblyId == frame.getAssemblyId() && this->_ctgId < frame.getContigId()) ||
+            (this->_assemblyId == frame.getAssemblyId() && this->_ctgId == frame.getContigId() && this->_begin < frame.getBegin()) ||
+            (this->_assemblyId == frame.getAssemblyId() && this->_ctgId == frame.getContigId() && this->_begin == frame.getBegin() && this->_end < frame.getEnd())
+          );
 }
 
 
 bool
 Frame::operator ==(const Frame& frame) const
 {
-    return( this->_ctgId == frame.getContigId() &&
+    return( this->_assemblyId == frame.getAssemblyId() &&
+            this->_ctgId == frame.getContigId() &&
             this->_strand == frame.getStrand() &&
             this->_begin == frame.getBegin() &&
             this->_end == frame.getEnd() );
@@ -126,24 +175,27 @@ Frame::operator ==(const Frame& frame) const
 
 std::ostream &operator<<( std::ostream &output, const Frame &frame )
 {
-    output << frame.getContigId() << "\t" << frame.getStrand() << "\t" 
+    output << frame.getAssemblyId() << "\t"
+           << frame.getContigId() << "\t" << frame.getStrand() << "\t"
            << frame.getBegin() << "\t" << frame.getEnd() << "\t"
-           << frame.getReadsLen();
-    
+           << frame.getBlockReadsLen() << "\t" << frame.getReadsLen();
+
     return output;
 }
 
 std::istream &operator>>( std::istream &input, Frame &frame )
 {
+    int32_t assemblyId;
     int32_t ctgId;
     char strand;
     int32_t begin, end;
-    IntType readsLen;
-    
-    input >> ctgId >> strand >> begin >> end >> readsLen;
-    
-    frame = Frame( ctgId, strand, begin, end);
+    UIntType readsLen, blockReadsLen;
+
+    input >> assemblyId >> ctgId >> strand >> begin >> end >> blockReadsLen >> readsLen;
+
+    frame = Frame( assemblyId, ctgId, strand, begin, end );
     frame.setReadsLen(readsLen);
-    
+    frame.setBlockReadsLen(blockReadsLen);
+
     return input;
 }

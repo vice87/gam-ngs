@@ -10,28 +10,32 @@ PairingEvidencesGraph::PairingEvidencesGraph(const std::vector<Block> &blocks)
 void 
 PairingEvidencesGraph::addEdgeWeights( const std::vector<Block>& blocks )
 {
-    IdType masterCtgId, slaveCtgId;
+    std::pair<IdType,IdType> masterCtgId, slaveCtgId;
     UIntType weight=0;
     
     std::vector<Block>::const_iterator block;
     for( block = blocks.begin(); block != blocks.end(); block++ )
     {
-        masterCtgId = (block->getMasterFrame()).getContigId();
-        slaveCtgId = (block->getSlaveFrame()).getContigId();
+        masterCtgId.first = (block->getMasterFrame()).getAssemblyId();
+        masterCtgId.second = (block->getMasterFrame()).getContigId();
+        slaveCtgId.first = (block->getSlaveFrame()).getAssemblyId();
+        slaveCtgId.second = (block->getSlaveFrame()).getContigId();
         
         PairingEvidencesGraph::Edge e = 
-                edge(this->_masterMap[masterCtgId], this->_slaveMap[slaveCtgId], *this ).first;
+                boost::edge(this->_masterMap[masterCtgId], this->_slaveMap[slaveCtgId], *this ).first;
         
         put( boost::edge_weight_t(), *this, e, weight );
     }
     
     for( block = blocks.begin(); block != blocks.end(); block++ )
     {
-        masterCtgId = (block->getMasterFrame()).getContigId();
-        slaveCtgId = (block->getSlaveFrame()).getContigId();
+        masterCtgId.first = (block->getMasterFrame()).getAssemblyId();
+        masterCtgId.second = (block->getMasterFrame()).getContigId();
+        slaveCtgId.first = (block->getSlaveFrame()).getAssemblyId();
+        slaveCtgId.second = (block->getSlaveFrame()).getContigId();
         
         PairingEvidencesGraph::Edge e = 
-                edge(this->_masterMap[masterCtgId], this->_slaveMap[slaveCtgId], *this ).first;
+                boost::edge(this->_masterMap[masterCtgId], this->_slaveMap[slaveCtgId], *this ).first;
         
         weight = get( boost::edge_weight_t(), *this, e );
         weight++;
