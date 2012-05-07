@@ -39,13 +39,18 @@ void HashContigMemPool::loadPool(const std::string &file, RefMap &refMap)
 
     while( !ifs.eof() )
     {
+
+
         std::string ctg_name;
         readNextContigID( ifs, ctg_name );
 
         Contig *ctg = &(this->_pool[ ctg_name ]);
 
         ctg->set_name( ctg_name );
-        ctg->resize( refMap[ctg_name] );
+
+		RefMap::const_iterator ref = refMap.find(ctg_name);
+		if( ref != refMap.end() ) ctg->resize( ref->second );
+
         readNextSequence( ifs, *ctg );
     }
 
@@ -102,6 +107,8 @@ void HashContigMemPool::readNextSequence( std::istream &is, Contig &ctg )
         if( c != '\n' and c != '>' and c != ' ' and !is.eof() )
         {
             // copy read nucleotide into sequence
+            if(idx >= ctg.size()) ctg.resize(idx+1);
+
             ctg.at(idx) = c;
             idx++;
         }
