@@ -15,9 +15,9 @@ class BestPctgCtgAlignment
 {
 
 private:
-    MyAlignment _main;		//!< main alignment
-    MyAlignment _left;		//!< left tail alignment
-	MyAlignment _right;		//!< right tail alignment
+    std::vector<MyAlignment> _main;		//!< main alignments (one for each block)
+    MyAlignment _left;					//!< left tail alignment
+	MyAlignment _right;					//!< right tail alignment
 
     bool _isCtgReverse; 	//!< whether the contig is reverse complemented or not.
     bool _left_rev;			//!< whether left alignment considers contings in opposite order
@@ -29,7 +29,8 @@ public:
      * \param main an alignment.
      * \param isCtgReverse whether the contig is reverse complemented or not.
      */
-    BestPctgCtgAlignment(const MyAlignment& main, const bool isCtgReverse);
+    BestPctgCtgAlignment(const MyAlignment &main, const bool isCtgReverse);
+	BestPctgCtgAlignment(const std::vector<MyAlignment> &main, const bool isCtgReverse);
 
 	//! A constructor.
 	/*!
@@ -49,6 +50,15 @@ public:
 		const bool right_rev = false
 	);
 
+	BestPctgCtgAlignment(
+		const std::vector<MyAlignment> &main,
+		const bool isCtgReverse,
+		const MyAlignment &left,
+		const MyAlignment &right,
+		const bool left_rev = false,
+		const bool right_rev = false
+	);
+
     //! A copy constructor.
     /*!
      * Creates a copy of a given BestPctgCtgAlignment object.
@@ -60,9 +70,11 @@ public:
     /*!
      * \return a reference to the Alignment object.
      */
-    const MyAlignment& main() const;
+    const std::vector<MyAlignment>& main() const;
 	const MyAlignment& left() const;
 	const MyAlignment& right() const;
+
+	double main_homology() const;
 
 	bool is_left_rev() const;
 	bool is_right_rev() const;
@@ -72,6 +84,9 @@ public:
 
     //! Assign operator of the BestPctgCtgAlignment class.
     const BestPctgCtgAlignment& operator =(const BestPctgCtgAlignment &orig);
+
+	const MyAlignment& operator[]( const size_t &index ) const;
+	uint64_t size() const;
 };
 
 

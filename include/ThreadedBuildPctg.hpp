@@ -11,6 +11,8 @@
 #include <pthread.h>
 #include <list>
 
+#include <bam/MultiBamReader.hpp>
+
 #include "Options.hpp"
 using namespace options;
 
@@ -28,11 +30,17 @@ private:
     UIntType _pctgsDone;
     UIntType _lastPerc;
     std::list< std::vector<Block> > _blocksList;
+
     HashContigMemPool *_pctgPool;
     const ExtContigMemPool *_masterPool;
     const ExtContigMemPool *_slavePool;
+
+	MultiBamReader& _masterBam;
+	std::vector< MultiBamReader >& _slaveBams;
+
     const BamTools::RefVector *_masterRefVector;
     const std::vector< BamTools::RefVector > *_slaveRefVector;
+
 	const Options &_options;
 
     // output
@@ -42,6 +50,9 @@ private:
     // mutex
     pthread_mutex_t _mutexRemoveCtgId;
     pthread_mutex_t _mutex;
+
+	pthread_mutex_t _mutexMasterBam; // mutex per accedere al BAM master
+	std::vector< pthread_mutex_t > _mutexSlaveBams; // mutex per accedere ai BAM slave
 
     std::pair< std::vector<Block>, bool > extractNextPctg();
 
@@ -54,6 +65,8 @@ public:
             HashContigMemPool *pctgPool,
             const ExtContigMemPool *masterPool,
             const ExtContigMemPool *slavePool,
+			MultiBamReader &masterBam,
+			std::vector< MultiBamReader > &slaveBams,
             const BamTools::RefVector *masterRefVector,
             const std::vector< BamTools::RefVector > *slaveRefVector,
             const Options &options
@@ -62,12 +75,12 @@ public:
 
     IdType readPctgNumAndIncrease();
 
-    std::pair< std::list<PairedContig>, std::vector<bool> >
-    run();
+    std::pair< std::list<PairedContig>, std::vector<bool> >  run();
 
-    friend void*
-    buildPctgThread(void *argv);
+	double computeZScore( const std::pair<uint64_t,uint64_t> &ctgId, uint32_t start, uint32_t end, bool isMaster );
+	double computeReadCoverage( std::pair<uint64_t,uint64_t> &ctgId, uint32_t start, uint32_t end, bool isMaster );
 
+    friend void* buildPctgThread(void *argv);
 };
 
 

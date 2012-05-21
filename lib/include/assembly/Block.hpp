@@ -14,6 +14,7 @@
 #include "api/BamAux.h"
 #include "api/BamReader.h"
 
+#include "bam/MultiBamReader.hpp"
 #include "assembly/Read.hpp"
 #include "assembly/Frame.hpp"
 
@@ -155,7 +156,7 @@ public:
      */
     static void findBlocks(
         std::vector<Block> &outblocks,
-        BamReader &bamReader,
+        MultiBamReader &bamReader,
         const int minBlockSize,
         sparse_hash_map< std::string, Read > &readsMap_1,
         sparse_hash_map< std::string, Read > &readsMap_2,

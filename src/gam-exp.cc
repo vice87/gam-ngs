@@ -26,11 +26,25 @@
 #include "Merge.hpp"
 #include "CreateBlocks.hpp"
 
+#include <boost/filesystem.hpp>
+
 using namespace modules;
 
 int main(int argc, char *argv[])
 {
-    OptionsStandard options(argc,argv);
+	/*boost::filesystem::path p(argv[1]);
+
+	if( boost::filesystem::exists(p) and boost::filesystem::is_directory(p) )
+	{
+		std::cout << "directory " << p << " already exists.\n";
+	}
+	else
+	{
+		if( boost::filesystem::create_directory(p) ) std::cout << "directory " << p << " has been created\n";
+		else std::cout << "creation of directory " << p << " failed\n";
+	}*/
+
+	OptionsStandard options(argc,argv);
 
     if( options.program_mode == Options::program_create_blocks )
     {

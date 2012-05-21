@@ -157,6 +157,7 @@ std::list< PairedContig >& buildPctg(
 
 
 std::list< PairedContig >& buildPctg(
+		ThreadedBuildPctg *tbp,
         const AssemblyGraph &ag,
         const ExtContigMemPool *masterPool,
         const ExtContigMemPool *slavePool,
@@ -165,7 +166,7 @@ std::list< PairedContig >& buildPctg(
         std::list< PairedContig > &pctgList,
 		const Options &options )
 {
-    PctgBuilder builder( masterPool, slavePool, masterRefVector, slaveRefVector );
+    PctgBuilder builder( tbp, masterPool, slavePool, masterRefVector, slaveRefVector );
 
     //std::cout << "Building pctg " << pctgId << std::endl << std::flush;
 
@@ -187,7 +188,7 @@ void generateSingleCtgPctgs(
     std::list<IdType>::const_iterator i;
     for( i = ctgIds.begin(); i != ctgIds.end(); i++ )
     {
-        PctgBuilder builder( masterPool, NULL, masterRefVector, NULL );
+        PctgBuilder builder( NULL, masterPool, NULL, masterRefVector, NULL );
         PairedContig pctg = builder.initByContig( pctgId, std::make_pair((IdType)0,*i) );
 
         if( pctg.size() > 0 )

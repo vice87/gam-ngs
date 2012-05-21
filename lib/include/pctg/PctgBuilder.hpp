@@ -13,7 +13,7 @@
 #include <pthread.h>
 
 #include "api/BamAux.h"
-#include "api/BamReader.h"
+#include "api/BamMultiReader.h"
 
 #include "types.hpp"
 #include "alignment/my_alignment.hpp"
@@ -23,6 +23,8 @@
 #include "pctg/PairedContig.hpp"
 #include "pctg/constraints_disattended.hpp"
 #include "pool/HashContigMemPool.hpp"
+
+#include "ThreadedBuildPctg.hpp"
 
 #include "Options.hpp"
 using namespace options;
@@ -51,10 +53,14 @@ class PctgBuilder
 {
 
 private:
-    const BamTools::RefVector *_masterRefVector;        //!< Reference to the id->name vector of the master contigs.
+	ThreadedBuildPctg *_tbp;
+
+	const BamTools::RefVector *_masterRefVector;        //!< Reference to the id->name vector of the master contigs.
     const std::vector<BamTools::RefVector> *_slaveRefVector;         //!< Reference to the id->name vector of the slave contigs.
+
     const ExtContigMemPool *_masterPool;                   //!< Reference to the master contig pool
     const ExtContigMemPool *_slavePool;                    //!< Reference to the slave contig pool
+
     UIntType _maxAlignment;                             //!< Maximum alignment size
     UIntType _maxPctgGap;                               //!< Maximum paired contig gaps
     UIntType _maxCtgGap;                                //!< Maximum contig gaps
@@ -69,6 +75,7 @@ public:
      * \param slaveRefVector reference to the vector id->name of slave contigs
      */
     PctgBuilder(
+			ThreadedBuildPctg *tbp = NULL,
             const ExtContigMemPool *masterPool = NULL,
             const ExtContigMemPool *slavePool = NULL,
             const BamTools::RefVector *masterRefVector = NULL,
@@ -255,6 +262,19 @@ public:
 		bool isMasterCtg,
 		const std::list<Block> &blocks_list) const;
 
+	void alignBlocks(
+		const PairedContig &pctg,
+		const uint64_t &pctgStart,
+		const Contig &ctg,
+		const uint64_t &ctgStart,
+		const std::list<Block> &blocks_list,
+		const bool &isCtgInPctgRev,
+		const bool &isMasterCtg,
+		std::vector< MyAlignment > &alignments,
+		std::vector< int64_t > &pctg_gaps,
+		std::vector< int64_t > &ctg_gaps ) const;
+
+	bool is_good( const std::vector<MyAlignment> &align, uint64_t min_align_len = MIN_ALIGNMENT_LEN ) const;
 	bool is_good( const MyAlignment &align, uint64_t min_align_len = MIN_ALIGNMENT_LEN ) const;
 };
 

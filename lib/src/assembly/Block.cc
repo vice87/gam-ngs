@@ -264,7 +264,7 @@ std::vector<Block> Block::filterBlocksByLength(
 
 void Block::findBlocks(
         std::vector< Block > &outblocks,
-        BamReader &bamReader,
+        MultiBamReader &bamReader,
         const int minBlockSize,
         sparse_hash_map< std::string, Read > &readsMap_1,
         sparse_hash_map< std::string, Read > &readsMap_2,
@@ -288,17 +288,17 @@ void Block::findBlocks(
     int32_t nh, xt; // molteplicità delle read (nh->standard, xt->bwa)
 
     // Costruzione dei blocchi considerando le reads del master (ordinate per contig e posizione in esso)
-    while( bamReader.GetNextAlignmentCore(align) )
+    while( bamReader.GetNextAlignment(align,true) )
     {
-        // ignoro le reads che non sono mappate
-        if( !align.IsMapped() ) continue;
+        // ignoro le reads che non sono mappate o di cattiva qualità
+        if( !align.IsMapped() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
 
         // carico i campi di tipo stringa
-        if( !align.BuildCharData() ) continue;
+        //if( !align.BuildCharData() ) continue;
 
         // se la molteplicità non è stata definita, assumo che sia pari ad 1
-        if( !align.GetTag(std::string("NH"),nh) ) nh = 1;
-        if( !align.GetTag(std::string("XT"),xt) ) xt = 'U';
+        if( !align.GetTag(std::string("NH"),nh) ) nh = 1;	// standard SAM format field
+        if( !align.GetTag(std::string("XT"),xt) ) xt = 'U'; // bwa field
 
         // scarto read con molteplicità maggiore di 1
         if( nh != 1 || xt != 'U' ) continue;

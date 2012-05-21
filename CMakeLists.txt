@@ -3,7 +3,7 @@ project(GamNgs)
 
 add_definitions( -Wno-deprecated )
 
-find_package(Boost COMPONENTS graph program_options REQUIRED)
+find_package(Boost COMPONENTS graph program_options system filesystem REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 
@@ -15,7 +15,7 @@ include_directories("${PROJECT_SOURCE_DIR}/lib/murmur3")
 include_directories( ${Boost_INCLUDE_DIRS} )
 
 # sorgenti da compilare
-file(GLOB GAMNGSLIB_SRC_FILES 
+file(GLOB GAMNGSLIB_SRC_FILES
     ${PROJECT_SOURCE_DIR}/lib/src/alignment/ablast_new.cc
     ${PROJECT_SOURCE_DIR}/lib/src/alignment/my_alignment.cc
     ${PROJECT_SOURCE_DIR}/lib/src/alignment/full_smith_waterman.cc
@@ -26,6 +26,7 @@ file(GLOB GAMNGSLIB_SRC_FILES
     ${PROJECT_SOURCE_DIR}/lib/src/assembly/Read.cc
     ${PROJECT_SOURCE_DIR}/lib/src/assembly/Frame.cc
     ${PROJECT_SOURCE_DIR}/lib/src/assembly/Block.cc
+    ${PROJECT_SOURCE_DIR}/lib/src/bam/MultiBamReader.cc
     ${PROJECT_SOURCE_DIR}/lib/src/graphs/AssemblyGraph.cc
     ${PROJECT_SOURCE_DIR}/lib/src/graphs/PairingEvidencesGraph.cc
     ${PROJECT_SOURCE_DIR}/lib/src/pctg/BestPctgCtgAlignment.cc
@@ -73,11 +74,17 @@ add_executable(n50 src/n50.cc)
 add_executable(pe-stats src/pe-stats.cc)
 target_link_libraries(pe-stats BamTools)
 
-add_executable(hash-test src/test/hash_test.cc lib/src/assembly/Read.cc lib/src/UtilityFunctions.cc lib/murmur3/murmur3.cc)
+add_executable(hash-test src/test/hash_test.cc lib/src/bam/MultiBamReader.cc lib/src/assembly/Read.cc lib/src/UtilityFunctions.cc lib/murmur3/murmur3.cc)
 target_link_libraries(hash-test BamTools)
 
 add_executable(pe-test src/test/pe-test.cc)
 target_link_libraries(pe-test BamTools)
+
+add_executable(bam-stats lib/src/UtilityFunctions.cc lib/src/bam/MultiBamReader.cc src/test/bam-stats.cc)
+target_link_libraries(bam-stats BamTools)
+
+#add_executable(blocks-coverage lib/src/UtilityFunctions.cc lib/src/bam/MultiBamReader.cc lib/src/assembly/Block.cc lib/src/assembly/Frame.cc lib/src/assembly/Read.cc src/test/blocks-coverage.cc)
+#target_link_libraries(blocks-coverage BamTools)
 
 # executable for testing new aligners
 #add_executable(new-aligners src/test/new-alignments.cc
@@ -91,11 +98,11 @@ target_link_libraries(pe-test BamTools)
 #)
 
 # executable for memory usage debugging
-#add_executable(memory-usage src/test/memory-usage.cc 
-#    lib/src/pool/HashContigMemPool.cc 
-#    lib/src/pool/ContigMemPool.cc 
-#    lib/src/assembly/contig.cc 
-#    lib/src/assembly/io_contig.cc 
+#add_executable(memory-usage src/test/memory-usage.cc
+#    lib/src/pool/HashContigMemPool.cc
+#    lib/src/pool/ContigMemPool.cc
+#    lib/src/assembly/contig.cc
+#    lib/src/assembly/io_contig.cc
 #    lib/src/assembly/nucleotide.cc
 #    lib/src/alignment/alignment.cc
 #)

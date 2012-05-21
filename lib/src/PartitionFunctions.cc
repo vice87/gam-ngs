@@ -16,6 +16,8 @@
 #include "graphs/AssemblyGraph.hpp"
 #include "pctg/PairedContig.hpp"
 
+extern std::ofstream _g_statsFile;
+
 std::list< std::vector<Block> >
 partitionBlocks( const std::vector<Block> &blocks, const Options &options )
 {
@@ -31,6 +33,8 @@ partitionBlocks( const std::vector<Block> &blocks, const Options &options )
             partitionBlocksByPairedContigs( blocks );
 
     int z = 1; // assembly graph counter
+
+    uint32_t ag_forks = 0, ag_linears = 0, ag_cycles = 0; // counters for the different types of assemblies's graphs.
 
     // for each partition of blocks
     std::vector< std::vector<Block> >::iterator pcb;
@@ -67,6 +71,8 @@ partitionBlocks( const std::vector<Block> &blocks, const Options &options )
             // DEBUG - Assembly graph with forks
             if( num_forks >= 1 )
 			{
+				ag_forks++;
+
 				std::stringstream ff1;
 				ff1 << "./gam_graphs/AssemblyGraph_" << z;
 				if( num_forks > 1 ) ff1 << "_forks.dot"; else ff1 << "_fork.dot";
@@ -308,6 +314,8 @@ partitionBlocks( const std::vector<Block> &blocks, const Options &options )
 
             if( num_forks == 0 )
             {
+				ag_linears++;
+
                 std::stringstream ff2;
                 ff2 << "./gam_graphs/AssemblyGraph_" << z << "_linear.dot";
                 std::ofstream ss2( ff2.str().c_str() );
@@ -324,6 +332,8 @@ partitionBlocks( const std::vector<Block> &blocks, const Options &options )
         }
         catch( boost::not_a_dag ) // if the graph is not a DAG, remove cycles.
         {
+			ag_cycles++;
+
             /* DEBUG - Assembly graph with cycles */
             std::stringstream ff1;
             ff1 << "./gam_graphs/AssemblyGraph_" << z << "_cyclic.dot";
@@ -344,6 +354,12 @@ partitionBlocks( const std::vector<Block> &blocks, const Options &options )
             blocksList.push_back(filtered);
         }*/
     }
+
+    _g_statsFile << "[graphs stats]\n"
+		<< "Linears = " << ag_linears << "\n"
+		<< "Forks = " << ag_forks << "\n"
+		<< "Cyclics = " << ag_cycles << "\n"
+		<< std::endl;
 
     return blocksList;
 }

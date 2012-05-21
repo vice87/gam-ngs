@@ -9,6 +9,7 @@
 #define	HASHCONTIGMEMPOOL_HPP
 
 #include <map>
+#include <set>
 
 #include "api/BamAux.h"
 
@@ -24,8 +25,12 @@ private:
 public:
     HashContigMemPool();
 
+	uint64_t size() const;
+
     const Contig& get( const std::string &id ) const;
     void set( const std::string &id, const Contig &ctg );
+
+	void getNames(std::set<std::string> &ctgNames) const;
 
     void loadPool(const std::string &file, RefMap &refMap);
     void loadPool(const char *file, RefMap &refMap);
@@ -52,8 +57,14 @@ public:
     ExtContigMemPool();
     ExtContigMemPool( size_t num );
 
+	uint64_t size() const;
+	uint64_t size( size_t aId ) const;
+
     const Contig& get( const size_t aId, const std::string &name ) const;
     void set( const size_t aId, const std::string &name, const Contig &ctg );
+
+	// carica i nomi dei contig nel pool (con assembly id specificato) in una struttura di tipo set
+	void getNames(const size_t aId, std::set<std::string> &ctgNames) const;
 
     void loadPool(const size_t aId, const std::string &file, RefMap &refMap);
 

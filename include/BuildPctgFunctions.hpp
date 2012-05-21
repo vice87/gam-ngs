@@ -36,6 +36,7 @@ std::list< PairedContig >& buildPctg(
 
 
 std::list< PairedContig >& buildPctg(
+		ThreadedBuildPctg *tbp,
         const AssemblyGraph &ag,
         const ExtContigMemPool *masterPool,
         const ExtContigMemPool *slavePool,

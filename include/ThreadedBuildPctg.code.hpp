@@ -91,6 +91,8 @@ ThreadedBuildPctg::ThreadedBuildPctg(
         HashContigMemPool* pctgPool,
         const ExtContigMemPool *masterPool,
         const ExtContigMemPool *slavePool,
+		MultiBamReader &masterBam,
+		std::vector< MultiBamReader > &slaveBams,
         const BamTools::RefVector *masterRefVector,
         const std::vector< BamTools::RefVector > *slaveRefVector,
 		const Options &options ):
@@ -99,6 +101,8 @@ ThreadedBuildPctg::ThreadedBuildPctg(
                 _pctgPool(pctgPool),
                 _masterPool(masterPool),
                 _slavePool(slavePool),
+                _masterBam(masterBam),
+                _slaveBams(slaveBams),
                 _masterRefVector(masterRefVector),
                 _slaveRefVector(slaveRefVector),
                 _removedCtgs(masterRefVector->size(),false),
@@ -110,8 +114,13 @@ ThreadedBuildPctg::ThreadedBuildPctg(
 
     this->_pctgPool->clear();
 
-    pthread_mutex_init( &(this->_mutexRemoveCtgId), NULL );
+	pthread_mutex_init( &(this->_mutexRemoveCtgId), NULL );
     pthread_mutex_init( &(this->_mutex), NULL );
+
+	pthread_mutex_init( &(this->_mutexMasterBam), NULL );
+
+	_mutexSlaveBams.resize( _slaveBams.size() );
+	for( size_t i=0; i < _mutexSlaveBams.size(); i++ ) pthread_mutex_init( &(this->_mutexSlaveBams[i]), NULL );
 }
 
 
@@ -142,6 +151,151 @@ ThreadedBuildPctg::run()
 }
 
 
+double ThreadedBuildPctg::computeZScore( const std::pair<uint64_t,uint64_t> &ctgId, uint32_t start, uint32_t end,	bool isMaster )
+{
+	uint32_t libs,idx;
+	BamReader* bamReader;
+	double lib_isize_mean, lib_isize_std;
+
+	double Z_stats = 0;
+	uint32_t minInsertNum = 5;
+
+	if( isMaster )
+	{
+		libs = _masterBam.size();
+
+		uint64_t isize_num;
+		for( size_t i=0; i < libs; i++ ) // find best library
+		{
+			if( i == 0 )
+			{
+				isize_num = _masterBam.getISizeNum(i);
+				idx = i;
+				lib_isize_mean = _masterBam.getISizeMean(i);
+				lib_isize_std = _masterBam.getISizeStd(i);
+				bamReader = _masterBam.getBamReader(i);
+			}
+			else if( _masterBam.getISizeNum(i) > isize_num )
+			{
+				isize_num = _masterBam.getISizeNum(i);
+				idx = i;
+				lib_isize_mean = _masterBam.getISizeMean(i);
+				lib_isize_std = _masterBam.getISizeStd(i);
+				bamReader = _masterBam.getBamReader(i);
+			}
+		}
+	}
+	else // not isMaster
+	{
+		libs = _slaveBams.at(ctgId.first).size();
+
+		uint64_t isize_num;
+		for( size_t i=0; i < libs; i++ ) // find best library
+		{
+			if( i == 0 )
+			{
+				isize_num = _slaveBams.at(ctgId.first).getISizeNum(i);
+				idx = i;
+				lib_isize_mean = _slaveBams.at(ctgId.first).getISizeMean(i);
+				lib_isize_std = _slaveBams.at(ctgId.first).getISizeStd(i);
+				bamReader = _slaveBams.at(ctgId.first).getBamReader(i);
+			}
+			else if( _slaveBams.at(ctgId.first).getISizeNum(i) > isize_num )
+			{
+				isize_num = _slaveBams.at(ctgId.first).getISizeNum(i);
+				idx = i;
+				lib_isize_mean = _slaveBams.at(ctgId.first).getISizeMean(i);
+				lib_isize_std = _slaveBams.at(ctgId.first).getISizeStd(i);
+				bamReader = _slaveBams.at(ctgId.first).getBamReader(i);
+			}
+		}
+	}
+
+	// lock mutex for accessing the bam file
+	if( isMaster ) pthread_mutex_lock(&(this->_mutexMasterBam)); else pthread_mutex_lock(&(this->_mutexSlaveBams[ctgId.first]));
+
+	bamReader->SetRegion( ctgId.second, start, ctgId.second, end+1 );
+
+	BamAlignment align;
+	uint64_t inserts=0, spanCov=0;
+
+	while( bamReader->GetNextAlignmentCore(align) ) // for each read in the region
+	{
+		if( !align.IsMapped() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ||
+			!align.IsMateMapped() || align.RefID != align.MateRefID ) continue;
+
+		if( align.Position < start ) continue;
+
+		if( (align.MatePosition < start && align.MatePosition > end) || align.IsFirstMate()  )
+		{
+			if( align.Position < align.MatePosition /*&& !align.IsReverseStrand() && align.IsMateReverseStrand()*/ )
+			{
+				uint32_t iSize = (align.MatePosition + align.Length) - align.Position;
+				if( iSize < MIN_ISIZE || iSize > MAX_ISIZE ) continue;
+
+				inserts++;
+				spanCov += iSize;
+			}
+			else if( align.Position >= align.MatePosition /*&& align.IsReverseStrand() && !align.IsMateReverseStrand()*/ )
+			{
+				int32_t alignmentLength = align.GetEndPosition() - align.Position;
+				uint32_t iSize = (align.Position + alignmentLength) - align.MatePosition;
+				if( iSize < MIN_ISIZE || iSize > MAX_ISIZE ) continue;
+
+				inserts++;
+				spanCov += iSize;
+			}
+		}
+	}
+
+	// unlock mutex used for accessing the bam file
+	if( isMaster ) pthread_mutex_unlock(&(this->_mutexMasterBam)); else pthread_mutex_unlock(&(this->_mutexSlaveBams[ctgId.first]));
+
+	if( inserts > minInsertNum )
+	{
+		double localMean = spanCov/(double)inserts;
+		Z_stats   = (localMean - lib_isize_mean)/(double)(lib_isize_std/sqrt(inserts));
+	}
+
+	return Z_stats;
+}
+
+
+double ThreadedBuildPctg::computeReadCoverage( std::pair<uint64_t,uint64_t> &ctgId, uint32_t start, uint32_t end, bool isMaster )
+{
+	BamReader* bamReader;
+	double coverage = 0;
+
+	if( isMaster ) bamReader = _masterBam.getBamReader(0); else bamReader = _slaveBams.at(ctgId.first).getBamReader(0);
+
+	// lock mutex for accessing the bam file
+	if( isMaster ) pthread_mutex_lock(&(this->_mutexMasterBam)); else pthread_mutex_lock(&(this->_mutexSlaveBams[ctgId.first]));
+
+	bamReader->SetRegion( ctgId.second, start, ctgId.second, end+1 );
+
+	BamAlignment align;
+	int64_t lengthSum = 0;
+
+	while( bamReader->GetNextAlignmentCore(align) ) // for each read in the region
+	{
+		if( !align.IsMapped() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
+
+		// TODO: tenere conto solo della porzione di read che si sovrappone alla regione definita
+		int32_t alignmentLength = align.GetEndPosition() - align.Position;
+		lengthSum += alignmentLength;
+	}
+
+	// unlock mutex used for accessing the bam file
+	if( isMaster ) pthread_mutex_unlock(&(this->_mutexMasterBam)); else pthread_mutex_unlock(&(this->_mutexSlaveBams[ctgId.first]));
+
+	uint64_t region_len = end >= start ? end-start+1 : 0;
+
+	if( region_len != 0 ) coverage = double(lengthSum)/double(region_len);
+
+	return coverage;
+}
+
+
 void*
 buildPctgThread(void* argv)
 {
@@ -161,7 +315,7 @@ buildPctgThread(void* argv)
             {
                 std::list< PairedContig > pctgList;
 
-                buildPctg( graph, tbp->_masterPool, tbp->_slavePool,
+                buildPctg( tbp, graph, tbp->_masterPool, tbp->_slavePool,
                         tbp->_masterRefVector, tbp->_slaveRefVector, pctgList, tbp->_options );
 
                 std::list< PairedContig >::iterator pctg = pctgList.begin();

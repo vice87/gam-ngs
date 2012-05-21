@@ -20,9 +20,9 @@ ContigInPctgInfo::ContigInPctgInfo(const IdType& aId, const IdType& ctgId, const
 	_aId(aId), _ctgId(ctgId), _left_cut(0), _right_cut(0)
 {
 	std::pair< uint64_t, uint64_t > start_align;
-	first_match_pos( bestAlign.main(), start_align );
+	first_match_pos( bestAlign[0], start_align );
 
-    this->_size = bestAlign.main().b_size();
+    this->_size = bestAlign[0].b_size();
 	this->_position = int64_t(start_align.first) - int64_t(start_align.second);
     this->_reversed = bestAlign.isCtgReversed();
 }
@@ -30,8 +30,8 @@ ContigInPctgInfo::ContigInPctgInfo(const IdType& aId, const IdType& ctgId, const
 ContigInPctgInfo::ContigInPctgInfo(const IdType& ctgId, const BestPctgCtgAlignment& bestAlign):
 	_ctgId(ctgId), _left_cut(0), _right_cut(0)
 {
-    this->_size = bestAlign.main().b_size();
-    this->_position = bestAlign.main().b_position_in_a();
+    this->_size = bestAlign[0].b_size();
+    this->_position = bestAlign[0].b_position_in_a();
     this->_reversed = bestAlign.isCtgReversed();
 }
 

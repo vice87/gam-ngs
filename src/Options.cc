@@ -24,7 +24,7 @@
 
 namespace options {
 
-void Options::set_defaults() 
+void Options::set_defaults()
 {
 	// command
 	program_mode = program_unknown;
@@ -32,9 +32,10 @@ void Options::set_defaults()
 	// input options
 	minBlockSize = 50;
 	threadsNum = 1;
-	
+	coverageThreshold = 0.75;
+
 	// output options
-	
+
 }
 
 } // end of namespace options

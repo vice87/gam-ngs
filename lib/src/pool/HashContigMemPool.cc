@@ -16,6 +16,13 @@ HashContigMemPool::HashContigMemPool()
     _pool.clear(); //_pool.resize(0);
 }
 
+
+uint64_t HashContigMemPool::size() const
+{
+	return (this->_pool).size();
+}
+
+
 const Contig& HashContigMemPool::get(const std::string& name) const
 {
     ContigMap::const_iterator pos = (this->_pool).find(name);
@@ -27,6 +34,13 @@ const Contig& HashContigMemPool::get(const std::string& name) const
 void HashContigMemPool::set(const std::string &name, const Contig &ctg)
 {
     this->_pool[ name ] = ctg;
+}
+
+
+void HashContigMemPool::getNames(std::set<std::string> &ctgNames) const
+{
+	ContigMap::const_iterator seq = (this->_pool).begin();
+	while( seq != (this->_pool).end() ){ ctgNames.insert(seq->first); ++seq; }
 }
 
 
@@ -150,6 +164,23 @@ ExtContigMemPool::ExtContigMemPool(size_t num) :
         _poolVect(num)
 {}
 
+uint64_t ExtContigMemPool::size() const
+{
+	uint64_t sequences = 0;
+
+	for( size_t i = 0; i < (this->_poolVect).size(); i++ )
+		sequences += (this->_poolVect).at(i).size();
+
+	return sequences;
+}
+
+uint64_t ExtContigMemPool::size( size_t aId ) const
+{
+	if( aId >= (this->_poolVect).size() ) return 0;
+
+	return (this->_poolVect).at(aId).size();
+}
+
 const Contig& ExtContigMemPool::get(const size_t aId, const std::string& name) const
 {
     return _poolVect[aId].get(name);
@@ -158,6 +189,12 @@ const Contig& ExtContigMemPool::get(const size_t aId, const std::string& name) c
 void ExtContigMemPool::set(const size_t aId, const std::string& name, const Contig& ctg)
 {
     _poolVect[aId].set( name, ctg );
+}
+
+void ExtContigMemPool::getNames(const size_t aId, std::set<std::string> &ctgNames) const
+{
+	ctgNames.clear();
+	_poolVect[aId].getNames(ctgNames);
 }
 
 void ExtContigMemPool::loadPool(const size_t aId, const std::string& file, RefMap& refMap)

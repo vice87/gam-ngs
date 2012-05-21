@@ -36,6 +36,7 @@
 #include "api/BamReader.h"
 #include "api/BamAlignment.h"
 
+#include "bam/MultiBamReader.hpp"
 #include "assembly/Read.hpp"
 #include "assembly/Block.hpp"
 #include "UtilityFunctions.hpp"
@@ -51,12 +52,11 @@ void CreateBlocks::execute(const Options &options)
 	struct stat st;
 	time_t tStart = time(NULL);
 
-	BamReader masterBam;
-	masterBam.Open( options.masterBamFile );
+	MultiBamReader masterBam; // master (multi) BAM reader
 
-	// open BAM index file if it exists
-	std::string masterBamIndexFile = options.masterBamFile + ".bai";
-	if( stat(masterBamIndexFile.c_str(),&st)  == 0 ) masterBam.OpenIndex( masterBamIndexFile );
+	std::vector< std::string > masterBamFiles; // vector of master BAM filenames
+	loadFileNames( options.masterBamFiles, masterBamFiles );
+	masterBam.Open( masterBamFiles ); // open master BAM files
 
 	std::cout << "[loading reads in memory]" << std::endl;
 
@@ -66,6 +66,10 @@ void CreateBlocks::execute(const Options &options)
 
 	// load only useful reads of the slave assembly
 	Read::loadReadsMap( masterBam, masterReadMap_1, masterReadMap_2, masterCoverage );
+
+	// output insert size statistics for master assembly
+	std::string isize_stats_file = options.masterBamFiles + ".isize";
+	masterBam.writeStatsToFile( isize_stats_file );
 
 	time_t tEnd = time(NULL);
 	std::cout << "[reads loaded in " << formatTime(tEnd-tStart) << "]" << std::endl;
@@ -77,12 +81,19 @@ void CreateBlocks::execute(const Options &options)
 
 	for( unsigned int i=0; i < options.slaveBamFiles.size(); i++ )
 	{
-		BamReader slaveBam;
-		slaveBam.Open( options.slaveBamFiles[i] );
+		std::vector< std::string > slaveBamFiles; // vector of slave BAM filenames (of the current fp assembly)
+
+		MultiBamReader slaveBam; // slave (multi) BAM reader
+		loadFileNames( options.slaveBamFiles[i], slaveBamFiles );
+		slaveBam.Open( slaveBamFiles ); // open current fp slave BAM files
 
 		std::vector< std::vector<uint32_t> > slaveCoverage;
 		Block::findBlocks( blocks, slaveBam, options.minBlockSize, masterReadMap_1, masterReadMap_2, slaveCoverage, sid );
 		Block::updateCoverages( blocks, masterCoverage, slaveCoverage );
+
+		// output insert size statistcs for each slave assembly
+		isize_stats_file = options.masterBamFiles + ".isize";
+		slaveBam.writeStatsToFile( isize_stats_file );
 
 		sid++;
 	}

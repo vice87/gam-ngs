@@ -1,6 +1,8 @@
 
 #include "UtilityFunctions.hpp"
 #include <string.h>
+#include <iostream>
+#include <fstream>
 #include <sstream>
 #include <stdio.h>
 
@@ -10,7 +12,7 @@ char * getPathBaseName( char *path )
     return ptr ? ptr + 1 : (char *)path;
 }
 
-std::string getPathBaseName( std::string path )
+std::string getPathBaseName( const std::string path )
 {
     size_t found = path.rfind ( '/' );
     return (found != std::string::npos) ? path.substr(found+1) : std::string( path.c_str() );
@@ -34,6 +36,20 @@ std::string formatTime( time_t seconds )
     out << s << "s";
 
     return out.str();
+}
+
+void loadFileNames( const std::string &input_file, std::vector< std::string > &names )
+{
+	std::string line; // read line
+	std::ifstream ifs( input_file.c_str() );
+
+	while( ifs.good() )
+	{
+		getline(ifs,line);
+		if( line != "" ) names.push_back(line);
+	}
+
+	ifs.close();
 }
 
 int getMaxRSS(int64_t *maxrsskb)

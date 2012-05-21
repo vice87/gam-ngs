@@ -36,11 +36,11 @@ public:
 
 	virtual bool process(int argc, char *argv[]) = 0;
 
-	typedef enum 
-        { 
+	typedef enum
+        {
             program_unknown,
             program_create_blocks,
-            program_merge 
+            program_merge
         } __attribute__((packed)) program_mode_t;
 
 	program_mode_t program_mode;
@@ -49,25 +49,29 @@ public:
 	char **argv;
 
 	// input options
-	std::string masterBamFile;
+	std::string masterBamFiles;
 	std::vector< std::string > slaveBamFiles;
-        
+
+	std::string masterISizeFiles;
+	std::vector< std::string > slaveISizeFiles;
+
         std::string masterMpBamFile;
         std::vector< std::string > slaveMpBamFiles;
-	
+
 	std::string masterNameSortedBamFile;
 	std::string slaveNameSortedBamFile;
-	
+
 	std::string blocksFile;
-	
+
 	std::string masterFastaFile;
 	std::vector< std::string > slaveFastaFiles;
-	
+
 	int minBlockSize;
 	int threadsNum;
-	
+	double coverageThreshold;
+
 	std::string readsPrefix;
-	
+
 	// output options
 	std::string outputFilePrefix;
 

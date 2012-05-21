@@ -54,6 +54,7 @@ BandedSmithWaterman::find_alignment(
     };
 
     if( end_b < begin_b ) return MyAlignment();
+	if( end_b >= b.size() ) end_b = b.size()-1;
 
     size_type x_size = end_b - begin_b + 1;
 	x_size = std::min( x_size, a.size() + this->_band_size - begin_a );

@@ -9,18 +9,21 @@
 #include "alignment/ablast_new.hpp"
 #include "alignment/banded_smith_waterman.hpp"
 
-//pthread_mutex_t g_badAlignMutex;
 //std::ofstream g_badAlignStream;
-//std::vector<uint64_t> ext_fpi;
-//std::vector<uint64_t> ext_fpi_2;
 //std::ofstream ext_ba_desc_stream;
 //uint64_t ext_ba_count;
 
+pthread_mutex_t g_badAlignMutex;
+std::vector<uint64_t> ext_fpi;
+std::vector<uint64_t> ext_fpi_2;
+
 PctgBuilder::PctgBuilder(
+		ThreadedBuildPctg *tbp,
         const ExtContigMemPool *masterPool,
         const ExtContigMemPool *slavePool,
         const BamTools::RefVector *masterRefVector,
         const std::vector<BamTools::RefVector> *slaveRefVector) :
+				_tbp(tbp),
                 _masterPool(masterPool), _slavePool(slavePool),
                 _masterRefVector(masterRefVector), _slaveRefVector(slaveRefVector),
                 _maxAlignment(DEFAULT_MAX_SEARCHED_ALIGNMENT),
@@ -298,12 +301,12 @@ PctgBuilder::mergeContig(
 
 	//g_badAlignStream << "MERGING: " << firstMasterFrame.getContigId() << " -- " << firstSlaveFrame.getContigId() << std::endl;
 
-    // find best alignment between ctg and pctg.
+	// find best alignment between ctg and pctg.
 	BestPctgCtgAlignment bestAlign(
 		this->findBestAlignment(pctg,pctg.getContigInfo(secondCtgId,!mergeMasterCtg),startPos,endPos,ctg,mergeMasterCtg,blocks_list)
 	);
 
-	if( bestAlign.main().homology() < MIN_HOMOLOGY )
+	if( bestAlign.main_homology() < MIN_HOMOLOGY )
 	{
 		uint64_t left_cut = pctg.getContigInfo(secondCtgId,!mergeMasterCtg).getLeftCut();
 		uint64_t right_cut = pctg.getContigInfo(secondCtgId,!mergeMasterCtg).getRightCut();
@@ -322,10 +325,28 @@ PctgBuilder::mergeContig(
 	int64_t ctg_end = mergeMasterCtg ? std::max(firstMasterFrame.getEnd(),lastMasterFrame.getEnd()) : std::max(firstSlaveFrame.getEnd(),lastSlaveFrame.getEnd());
 
 	// if the alignment is not good enough, return the paired contig
-    if( bestAlign.main().homology() < MIN_HOMOLOGY )
+	if( bestAlign.main_homology() < MIN_HOMOLOGY )
     {
-		//pthread_mutex_lock(&g_badAlignMutex);
-		//ext_fpi_2[ blocks_list.size() ]++;
+		std::pair<uint64_t,uint64_t> masterId = std::make_pair( firstMasterFrame.getAssemblyId(), firstMasterFrame.getContigId() );
+		std::pair<uint64_t,uint64_t> slaveId = std::make_pair( firstSlaveFrame.getAssemblyId(), firstSlaveFrame.getContigId() );
+
+		double masterZscore = _tbp->computeZScore( masterId, (mergeMasterCtg ? ctg_beg : beginInCtg), (mergeMasterCtg ? ctg_end : endInCtg), true );
+		double slaveZscore = _tbp->computeZScore( slaveId, (!mergeMasterCtg ? ctg_beg : beginInCtg), (!mergeMasterCtg ? ctg_end : endInCtg), false );
+
+		pthread_mutex_lock(&g_badAlignMutex);
+
+		if( blocks_list.size() < 1000 ) ext_fpi_2[ blocks_list.size() ]++;
+
+		std::cerr << "bad main alignment (" << firstBlock.getMasterFrame().getContigId() << "," << firstBlock.getSlaveFrame().getContigId() << ")\n";
+		std::cerr << "\t=> Start/End = pctg(" << startPos << "," << endPos << ") " << (mergeMasterCtg ? "master(" : "slave(") << ctg_beg << "," << ctg_end << ")\t";
+		std::cerr << "Homology = " << bestAlign.main_homology() << "\tBegin = " << bestAlign[0].begin_a() << "/" << bestAlign[0].begin_b() << " Rev = " << bestAlign.isCtgReversed() << std::endl;
+		std::cerr << "\t=> Regions = ([" << (mergeMasterCtg ? ctg_beg : beginInCtg) << "," << (mergeMasterCtg ? ctg_end : endInCtg) << "] -- ["
+		<< (!mergeMasterCtg ? ctg_beg : beginInCtg) << "," << (!mergeMasterCtg ? ctg_end : endInCtg) << "])" << std::endl;
+		std::cerr << "\t=> Z-Scores = (" << masterZscore << "," << slaveZscore << ")" << std::endl;
+		std::cerr << "\t=> Blocks = " << blocks_list.size() << std::endl;
+		std::cerr << std::endl;
+
+		pthread_mutex_unlock(&g_badAlignMutex);
 
 		/*if( blocks_list.size() == 2 )
 		{
@@ -395,7 +416,8 @@ PctgBuilder::mergeContig(
     else if( bestAlign.left().homology() < MIN_HOMOLOGY_2 || bestAlign.right().homology() < MIN_HOMOLOGY_2 )
 	{
 		//pthread_mutex_lock(&g_badAlignMutex);
-		//ext_fpi_2[ blocks_list.size() ]++;
+		//if( blocks_list.size() < 1000 )  ext_fpi_2[ blocks_list.size() ]++;
+		//pthread_mutex_unlock(&g_badAlignMutex);
 
 		//g_badAlignStream << "good blocks alignment:\t(0," << firstBlock.getMasterFrame().getContigId() << ")\t("
 		//	<< firstBlock.getSlaveFrame().getAssemblyId() << "," << firstBlock.getSlaveFrame().getContigId() << ")"
@@ -412,9 +434,9 @@ PctgBuilder::mergeContig(
 		return pctg;
 	}
 
-	//pthread_mutex_lock(&g_badAlignMutex);
-	//ext_fpi[ blocks_list.size() ]++;
-	//pthread_mutex_unlock(&g_badAlignMutex);
+	pthread_mutex_lock(&g_badAlignMutex);
+	if( blocks_list.size() < 1000 )  ext_fpi[ blocks_list.size() ]++;
+	pthread_mutex_unlock(&g_badAlignMutex);
 
     // avoid to overlap primary assembly contigs
     /*if( mergeMasterCtg )
@@ -451,8 +473,8 @@ PairedContig& PctgBuilder::mergeCtgInPos(
 
 	ContigInPctgInfo& ctgInPctgInfo = mergeMaster ? pctg.getSlaveCtgMap()[ctgInPctgId] : pctg.getMasterCtgMap()[ctgInPctgId];
 
-	first_match_pos( alignment.main(), start_align );
-	last_match_pos( alignment.main(), end_align );
+	first_match_pos( alignment[0], start_align );
+	last_match_pos( alignment[alignment.size()-1], end_align );
 
 	// if possible extend the pctg from the left
 	if( start_align.second > start_align.first )
@@ -474,11 +496,17 @@ PairedContig& PctgBuilder::mergeCtgInPos(
 	}
 
 	// if ctg contains less Ns, update the central part of pctg
-	uint64_t pctg_n = 0, ctg_n = 0;
-	for( uint64_t i = start_align.first; i <= end_align.first; i++ ) if( char(pctg[i]) == 'N' ) pctg_n++;
-	for( uint64_t i = start_align.second; i <= end_align.second; i++ ) if( char(ctg[i]) == 'N' ) ctg_n++;
+	//uint64_t pctg_n = 0, ctg_n = 0;
+	//for( uint64_t i = start_align.first; i <= end_align.first; i++ ) if( char(pctg[i]) == 'N' ) pctg_n++;
+	//for( uint64_t i = start_align.second; i <= end_align.second; i++ ) if( char(ctg[i]) == 'N' ) ctg_n++;
 
-	if( ctg_n <= pctg_n )
+	double pctgZscore = (this->_tbp)->computeZScore( ctgInPctgId, start_align.first, end_align.first, !mergeMaster );
+	double ctgZscore = (this->_tbp)->computeZScore( ctgId, start_align.second, end_align.second, mergeMaster );
+
+	if(pctgZscore < 0) pctgZscore = -pctgZscore;
+	if(ctgZscore < 0) ctgZscore = -ctgZscore;
+
+	if( ctgZscore < pctgZscore ) //if( ctg_n <= pctg_n )
 	{
 		pctg = this->updatePctgWithCtg( pctg, ctg, ctgInPctgInfo, start_align, end_align );
 
@@ -590,6 +618,7 @@ BestPctgCtgAlignment PctgBuilder::findBestAlignment(
 	bool reversed = pctgInfo.isReversed(); // whether the contig inside the pctg is reversed or not.
 	uint64_t con_evid = 0, dis_evid = 0;
 	uint64_t mf_len = 0, sf_len = 0; // sum of master/slave frames lengths
+	uint32_t blocks_num = blocks_list.size();
 
 	// compute the probability of ctg to be reverse complemented respect to the contig inside the pctg
 	for( std::list<Block>::const_iterator b = blocks_list.begin(); b != blocks_list.end(); b++ )
@@ -639,15 +668,25 @@ BestPctgCtgAlignment PctgBuilder::findBestAlignment(
 	BandedSmithWaterman aligner( bsw_band ); //ABlast aligner; //(this->_maxAlignment, this->_maxPctgGap, this->_maxCtgGap);
 	MyAlignment align, bad_align(0), good_align(100);
 
+	//MyAlignment best_align;
+	bool best_align_rev;
+
 	bool good_align_found = false;
 	bool is_ctg_rev = false;
+
+	std::vector< MyAlignment > aligns;
+	std::vector< int64_t > pctg_gaps, ctg_gaps;
 
 	// contigs more likely have the same orientation
 	if( (con_prob >= 0.5 && !reversed) || (con_prob <= 0.5 && reversed) )
 	{
-		align = aligner.find_alignment( (Contig)pctg, startPos, pctg.size()-1, ctg, startInCtg, endInCtg );
+		// new alignments (one for each block)
+		this->alignBlocks( pctg, startPos, ctg, startInCtg, blocks_list, reversed, isMasterCtg, aligns, pctg_gaps, ctg_gaps );
 
-		if( this->is_good( align, threshold ) )
+		/*align = aligner.find_alignment( (Contig)pctg, startPos, pctg.size()-1, ctg, startInCtg, endInCtg );
+		best_align = align; best_align_rev = false;*/
+
+		if( this->is_good( aligns, threshold ) )
 		{
 			good_align_found = true;
 			is_ctg_rev = false;
@@ -667,10 +706,14 @@ BestPctgCtgAlignment PctgBuilder::findBestAlignment(
 			startInCtg = ctg.size() - endInCtg - 1;
 			endInCtg = ctg.size() - tempInCtg - 1;
 
-			align = aligner.find_alignment( (Contig)pctg, startPos, pctg.size()-1, ctg, startInCtg, endInCtg );
+			// new alignments (one for each block)
+			this->alignBlocks( pctg, startPos, ctg, startInCtg, blocks_list, reversed, isMasterCtg, aligns, pctg_gaps, ctg_gaps );
+
+			/*align = aligner.find_alignment( (Contig)pctg, startPos, pctg.size()-1, ctg, startInCtg, endInCtg );
+			if(align.homology() > best_align.homology()){ best_align = align; best_align_rev = true;}*/
 
 			// if align is good return it
-			if( this->is_good( align, threshold ) ){ good_align_found = true; is_ctg_rev = true; }
+			if( this->is_good( aligns, threshold ) ){ good_align_found = true; is_ctg_rev = true; }
 			/*else
 			{
 				pthread_mutex_lock(&g_badAlignMutex);
@@ -691,9 +734,13 @@ BestPctgCtgAlignment PctgBuilder::findBestAlignment(
 		startInCtg = ctg.size() - endInCtg - 1;
 		endInCtg = ctg.size() - tempInCtg - 1;
 
-		align = aligner.find_alignment( (Contig)pctg, startPos, pctg.size()-1, ctg, startInCtg, endInCtg );
+		// new alignments (one for each block)
+		this->alignBlocks( pctg, startPos, ctg, startInCtg, blocks_list, reversed, isMasterCtg, aligns, pctg_gaps, ctg_gaps );
 
-		if( this->is_good( align, threshold ) )
+		/*align = aligner.find_alignment( (Contig)pctg, startPos, pctg.size()-1, ctg, startInCtg, endInCtg );
+		best_align = align; best_align_rev = true;*/
+
+		if( this->is_good( aligns, threshold ) )
 		{
 			good_align_found = true;
 			is_ctg_rev = true;
@@ -713,9 +760,13 @@ BestPctgCtgAlignment PctgBuilder::findBestAlignment(
 			startInCtg = ctg.size() - endInCtg - 1;
 			endInCtg = ctg.size() - tempInCtg - 1;
 
-			align = aligner.find_alignment( (Contig)pctg, startPos, pctg.size()-1, ctg, startInCtg, endInCtg );
+			// new alignments (one for each block)
+			this->alignBlocks( pctg, startPos, ctg, startInCtg, blocks_list, reversed, isMasterCtg, aligns, pctg_gaps, ctg_gaps );
 
-			if( this->is_good( align, threshold ) ){ good_align_found = true; is_ctg_rev = false; }
+			/*align = aligner.find_alignment( (Contig)pctg, startPos, pctg.size()-1, ctg, startInCtg, endInCtg );
+			if(align.homology() > best_align.homology()){ best_align = align; best_align_rev = false;}*/
+
+			if( this->is_good( aligns, threshold ) ){ good_align_found = true; is_ctg_rev = false; }
 			/*else
 			{
 				pthread_mutex_lock(&g_badAlignMutex);
@@ -727,12 +778,12 @@ BestPctgCtgAlignment PctgBuilder::findBestAlignment(
 	}
 
 	// if the alignments computed were all bad, return a bad alignment to interrupt the merging
-	if( !good_align_found ) return BestPctgCtgAlignment(bad_align,is_ctg_rev);
+	if( !good_align_found || aligns.size() != blocks_num || blocks_num == 0 ) return BestPctgCtgAlignment(bad_align,is_ctg_rev);
 
 	// retrieve the starting/ending points of the alignment
 	std::pair<uint64_t,uint64_t> start_align, end_align;
-	first_match_pos( align, start_align );
-	last_match_pos( align, end_align );
+	first_match_pos( aligns[0], start_align );
+	last_match_pos( aligns[blocks_num-1], end_align );
 
 	// compute pctg tails (i1,i2) and ctg tails (j1,j2)
 	uint64_t i1 = start_align.first;
@@ -740,7 +791,7 @@ BestPctgCtgAlignment PctgBuilder::findBestAlignment(
 	uint64_t j1 = start_align.second;
 	uint64_t j2 = ctg.size() - end_align.second - 1;
 
-	if( std::min(i1,j1) < threshold && std::min(i2,j2) < threshold ) return BestPctgCtgAlignment(align,is_ctg_rev);
+	if( std::min(i1,j1) < threshold && std::min(i2,j2) < threshold ) return BestPctgCtgAlignment(aligns,is_ctg_rev);
 
 	MyAlignment left(100),right(100);
 	bool left_rev, right_rev;
@@ -775,7 +826,134 @@ BestPctgCtgAlignment PctgBuilder::findBestAlignment(
 		}
 	}
 
-	return BestPctgCtgAlignment(align,is_ctg_rev,left,right,left_rev,right_rev);
+	return BestPctgCtgAlignment(aligns,is_ctg_rev,left,right,left_rev,right_rev);
+}
+
+
+void PctgBuilder::alignBlocks(
+	const PairedContig &pctg,
+	const uint64_t &pctgStart,
+	const Contig &ctg,
+	const uint64_t &ctgStart,
+	const std::list<Block> &blocks_list,
+	const bool &isCtgInPctgRev,
+	const bool &isMasterCtg,
+	std::vector< MyAlignment > &alignments,
+	std::vector< int64_t > &pctg_gaps,
+	std::vector< int64_t > &ctg_gaps ) const
+{
+	// initialize output
+	alignments.clear();
+	pctg_gaps.clear();
+	ctg_gaps.clear();
+
+	BandedSmithWaterman aligner; //ABlast aligner; //(this->_maxAlignment, this->_maxPctgGap, this->_maxCtgGap);
+
+	// first & last blocks references
+	const Block &firstBlock = blocks_list.front();
+	const Block &lastBlock = blocks_list.back();
+
+	// first & last frames (of pctg) references
+	const Frame &pctgFirstFrame = (isMasterCtg) ? firstBlock.getSlaveFrame() : firstBlock.getMasterFrame();
+	const Frame &pctgLastFrame = (isMasterCtg) ? lastBlock.getSlaveFrame() : lastBlock.getMasterFrame();
+
+	int64_t pctgStartAlign = pctgStart;
+	int64_t ctgStartAlign = ctgStart;
+	uint32_t idx = 0;
+
+	MyAlignment prev_align, align;
+	std::pair<uint64_t,uint64_t> last_match,first_match;
+	std::list<Block>::const_iterator prev_b;
+
+	Frame pf,prev_pf,cf,prev_cf;
+
+	if( (!isCtgInPctgRev && pctgFirstFrame.getBegin() <= pctgLastFrame.getBegin()) || (isCtgInPctgRev && pctgFirstFrame.getBegin() > pctgLastFrame.getBegin()) ) // lista da processare in ordine
+	{
+		for( std::list<Block>::const_iterator b = blocks_list.begin(); b != blocks_list.end(); b++ )
+		{
+			pf = (isMasterCtg) ? b->getSlaveFrame() : b->getMasterFrame();
+			cf = (isMasterCtg) ? b->getMasterFrame() : b->getSlaveFrame();
+
+			int32_t plen = pf.getLength(); // lunghezza frame corrente sul pctg
+			int32_t clen = cf.getLength(); // lunghezza frame corrente sul ctg
+
+			if( idx > 0 )
+			{
+				int32_t pgap = prev_pf.getBegin() <= pf.getBegin() ? (pf.getBegin() - prev_pf.getEnd() - 1) : (prev_pf.getBegin() - pf.getEnd() - 1);
+				int32_t cgap = prev_cf.getBegin() <= cf.getBegin() ? (cf.getBegin() - prev_cf.getEnd() - 1) : (prev_cf.getBegin() - cf.getEnd() - 1);
+
+				pctgStartAlign = last_match.first + pgap; if(pctgStartAlign<0) pctgStartAlign = 0;
+				ctgStartAlign = last_match.second + cgap; if(ctgStartAlign<0) ctgStartAlign = 0;
+			}
+
+			align = aligner.find_alignment( pctg, pctgStartAlign, pctgStartAlign+plen-1, ctg, ctgStartAlign, ctgStartAlign+clen-1 );
+			alignments.push_back(align);
+
+			first_match_pos( align, first_match );
+
+			if( idx > 0 )
+			{
+				pctg_gaps.push_back( int64_t(first_match.first) - int64_t(last_match.first) );
+				ctg_gaps.push_back( int64_t(first_match.second) - int64_t(last_match.second) );
+			}
+
+			last_match_pos( align, last_match );
+
+			prev_align = align;
+			prev_pf = pf;
+			prev_cf = cf;
+			idx++;
+		}
+	}
+	else // lista da processare in ordine inverso
+	{
+		for( std::list<Block>::const_reverse_iterator b = blocks_list.rbegin(); b != blocks_list.rend(); b++ )
+		{
+			pf = (isMasterCtg) ? b->getSlaveFrame() : b->getMasterFrame();
+			cf = (isMasterCtg) ? b->getMasterFrame() : b->getSlaveFrame();
+
+			int32_t plen = pf.getLength(); // lunghezza frame corrente sul pctg
+			int32_t clen = cf.getLength(); // lunghezza frame corrente sul ctg
+
+			if( idx > 0 )
+			{
+				int32_t pgap = prev_pf.getBegin() <= pf.getBegin() ? (pf.getBegin() - prev_pf.getEnd() - 1) : (prev_pf.getBegin() - pf.getEnd() - 1);
+				int32_t cgap = prev_cf.getBegin() <= cf.getBegin() ? (cf.getBegin() - prev_cf.getEnd() - 1) : (prev_cf.getBegin() - cf.getEnd() - 1);
+
+				pctgStartAlign = last_match.first + pgap; if(pctgStartAlign<0) pctgStartAlign = 0;
+				ctgStartAlign = last_match.second + cgap; if(ctgStartAlign<0) ctgStartAlign = 0;
+			}
+
+			align = aligner.find_alignment( pctg, pctgStartAlign, pctgStartAlign+plen-1, ctg, ctgStartAlign, ctgStartAlign+clen-1 );
+			alignments.push_back(align);
+
+			first_match_pos( align, first_match );
+
+			if( idx > 0 )
+			{
+				pctg_gaps.push_back( int64_t(first_match.first) - int64_t(last_match.first) );
+				ctg_gaps.push_back( int64_t(first_match.second) - int64_t(last_match.second) );
+			}
+
+			last_match_pos( align, last_match );
+
+			prev_align = align;
+			prev_pf = pf;
+			prev_cf = cf;
+			idx++;
+		}
+	}
+}
+
+
+bool PctgBuilder::is_good( const std::vector<MyAlignment> &aligns, uint64_t min_align_len ) const
+{
+	for( size_t i=0; i < aligns.size(); i++ )
+	{
+		if( not this->is_good( aligns[i], min_align_len ) ) return false;
+	}
+
+	return true;//(align.homology() >= MIN_HOMOLOGY && align.length() >= min_align_len); // && align.score() > 0
 }
 
 
