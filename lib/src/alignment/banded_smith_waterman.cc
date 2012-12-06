@@ -11,6 +11,7 @@ BandedSmithWaterman::BandedSmithWaterman() :
         _match_score(MATCH_SCORE),
         _mismatch_score(MISMATCH_SCORE),
         _gap_score(GAP_SCORE),
+        _gap_ext_score(GAP_EXT_SCORE),
         _band_size(DEFAULT_BAND_SIZE)
 {}
 
@@ -18,10 +19,12 @@ BandedSmithWaterman::BandedSmithWaterman(
         const ScoreType& match_score,
         const ScoreType& mismatch_score,
         const ScoreType& gap_score,
+        const ScoreType& gap_ext_score,
         const size_type& band_size) :
         _match_score(match_score),
         _mismatch_score(mismatch_score),
         _gap_score(gap_score),
+        _gap_ext_score(gap_ext_score),
         _band_size(band_size)
 {}
 
@@ -29,6 +32,7 @@ BandedSmithWaterman::BandedSmithWaterman( const size_type& band_size ) :
         _match_score(MATCH_SCORE),
         _mismatch_score(MISMATCH_SCORE),
         _gap_score(GAP_SCORE),
+        _gap_ext_score(GAP_EXT_SCORE),
         _band_size(band_size)
 {}
 
@@ -63,7 +67,16 @@ BandedSmithWaterman::find_alignment(
     size_type y_size = (2 * this->_band_size) + 1;
 
     // allocate smith waterman matrix
-    std::vector< std::vector<ScoreType> > sw( x_size, std::vector<ScoreType>(y_size) );
+    //std::vector< std::vector<ScoreType> > sw( x_size, std::vector<ScoreType>(y_size) );
+
+	ScoreType** sw = new ScoreType*[x_size];
+	for( size_type i=0; i < x_size; i++ )
+	{
+		sw[i] = new ScoreType[y_size];
+		for( size_type j=0; j < y_size; j++ ) sw[i][j] = 0;
+	}
+
+	// end allocation sw diagonal matrix
 
     // initialization of the first row
     for( size_type j = 0; j < y_size; j++ )
@@ -266,6 +279,11 @@ BandedSmithWaterman::find_alignment(
 
         pos = begin_a + x + y - this->_band_size;
     }
+
+    // deallocate sw matrix
+    for( size_type i=0; i < x_size; i++ ) delete[] sw[i];
+	delete[] sw;
+	// end of deallocation of sw matrix
 
     // identity of the sequences aligned
     double homology = (edit_string.size() == 0) ? 0 : double(num_of_matches * 100) / double(edit_string.size());

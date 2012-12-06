@@ -14,7 +14,9 @@ PairedContig::PairedContig(const IdType& id) : _pctgId(id)
 
 PairedContig::PairedContig(const PairedContig& orig):
         Contig((Contig)orig), _pctgId(orig._pctgId),
-        _masterCtgMap(orig._masterCtgMap), _slaveCtgMap(orig._slaveCtgMap)
+        _masterCtgMap(orig._masterCtgMap), _slaveCtgMap(orig._slaveCtgMap),
+        _masterCtgs(orig._masterCtgs), _slaveCtgs(orig._slaveCtgs),
+        _mergeList(orig._mergeList), _dupRegionsEst(orig._dupRegionsEst)
 {
     std::ostringstream ss;
     ss << orig._pctgId;
@@ -28,6 +30,12 @@ PairedContig::PairedContig(const PairedContig& orig, const Contig& ctg):
     this->_pctgId = orig._pctgId;
     this->_masterCtgMap = orig._masterCtgMap;
     this->_slaveCtgMap = orig._slaveCtgMap;
+	this->_mergeList = orig._mergeList;
+
+	this->_masterCtgs = orig._masterCtgs;
+	this->_slaveCtgs = orig._slaveCtgs;
+
+	this->_dupRegionsEst = orig._dupRegionsEst;
     this->set_name(orig.name());
 }
 
@@ -67,24 +75,35 @@ const PairedContig::ContigInfoMap& PairedContig::getSlaveCtgMap() const
 }
 
 
-bool PairedContig::containsMasterCtg(const IdType& aId, const IdType& ctgId) const
+std::list< CtgInPctgInfo >& PairedContig::getMergeList()
 {
-    return (this->_masterCtgMap).find( std::make_pair(aId,ctgId) ) != (this->_masterCtgMap).end();
+	return _mergeList;
+}
+
+const std::list< CtgInPctgInfo >& PairedContig::getMergeList() const
+{
+	return _mergeList;
 }
 
 
-bool PairedContig::containsSlaveCtg(const IdType& aId, const IdType& ctgId) const
+bool PairedContig::containsMasterCtg(const int32_t ctgId) const
 {
-    return (this->_slaveCtgMap).find( std::make_pair(aId,ctgId) ) != (this->_slaveCtgMap).end();
+    return (this->_masterCtgMap).find(ctgId) != (this->_masterCtgMap).end();
 }
 
-const ContigInPctgInfo& PairedContig::getContigInfo(const std::pair<IdType,IdType> &ctgId, bool isMasterCtg) const
+
+bool PairedContig::containsSlaveCtg(const int32_t ctgId) const
+{
+    return (this->_slaveCtgMap).find(ctgId) != (this->_slaveCtgMap).end();
+}
+
+const ContigInPctgInfo& PairedContig::getContigInfo(const int32_t ctgId, bool isMasterCtg) const
 {
     if(isMasterCtg) return this->_masterCtgMap.find(ctgId)->second;
     return this->_slaveCtgMap.find(ctgId)->second;
 }
 
-ContigInPctgInfo& PairedContig::getContigInfo(const std::pair<IdType,IdType> &ctgId, bool isMasterCtg)
+ContigInPctgInfo& PairedContig::getContigInfo(const int32_t ctgId, bool isMasterCtg)
 {
 	if(isMasterCtg) return this->_masterCtgMap.find(ctgId)->second;
 	return this->_slaveCtgMap.find(ctgId)->second;
@@ -108,7 +127,7 @@ UIntType PairedContig::getContigEnd(const ContigInPctgInfo& ctgInfo) const
 
 
 uint64_t PairedContig::getBasePosition(
-        const std::pair<IdType,IdType> &ctgId,
+        const int32_t ctgId,
         const UIntType pos,
         const bool isMasterCtg)
 {
@@ -123,12 +142,47 @@ uint64_t PairedContig::getBasePosition(
 }
 
 
+const std::set<int32_t>& PairedContig::getMasterCtgIdSet()
+{
+	return (this->_masterCtgs);
+}
+
+
+void PairedContig::addMasterCtgId( int32_t id )
+{
+	(this->_masterCtgs).insert(id);
+}
+
+void PairedContig::addSlaveCtgId( int32_t id )
+{
+	(this->_slaveCtgs).insert(id);
+}
+
+
+void PairedContig::addDupRegion( uint64_t length, uint64_t ctgId )
+{
+	(this->_dupRegionsEst).push_back( std::make_pair(length,ctgId) );
+}
+
+
+const std::list< std::pair<uint64_t,uint64_t> >& PairedContig::getDupRegions()
+{
+	return this->_dupRegionsEst;
+}
+
+
 const PairedContig& PairedContig::operator =(const PairedContig& orig)
 {
     ((Contig *)this)->operator =((Contig)orig);
     this->_pctgId = orig._pctgId;
     this->_masterCtgMap = orig._masterCtgMap;
     this->_slaveCtgMap = orig._slaveCtgMap;
+
+	this->_masterCtgs = orig._masterCtgs;
+	this->_slaveCtgs = orig._slaveCtgs;
+
+	this->_mergeList = orig._mergeList;
+	this->_dupRegionsEst = orig._dupRegionsEst;
 
     return *this;
 }
@@ -190,7 +244,7 @@ bool sameAssemblyCtgsOverlapedBy(const PairedContig &pctg, const Contig &ctg,
 
 PairedContig& shiftOf(PairedContig& pctg, const UIntType& shiftSize)
 {
-    typedef std::map< std::pair<IdType,IdType>, ContigInPctgInfo > ContigInfoMap;
+    typedef std::map< int32_t, ContigInPctgInfo > ContigInfoMap;
 
     //PairedContig out(pctg);
     ContigInfoMap::iterator j;
@@ -218,20 +272,54 @@ bool orderPctgsByName(const PairedContig &a, const PairedContig &b)
 }
 
 
-std::ostream& writePctgDescriptors( std::ostream &os, const std::list<PairedContig> &pctgs, BamTools::RefVector &mcRef, std::vector<BamTools::RefVector> &scRef )
+std::ostream& writePctgDescriptors(
+	std::ostream &os,
+	const std::list<PairedContig> &pctgs,
+	RefSequence &masterRef,
+	RefSequence &slaveRef,
+	uint64_t pctg_id )
 {
-    os << "#Name\tSize\tAssembly\tContigID\tBeginInPctg\tEndInPctg" << std::endl;
+    os << "#Name\tSize\tAssembly\tContigID\tBegin\tEnd\tReversed" << std::endl;
+
+	uint64_t j=0;
 
     std::list< PairedContig >::const_iterator i;
-    for( i = pctgs.begin(); i != pctgs.end(); i++ ) writePctgDescriptor(os,*i, mcRef, scRef);
+    for( i = pctgs.begin(); i != pctgs.end(); i++ )
+	{
+		if(j==pctg_id) os << "# ----------------------------------------------------" << std::endl;
+
+		writePctgDescriptor(os,*i, masterRef, slaveRef);
+		j++;
+	}
 
     return os;
 }
 
 
-std::ostream& writePctgDescriptor( std::ostream &os, const PairedContig &pctg, BamTools::RefVector &mcRef, std::vector<BamTools::RefVector> &scRef )
+std::ostream& writePctgDescriptor(
+	std::ostream &os,
+	const PairedContig &pctg,
+	RefSequence &masterRef,
+	RefSequence &slaveRef )
 {
-    typedef std::map< std::pair<IdType,IdType>, ContigInPctgInfo > ContigInfoMap;
+	const std::list< CtgInPctgInfo >& mergeList = pctg.getMergeList();
+
+	for( std::list<CtgInPctgInfo>::const_iterator it = mergeList.begin(); it != mergeList.end(); it++ )
+	{
+		os << pctg.name() << "\t"
+		<< pctg.size() << "\t"
+		<< (it->isMaster() ? "Master" : "Slave") << "\t"
+		<< (it->isMaster() ? masterRef[it->getId()].RefName : slaveRef[it->getId()].RefName)  << "\t"
+		<< it->getStart() << "\t"
+		<< it->getEnd() << "\t"
+		<< (it->isReversed() ? "R" : "F")
+		<< std::endl;
+	}
+
+	return os;
+
+
+    typedef std::map< int32_t, ContigInPctgInfo > ContigInfoMap;
 
     ContigInfoMap masterCtgs = pctg.getMasterCtgMap();
     ContigInfoMap slaveCtgs = pctg.getSlaveCtgMap();
@@ -242,7 +330,7 @@ std::ostream& writePctgDescriptor( std::ostream &os, const PairedContig &pctg, B
         os << pctg.name() << "\t"
                 << pctg.size() << "\t"
                 << "Master" << "\t"
-                << mcRef.at( (ctg->first).second ).RefName << "\t"
+                << masterRef[ctg->first].RefName << "\t"
                 << pctg.getContigBegin( ctg->second ) << "\t"
                 << pctg.getContigEnd( ctg->second ) << "\t"
                 << std::endl;
@@ -252,8 +340,8 @@ std::ostream& writePctgDescriptor( std::ostream &os, const PairedContig &pctg, B
     {
         os << pctg.name() << "\t"
                 << pctg.size() << "\t"
-                << "Slave-" << (ctg->first).first << "\t"
-                << scRef.at( (ctg->first).first ).at( (ctg->first).second ).RefName << "\t"
+                << "Slave" << "\t"
+                << slaveRef[ctg->first].RefName << "\t"
                 << pctg.getContigBegin( ctg->second ) << "\t"
                 << pctg.getContigEnd( ctg->second ) << "\t"
                 << std::endl;

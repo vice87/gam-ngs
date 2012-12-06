@@ -10,6 +10,7 @@
 
 #include <list>
 #include <map>
+#include <set>
 
 #include "api/BamAux.h"
 #include "api/BamReader.h"
@@ -17,6 +18,7 @@
 #include "bam/MultiBamReader.hpp"
 #include "assembly/Read.hpp"
 #include "assembly/Frame.hpp"
+#include "assembly/RefSequence.hpp"
 
 #include "google/sparse_hash_map"
 #include "types.hpp"
@@ -44,6 +46,12 @@ public:
      * This method creates an empty block.
      */
     Block();
+
+	//! A constructor.
+	/*!
+	 * This method creates a singleton (or empty) block
+	 */
+	Block( Read &mRead, Read &sRead, int minOverlap );
 
     //! A copy constructor.
     /*!
@@ -94,6 +102,8 @@ public:
 	 */
 	Frame& getMasterFrame();
 
+	int32_t getMasterId() const;
+
     //! Returns the frame relative to the slave assembly.
     /*!
      * \return const reference to the slave's Frame.
@@ -105,6 +115,8 @@ public:
 	 * \return reference to the slave's Frame.
 	 */
 	Frame& getSlaveFrame();
+
+	int32_t getSlaveId() const;
 
     //! Returns whether the block is empty or not.
     /*!
@@ -133,14 +145,19 @@ public:
      * \param blocks    vector of blocks.
      * \return vector of blocks filtered.
      */
-    static std::vector<Block> filterBlocksByOverlaps( std::vector<Block> &blocks );
+    static std::vector<Block> filterBlocksByOverlaps( std::list<Block> &blocks );
 
-    static std::vector<Block> filterBlocksByCoverage( std::vector<Block> &blocks, double t = 0.5 );
+    static void filterBlocksByCoverage( 
+		std::list<Block> &blocks, 
+		const std::set< std::pair<int32_t,int32_t> > &slb,
+		double min_cov,
+		double t = 0.5 );
 
-	static std::vector<Block> filterBlocksByLength(
-		std::vector<Block> &blocks,
-		const BamTools::RefVector &masterRefVector,
-		const std::vector< BamTools::RefVector > &slaveRefVectors,
+	static void filterBlocksByLength(
+		std::list<Block> &blocks,
+		const RefSequence &masterRef,
+		const RefSequence &slaveRef,
+		const std::set< std::pair<int32_t,int32_t> > &slb,
 		int32_t min_length );
 
     //! Finds the blocks over two assemblies.
@@ -160,8 +177,7 @@ public:
         const int minBlockSize,
         sparse_hash_map< std::string, Read > &readsMap_1,
         sparse_hash_map< std::string, Read > &readsMap_2,
-        std::vector< std::vector< uint32_t > > &coverage,
-        int32_t assemblyId = 0);
+        std::vector< std::vector< uint32_t > > &coverage );
 
     static void updateCoverages(
         std::vector<Block> &blocks,
@@ -198,7 +214,7 @@ public:
      * \param minBlockSize minimum size (# reads) of the blocks to be loaded.
      * \return a vector containing the blocks read from the file.
      */
-    static std::vector<Block> readBlocks( const std::string& blockFile, int minBlockSize = 1 );
+	static void loadBlocks( const std::string& blockFile, std::list<Block> &blocks, int minBlockSize = 1 );
     static std::vector<Block> readCoreBlocks( const std::string& blockFile, int minBlockSize = 1 );
 
     //! Write a vector of blocks into a file.
@@ -215,6 +231,23 @@ public:
     //! Equality operator for the Block class.
     bool operator ==(const Block &block) const;
 };
+
+
+void getNoBlocksContigs(
+	const RefSequence &masterRef,
+	const RefSequence &slaveRef,
+	const std::list<Block> &blocks,
+	std::set< int32_t > &masterNBC,
+	std::set< int32_t > &slaveNBC );
+
+void getNoBlocksAfterFilterContigs(
+	const RefSequence &masterRef,
+	const RefSequence &slaveRef,
+	const std::list<Block> &blocks,
+	const std::set< int32_t > &masterNBC,
+	const std::set< int32_t > &slaveNBC,
+	std::set< int32_t > &masterNBC_AF,
+	std::set< int32_t > &slaveNBC_AF );
 
 #endif	/* BLOCK_HPP */
 

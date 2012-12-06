@@ -1,4 +1,4 @@
-/*! 
+/*!
  * \file PartitionFunctions.hpp
  * \brief Definition of utility functions for partitioning blocks which may be
  * merged together.
@@ -17,22 +17,24 @@ using namespace options;
 /*!
  * Returns a list of vectors. Each vector contains only blocks which may
  * be merged together.
- * 
+ *
  * \param blocks a vector of blocks.
  * \param options options of the application.
  * \return a list of block vectors.
  */
 std::list< std::vector< Block > >
-partitionBlocks( const std::vector< Block > &blocks, const Options &options );
+partitionBlocks( const std::list<Block> &blocks );
 
 
-//! Partitions a vector of blocks by paired contigs.
+std::vector<double>
+computeZScore( MultiBamReader &multiBamReader, const uint64_t &refID, uint32_t start, uint32_t end );
+
+//! Partitions a list of blocks by paired contigs.
 /*!
- * \param blocks a vector of blocks.
- * \return a vector of partitions (vectors of blocks).
+ * \param blocks list of blocks.
+ * \return vector of partitions (list of blocks).
  */
-std::vector< std::vector< Block > > 
-partitionBlocksByPairedContigs( const std::vector< Block > &blocks );
+std::vector< std::list<Block> >
+partitionBlocksByPairedContigs( const std::list< Block > &blocks );
 
 #endif	/* PARTITIONFUNCTIONS_HPP */
-

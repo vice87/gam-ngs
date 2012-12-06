@@ -26,13 +26,13 @@
 
 namespace modules {
 
-class Merge : public Module 
+class Merge : public Module
 {
 public:
 	Merge() { }
 	virtual ~Merge() { }
 
-	void execute(const Options & options);
+	void execute();
 
 };
 

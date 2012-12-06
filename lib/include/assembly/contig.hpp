@@ -14,7 +14,7 @@ class Contig;
 
 std::istream& operator>>(std::istream&, Contig&);
 
-Contig read_contig(const std::string&, const std::string&, 
+Contig read_contig(const std::string&, const std::string&,
                                         const std::string&);
 
 class Contig {
@@ -24,7 +24,7 @@ class Contig {
   //QualSeqType _quality;
 
  protected:
-  
+
 
  public:
   Contig();
@@ -42,13 +42,13 @@ class Contig {
 
   Contig(const size_t& size);
 
-  const std::string &name() const; 
+  const std::string &name() const;
 
-  const Contig& set_name(const std::string& new_name); 
+  const Contig& set_name(const std::string& new_name);
 
   size_t size() const;
 
-  const Contig& operator=(const Contig& orig); 
+  const Contig& operator=(const Contig& orig);
 
   bool operator==(const Contig& ctg) const;
 
@@ -69,30 +69,30 @@ class Contig {
   SeqType sequence(const size_t& index) const;
 
   SeqType sequence(const size_t& index, const size_t& length) const;
-  
+
   size_t resize(const size_t& size);
 
   friend std::istream& operator>>(std::istream&, Contig&);
-  friend Contig read_contig(const std::string&, const std::string&, 
+  friend Contig read_contig(const std::string&, const std::string&,
                                                         const std::string&);
 };
 
-Contig chop_begin(const Contig& ctg, 
+Contig chop_begin(const Contig& ctg,
                     const size_t& preserve_from);
 
-Contig chop_end(const Contig& ctg, 
+Contig chop_end(const Contig& ctg,
                     const size_t& preserve_until);
 
-Contig chop_borders(const Contig& ctg, 
+Contig chop_borders(const Contig& ctg,
                     const size_t& preserve_from,
                     const size_t& preserve_until);
 
-Contig& reverse_complement(Contig& ctg); 
+Contig& reverse_complement(Contig& ctg);
 
 /*class Alignment;
 
 Contig
-merge(const Contig& a, const Contig& b, 
+merge(const Contig& a, const Contig& b,
               const Alignment& alignment); */
 
 #endif // CONTIG_

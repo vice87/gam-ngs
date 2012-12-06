@@ -1,150 +1,93 @@
 #ifndef _ABLAST_
 #define _ABLAST_
 
-/*! \file
- *  \brief Definition of ABlast class.
- *  \details This file contains the defintion of a BLAST alike aligner
- *  called ABlast.
- */
+#define ABLAST_DEFAULT_WORD_SIZE 20
 
-#define DEFAULT_WORD_SIZE 20
+#include <list>
+#include <map>
+#include <vector>
 
-#include "alignment/aligner.hpp"
+#include "assembly/contig.hpp"
 
-//! A BLAST alike aligner.
-/*!
-  To align two nucleotide sequences, <i>a</i> and <i>b</i>, ABlast builds the
-  hash table of all the words of size <i>word_size</i> of <i>a</i> and 
-  finds the maximum sequence of that words which are consecutive in <i>b</i>.
-
-  \todo Tranform this class into a template over:
-        <ul>
-          <li>the used integer class</li>
-          <li>a total ordering for alignment</li>
-        </ul>
-        
-*/
-class ABlast : public Aligner
+class ABlast
 {
-  public:
-/*     typedef Aligner::int_type int_type;
-     typedef Aligner::size_type size_type;
-*/
-  private:
-     size_type _word_size; //!< The used word size.
 
-  public:
+private:
+    
+    typedef std::map< size_t, std::list<size_t> > HashType;
+    typedef std::vector< uint64_t > FoundVectorType;
+    
+    size_t _word_size; //!< The used word size.
+     
+    inline 
+    size_t sequence_code(const Contig& a, size_t pos)
+    {
+        size_t code = 0;
+        for( size_t i=pos; i < pos + _word_size; i++) code=((LAST_BASE-1)*code)+(a.at(i)).base();
+        
+        return code;
+    }
 
-     //! A costructor.
-     /*!
-       This costructor initializes the ABlast aligner setting the word size
-       to <code>DEFAULT_WORD_SIZE</code>.
-      */
+    inline
+    HashType
+    build_hash( const Contig& a, uint64_t start, uint64_t end ) 
+    {
+        HashType a_hash;
+        for( size_t i=start; i <= end-_word_size+1; i++ ) a_hash[ sequence_code(a,i) ].push_back(i);
+
+        return a_hash;
+    }
+
+    inline
+    const FoundVectorType&
+    mark_found( FoundVectorType& f_vector, size_t idx_a, size_t idx_b ) 
+    {
+        if( idx_a < idx_b ) return f_vector;
+        
+        f_vector.at( idx_a-idx_b ) += 1;
+        return f_vector;
+    }
+
+    inline
+    FoundVectorType
+    build_corrispondences_vector(
+                    const Contig& a, uint64_t a_start, uint64_t a_end,
+                    const Contig& b, uint64_t b_start, uint64_t b_end )
+    {
+        HashType a_hash = build_hash( a, a_start, a_end );
+
+        FoundVectorType f_vector( a_end-a_start+1, 0 );
+
+        for( size_t b_pos = b_start; b_pos <= b_end-_word_size+1; b_pos++ ) 
+        {
+            HashType::iterator it = a_hash.find( sequence_code(b,b_pos) );
+            
+            if( it != a_hash.end() )
+            {
+                for( std::list<size_t>::const_iterator a_pos = (it->second).begin(); a_pos != (it->second).end(); a_pos++ )
+                {
+                    size_t idx_a = *a_pos - a_start;
+                    size_t idx_b = b_pos - b_start;
+                    mark_found( f_vector, idx_a, idx_b);
+                }
+            }
+        }
+
+        return f_vector;
+    }
+
+public:
+
      ABlast();
-
-     //! A costructor.
-     /*!
-       This costructor has been implemented to get the same API of 
-       SmithWaterman. It actually discards the parameters and
-       calls ABlast().
-       \todo Remove such costructor.
-      */
-     ABlast(const size_type& max_a_gaps, const size_type& max_b_gaps);  
      
-     //! A costructor.
-     /*!
-       This costructor has been implemented to get the same API of 
-       SmithWaterman. It actually discards the parameters and
-       calls ABlast().
-       \todo Remove such costructor.
-      */
-     ABlast(const size_type& max_alignment);
-     
-     //! A costructor.
-     /*!
-       This costructor has been implemented to get the same API of 
-       SmithWaterman. It actually discards the parameters and
-       calls ABlast().
-       \todo Remove such costructor.
-      */
-     ABlast(const ScoreType& gap_score, 
-                const size_type& max_a_gaps, const size_type& max_b_gaps); 
+     ABlast( const size_t word_size );
 
-     //! A costructor.
-     /*!
-       This costructor has been implemented to get the same API of 
-       SmithWaterman. It actually discards the parameters and
-       calls ABlast().
-       \todo Remove such costructor.
-      */
-     ABlast(const size_type& max_alignment, const size_type& max_a_gaps, 
-                                      const size_type& max_b_gaps);  
+     const ABlast& setWordSize(const size_t word_size);
 
-     //! A costructor.
-     /*!
-       This costructor has been implemented to get the same API of 
-       SmithWaterman. It actually discards the parameters and
-       calls ABlast().
-       \todo Remove such costructor.
-      */
-     ABlast(const size_type& max_alignment, const ScoreType& gap_score, 
-                const size_type& max_a_gaps, const size_type& max_b_gaps); 
+     size_t getWordSize() const;
 
-     //! A distructor.
-     ~ABlast() {}
-
-     //! Set the used word size
-     /*!
-       This method allows to set the word size used during hash computation.
-       @param word_size The new word size.
-       @return A references to the current object with the new word size.
-      */
-     const ABlast& set_word_size(const size_type& word_size);
-
-     //! Get the used word size
-     /*!
-       This method allows to query the word size used during hash computation.
-       @return The word size used during has computation.
-      */
-     const size_type& word_size() const;
-
-     //! Apply ABlast aligner
-     /*! 
-       Apply the current ABlast aligner to two Contig, <i>a</i> and 
-       <i>b</i>. If the boolean value of the third parameter is <i>true</i>,
-       then <i>b</i> has been complemented and reversed with respect to 
-       its initial value. Otherwise, <i>b</i> is in its original form.
-       @param a A contig to be aligned.
-       @param b A contig to be aligned.
-       @param b_rev Tell whether <i>b</i> has been reversed or not.
-       @return The ``best'' alignment between <i>a</i> and <i>b</i>.
-      */
-     Alignment
-     apply(const Contig& a, const Contig& b, const bool& b_rev) const;
-
-     //! Apply ABlast aligner
-     /*! 
-       Apply the current ABlast aligner to two Contig, <i>a</i> and 
-       <i>b</i>. It return the ``best'' alignment between <i>a</i>, <i>b</i>,
-       and the reverse complement of <i>b</i>.
-       @param a A contig to be aligned.
-       @param b A contig to be aligned.
-       @return The ``best'' alignment between <i>a</i>, <i>b</i>, and 
-               the reverse complement of <i>b</i>.
-      */
-     Alignment
-     apply(const Contig& a, const Contig& b) const;
-
-     //! Find the ``best'' alignment.
-     /*! 
-       Find the ``best'' alignment between contigs <i>a</i> and <i>b</i>.
-       @param a A contig to be aligned.
-       @param b A contig to be aligned.
-       @return The ``best'' alignment between <i>a</i> and <i>b</i>. 
-      */
-     Alignment
-     find_alignment(const Contig& a, const size_type& begin_a, 
-                    const Contig& b, const size_type& begin_b) const; 
+     std::list< uint32_t > 
+     findHits(const Contig& a, uint64_t a_start, uint64_t a_end, const Contig& b, uint64_t b_start, uint64_t b_end);
 };
      
 #endif // _ABLAST_

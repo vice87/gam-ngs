@@ -1,4 +1,4 @@
-/*! 
+/*!
  * \file OrderingFunctions.hpp
  * \brief Definition of utility functions for blocks ordering.
  */
@@ -13,7 +13,7 @@
 #include "assembly/Block.hpp"
 
 //! Comparison struct for blocks according to their master frame
-struct MasterBlocksOrderer 
+struct MasterBlocksOrderer
 {
     //! Returns whether a block comes before another one in their master frame
     /*!
@@ -23,17 +23,30 @@ struct MasterBlocksOrderer
      */
     bool operator()( const Block &a, const Block &b )
     {
-        return (
-                 a.getMasterFrame().getAssemblyId() < b.getMasterFrame().getAssemblyId() ||
-                (a.getMasterFrame().getAssemblyId() == b.getMasterFrame().getAssemblyId() && a.getMasterFrame().getContigId() < b.getMasterFrame().getContigId()) || 
-                (a.getMasterFrame().getAssemblyId() == b.getMasterFrame().getAssemblyId() && a.getMasterFrame().getContigId() == b.getMasterFrame().getContigId() && a.getMasterFrame().getBegin() < b.getMasterFrame().getBegin()) ||
-                (a.getMasterFrame().getAssemblyId() == b.getMasterFrame().getAssemblyId() && a.getMasterFrame().getContigId() == b.getMasterFrame().getContigId() && a.getMasterFrame().getBegin() == b.getMasterFrame().getBegin() && a.getMasterFrame().getLength() > b.getMasterFrame().getLength())
-               );
+		const Frame& af = a.getMasterFrame();
+		const Frame& bf = b.getMasterFrame();
+
+		int32_t a_id = af.getContigId();
+		int32_t b_id = bf.getContigId();
+
+		if( a_id < b_id ) return true;
+		if( a_id > b_id ) return false;
+
+		int32_t a_beg = af.getBegin();
+		int32_t b_beg = bf.getBegin();
+
+		if( a_beg < b_beg ) return true;
+		if( a_beg > b_beg ) return false;
+
+		int32_t a_len = af.getLength();
+		int32_t b_len = bf.getLength();
+
+		return ( a_len > b_len );
     }
 };
 
 //! Comparison struct for blocks according to their slave frame
-struct SlaveBlocksOrderer 
+struct SlaveBlocksOrderer
 {
     //! Returns whether a block comes before another one in their slave frame
     /*!
@@ -43,18 +56,31 @@ struct SlaveBlocksOrderer
      */
     bool operator()( const Block &a, const Block &b )
     {
-        return (
-                 a.getSlaveFrame().getAssemblyId() < b.getSlaveFrame().getAssemblyId() ||
-                (a.getSlaveFrame().getAssemblyId() == b.getSlaveFrame().getAssemblyId() && a.getSlaveFrame().getContigId() < b.getSlaveFrame().getContigId()) || 
-                (a.getSlaveFrame().getAssemblyId() == b.getSlaveFrame().getAssemblyId() && a.getSlaveFrame().getContigId() == b.getSlaveFrame().getContigId() && a.getSlaveFrame().getBegin() < b.getSlaveFrame().getBegin()) ||
-                (a.getSlaveFrame().getAssemblyId() == b.getSlaveFrame().getAssemblyId() && a.getSlaveFrame().getContigId() == b.getSlaveFrame().getContigId() && a.getSlaveFrame().getBegin() == b.getSlaveFrame().getBegin() && a.getSlaveFrame().getLength() > b.getSlaveFrame().getLength()) 
-               );
+		const Frame& af = a.getSlaveFrame();
+		const Frame& bf = b.getSlaveFrame();
+
+		int32_t a_id = af.getContigId();
+		int32_t b_id = bf.getContigId();
+
+		if( a_id < b_id ) return true;
+		if( a_id > b_id ) return false;
+
+		int32_t a_beg = af.getBegin();
+		int32_t b_beg = bf.getBegin();
+
+		if( a_beg < b_beg ) return true;
+		if( a_beg > b_beg ) return false;
+
+		int32_t a_len = af.getLength();
+		int32_t b_len = bf.getLength();
+
+		return ( a_len > b_len );
     }
 };
 
 
 //! Comparison struct for blocks according to their number of reads
-struct ReadNumBlocksOrderer 
+struct ReadNumBlocksOrderer
 {
     //! Returns whether a block comes before another one in their slave frame
     /*!
@@ -75,32 +101,36 @@ struct ReadNumBlocksOrderer
  *      <li> <b>Ordered indices vector</b>: the index in position \c i indicates the index of the <code>i</code>-th block in \c blocks. </li>
  *      <li> <b>Back indices vector</b>: given an index \c i of \c blocks, returns the index of a block in the sorted vector. </li>
  * </ul>
- * 
- * \param blocks vector of blocks
+ *
+ * \param blocksList list of blocks
  * \param comparison struct for Block objects
  * \return a pair consisting of ordered indices and back indices
  */
 template< class BlocksOrderer >
-inline std::pair< std::vector<UIntType>, std::vector<UIntType> > 
-getOrderedIndices( const std::vector<Block> &blocks, BlocksOrderer orderer )
+inline std::pair< std::vector<UIntType>, std::vector<UIntType> >
+getOrderedIndices( const std::list<Block> &blocksList, BlocksOrderer orderer )
 {
     std::map< Block, UIntType > blockMap;
-    
+	std::vector< Block > blocks;
+
+	blocks.reserve( blocksList.size() );
+	for( std::list<Block>::const_iterator b = blocksList.begin(); b != blocksList.end(); ++b ) blocks.push_back(*b);
+
     for( UIntType idx = 0; idx < blocks.size(); idx++ ) blockMap[ blocks[idx] ] = idx;
-    
+
     std::vector< Block > orderedBlocks(blocks);
     std::sort( orderedBlocks.begin(), orderedBlocks.end(), orderer );
-    
+
     std::vector< UIntType > orderedIdx( blocks.size() );
     std::vector< UIntType > reverseIdx( blocks.size() );
-    
+
     // fill index vectors
     for( UIntType i = 0; i < blocks.size(); i++ )
     {
         orderedIdx[i] = blockMap[ orderedBlocks[i] ];
         reverseIdx[ orderedIdx[i] ] = i;
     }
-    
+
     return std::pair< std::vector<UIntType>, std::vector<UIntType> >( orderedIdx, reverseIdx );
 }
 
@@ -111,8 +141,8 @@ getOrderedIndices( const std::vector<Block> &blocks, BlocksOrderer orderer )
  * \param blocks vector of blocks
  * \return ordered and back indices
  */
-std::pair< std::vector<UIntType>, std::vector<UIntType> > 
-inline getOrderedMasterIndices( const std::vector<Block> &blocks )
+std::pair< std::vector<UIntType>, std::vector<UIntType> >
+inline getOrderedMasterIndices( const std::list<Block> &blocks )
 {
     MasterBlocksOrderer mbo;
     return getOrderedIndices( blocks, mbo );
@@ -124,8 +154,8 @@ inline getOrderedMasterIndices( const std::vector<Block> &blocks )
  * \param blocks vector of blocks
  * \return ordered and back indices
  */
-std::pair< std::vector<UIntType>, std::vector<UIntType> > 
-inline getOrderedSlaveIndices( const std::vector<Block> &blocks )
+std::pair< std::vector<UIntType>, std::vector<UIntType> >
+inline getOrderedSlaveIndices( const std::list<Block> &blocks )
 {
     SlaveBlocksOrderer sbo;
     return getOrderedIndices( blocks, sbo );
@@ -143,15 +173,15 @@ inline strnum_cmp(const char *a, const char *b)
 {
     char *pa, *pb;
     pa = (char*)a; pb = (char*)b;
-    
-    while (*pa && *pb) 
+
+    while (*pa && *pb)
     {
-        if (isdigit(*pa) && isdigit(*pb)) 
+        if (isdigit(*pa) && isdigit(*pb))
         {
             long ai, bi;
             ai = strtol(pa, &pa, 10);
             bi = strtol(pb, &pb, 10);
-            
+
             if (ai != bi) return ai<bi? -1 : ai>bi? 1 : 0;
         }
         else
@@ -160,9 +190,9 @@ inline strnum_cmp(const char *a, const char *b)
             ++pa; ++pb;
         }
     }
-    
+
     if (*pa == *pb) return (pa-a) < (pb-b)? -1 : (pa-a) > (pb-b)? 1 : 0;
-    
+
     return *pa<*pb? -1 : *pa>*pb? 1 : 0;
 }
 

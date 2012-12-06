@@ -33,7 +33,7 @@ public:
 	Module() { }
 	virtual ~Module() { }
 
-	virtual void execute(const Options & option) = 0;
+	virtual void execute() = 0;
 };
 
 }

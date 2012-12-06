@@ -14,16 +14,18 @@
 
 #include "assembly/io_contig.hpp"
 
+#define BUFFER_LEN 16384
+
 QualSeqType
-read_quality(const std::string& filename, const std::string& name) 
+read_quality(const std::string& filename, const std::string& name)
 {
-  std::string line, begin_contig=">"+name; 
+  std::string line, begin_contig=">"+name;
   QualSeqType quality;
 
   // open file
   std::ifstream qualfile ( filename.c_str() , std::ifstream::in );
-  
-  // find contig in multifasta quality 
+
+  // find contig in multifasta quality
   do {
     getline(qualfile, line);
 
@@ -36,7 +38,7 @@ read_quality(const std::string& filename, const std::string& name)
 
   // get first contig line
   getline(qualfile, line);
-  
+
   // while we do not reach a new contig
   while ((!qualfile.eof())&&(line.substr(0,1) != ">")) {
 
@@ -47,17 +49,17 @@ read_quality(const std::string& filename, const std::string& name)
     while (is >> qual) {
       quality.push_back(qual);
     }
- 
+
     // read a new line
     getline(qualfile, line);
-  } 
+  }
 
   qualfile.close();
   return quality;
 }
 
 SeqType
-read_sequence(std::istream& fasta) 
+read_sequence(std::istream& fasta)
 {
   char c('\n');
   SeqType sequence;
@@ -65,17 +67,17 @@ read_sequence(std::istream& fasta)
   if (fasta.eof()) {
     return sequence;
   }
-  
+
   // while we do not reach a new contig
   while ((!fasta.eof())&&(c != '>')) {
-    
+
     // read a new char
     fasta.get(c);
 
     if ((c != '\n')&&(c != '>')&&(c != ' ')&&(!fasta.eof())) {  // I do not understand why I need to request (!fasta.eof())
-								// however, if I do not check it, contigs contained in fasta 
+								// however, if I do not check it, contigs contained in fasta
 								// which not end with a newline are enlarged of one nucleotide
-      
+
       // move read nucleotide into sequence
       sequence.resize(sequence.size()+1);
       sequence[sequence.size()-1]=c;
@@ -86,13 +88,13 @@ read_sequence(std::istream& fasta)
     fasta.unget();
   }
 
-  return sequence; 
+  return sequence;
 }
 
 SeqType
-read_fasta(const std::string& filename, const std::string& name) 
+read_fasta(const std::string& filename, const std::string& name)
 {
-  std::string line, begin_contig=">"+name; 
+  std::string line, begin_contig=">"+name;
   SeqType sequence;
 
   // open file
@@ -106,7 +108,7 @@ read_fasta(const std::string& filename, const std::string& name)
     throw std::domain_error(ss.str().c_str());
   }
 
-  // find contig in multifasta 
+  // find contig in multifasta
   do {
     getline(fastafile, line);
 
@@ -122,17 +124,17 @@ read_fasta(const std::string& filename, const std::string& name)
   /*
   // get first contig line
   getline(fastafile, line);
-  
+
   // while we do not reach a new contig
   while ((!fastafile.eof())&&(line.substr(0,1) != ">")) {
-    
+
     // move read bases into sequence
     unsigned int filled_until=sequence.size();
     sequence.resize(sequence.size()+line.size());
     for (unsigned int i=0; i<line.size(); i++) {
       sequence[i+filled_until]=line[i];
     }
-   
+
     // read a new line
     getline(fastafile, line);
   }
@@ -145,8 +147,8 @@ read_fasta(const std::string& filename, const std::string& name)
 }
 
 Contig
-read_contig(const std::string& filename, 
-            const std::string& name) 
+read_contig(const std::string& filename,
+            const std::string& name)
 {
   SeqType sequence=read_fasta(filename,name);
 
@@ -154,8 +156,8 @@ read_contig(const std::string& filename,
 }
 
 Contig
-read_contig(const std::string& fasta_filename, 
-            const std::string& quality_filename, const std::string& name) 
+read_contig(const std::string& fasta_filename,
+            const std::string& quality_filename, const std::string& name)
 {
   SeqType sequence=read_fasta(fasta_filename,name);
   QualSeqType quality=read_quality(quality_filename,name);
@@ -175,7 +177,7 @@ read_contig_in(const std::string& name, const std::string& dir)
   return read_contig(fasta_name, name);
 }
 
-std::istream& operator>>(std::istream& is, Contig& ctg) 
+std::istream& operator>>(std::istream& is, Contig& ctg)
 {
   std::string line;
   ctg._sequence.resize(0);
@@ -183,44 +185,44 @@ std::istream& operator>>(std::istream& is, Contig& ctg)
   // get name
   getline(is, line);
   ctg._name=line.substr(1,line.size()-1);
-  
+
   size_t pos = ctg._name.find(' ');
   if( pos > 0 ) ctg._name = ctg._name.substr(0,pos);
 
   /*
   getline(is, line);
-  
+
   // while we do not reach a new contig
   while ((!is.eof())&&(line.substr(0,1) != ">")) {
-    
+
     // move read bases into sequence
     unsigned int filled_until=ctg.size();
     ctg._sequence.resize(ctg.size()+line.size());
     for (unsigned int i=0; i<line.size(); i++) {
       ctg._sequence[i+filled_until]=line[i];
     }
-   
+
     // read a new line
     getline(is, line);
-  } 
+  }
   */
 
   ctg._sequence=read_sequence(is);
   //ctg._quality.resize( ctg._sequence.size() );
-  
-  return is; 
+
+  return is;
 }
 
-std::ostream& operator<<(std::ostream& os, const Contig& ctg) 
+std::ostream& operator<<(std::ostream& os, const Contig& ctg)
 {
-  os << ">" << ctg.name(); 
+  os << ">" << ctg.name();
 
   size_t i=0;
   while (i<ctg.size()) {
     os << std::endl;
     size_t j=0;
     while ((i<ctg.size())&&(j<SEQ_LINE_LENGTH)) {
-      os << ctg.at(i); 
+      os << ctg.at(i);
       i++;
       j++;
     }
@@ -229,51 +231,51 @@ std::ostream& operator<<(std::ostream& os, const Contig& ctg)
   return os;
 }
 
-const std::vector<Contig>& 
-write_fasta(const std::vector<Contig>& ctgs, 
+const std::vector<Contig>&
+write_fasta(const std::vector<Contig>& ctgs,
                                 const std::string& fasta_filename)
 {
-  
+
   // write sequences
   std::ofstream seqfile ( fasta_filename.c_str() , std::ofstream::out );
   for (unsigned int i=0; i< ctgs.size(); i++) {
-    seqfile << ctgs[i] << std::endl; 
+    seqfile << ctgs[i] << std::endl;
   }
-  seqfile.close(); 
+  seqfile.close();
 
   return ctgs;
 }
 
-//const std::vector<Contig>& 
-//write_quality(const std::vector<Contig>& ctgs, 
-//                                const std::string& quality_filename) 
+//const std::vector<Contig>&
+//write_quality(const std::vector<Contig>& ctgs,
+//                                const std::string& quality_filename)
 //{
 //  // write quality
 //  std::ofstream qualfile ( quality_filename.c_str() , std::ofstream::out );
 //  for (unsigned int i=0; i< ctgs.size(); i++) {
-//    qualfile << ">" << ctgs[i].name(); 
+//    qualfile << ">" << ctgs[i].name();
 //
 //    unsigned int k=0;
 //    while (k<ctgs[i].size()) {
 //      qualfile << std::endl;
 //      unsigned int j=0;
 //      while ((k<ctgs[i].size())&&(j<QUAL_LINE_LENGTH)) {
-//        qualfile << ctgs[i].qual(k++) << " "; 
+//        qualfile << ctgs[i].qual(k++) << " ";
 //        j++;
 //      }
 //    }
 //    qualfile << std::endl;
 //  }
 //
-//  qualfile.close(); 
+//  qualfile.close();
 //
 //  return ctgs;
 //}
 
-const std::vector<Contig>& 
-write_contig(const std::vector<Contig>& ctgs, 
+const std::vector<Contig>&
+write_contig(const std::vector<Contig>& ctgs,
                                 const std::string& fasta_filename,
-                                const std::string& quality_filename) 
+                                const std::string& quality_filename)
 {
    write_fasta(ctgs,fasta_filename);
    //write_quality(ctgs,quality_filename);
@@ -281,57 +283,57 @@ write_contig(const std::vector<Contig>& ctgs,
    return ctgs;
 }
 
-const Contig& 
-write_fasta(const Contig& ctg, const std::string& fasta_filename) 
+const Contig&
+write_fasta(const Contig& ctg, const std::string& fasta_filename)
 {
   std::vector<Contig> v(1);
 
   v[0]=ctg;
 
-  write_fasta(v, fasta_filename); 
+  write_fasta(v, fasta_filename);
 
   return ctg;
 }
 
-const Contig& 
-write_quality(const Contig& ctg, const std::string& quality_filename) 
+const Contig&
+write_quality(const Contig& ctg, const std::string& quality_filename)
 {
   std::vector<Contig> v(1);
 
   v[0]=ctg;
 
-  //write_quality(v, quality_filename); 
+  //write_quality(v, quality_filename);
 
   return ctg;
 }
 
-const Contig& 
+const Contig&
 write_contig(const Contig& ctg, const std::string& fasta_filename,
-                                const std::string& quality_filename) 
+                                const std::string& quality_filename)
 {
   std::vector<Contig> v(1);
 
   v[0]=ctg;
 
-  write_fasta(v, fasta_filename); 
-  //write_quality(v, quality_filename); 
+  write_fasta(v, fasta_filename);
+  //write_quality(v, quality_filename);
 
   return ctg;
 }
 
-const Contig& 
+const Contig&
 write_contig(const Contig& ctg, const std::string& fasta_filename)
 {
   std::vector<Contig> v(1);
 
   v[0]=ctg;
 
-  write_fasta(v, fasta_filename); 
+  write_fasta(v, fasta_filename);
 
   return ctg;
 }
 
-const Contig& 
+const Contig&
 write_contig_in(const Contig& ctg, const std::string& dir)
 {
   std::string fasta_name(dir+std::string("/")
@@ -346,7 +348,7 @@ write_contig_in(const Contig& ctg, const std::string& dir)
 }
 
 void
-split_multifasta_sequence_in(const std::string& dir, 
+split_multifasta_sequence_in(const std::string& dir,
                     const std::string& multifasta_filename)
 {
 
@@ -355,18 +357,18 @@ split_multifasta_sequence_in(const std::string& dir,
             << "\" in directory \""<< dir << "\"..." <<std::flush;
 #endif
 
-  std::string line; 
+  std::string line;
 
   if ((mkdir(dir.c_str(),S_IRWXU)==-1)&&((errno!=EEXIST)||(errno==ENOTDIR))) {
     throw std::runtime_error("I cannot create the directory");
-  } 
+  }
 
   // open file
   std::ifstream fastafile ( multifasta_filename.c_str() , std::ifstream::in );
-  
+
   // get first contig line
   getline(fastafile, line);
-  
+
   // while we do not reach a new contig
   while (!fastafile.eof()) {
 
@@ -386,18 +388,18 @@ split_multifasta_sequence_in(const std::string& dir,
     getline(fastafile, line);
     // while we do not reach a new contig
     while ((!fastafile.eof())&&(line.substr(0,1) != ">")) {
-    
+
       // move read bases into sequence
       size_t filled_until=sequence.size();
       sequence.resize(sequence.size()+line.size());
       for (unsigned int i=0; i<line.size(); i++) {
         sequence[i+filled_until]=line[i];
       }
-   
+
       // read a new line
       getline(fastafile, line);
-    } 
-    
+    }
+
     std::string fastaname(dir+std::string("/")+
                           ctg_name+std::string(".fasta"));
 
@@ -413,12 +415,12 @@ split_multifasta_sequence_in(const std::string& dir,
 }
 
 void
-merge_multifasta_sequences_in(const std::string& dir, 
+merge_multifasta_sequences_in(const std::string& dir,
                     const std::string& multifasta_filename)
 {
 #ifdef _VERBOSE_OUTPUT_
-  std::cout << "Merging sequences contained by directory \"" << dir 
-            << "\" into multifasta file \"" << multifasta_filename 
+  std::cout << "Merging sequences contained by directory \"" << dir
+            << "\" into multifasta file \"" << multifasta_filename
 	    << "\"..." << std::flush;
 #endif
 
@@ -433,11 +435,11 @@ merge_multifasta_sequences_in(const std::string& dir,
 
   while ((dirp = readdir(dp)) != NULL) {
     std::string name(dir+std::string("/")+std::string(dirp->d_name));
-    size_t last_dot=name.find_last_of('.');   
-  
+    size_t last_dot=name.find_last_of('.');
+
     if ((last_dot!=std::string::npos)&&
         (name.substr(last_dot)==std::string(".fasta"))) {
-  
+
       std::ifstream contig_file(name.c_str());
       Contig ctg;
 
@@ -457,7 +459,7 @@ merge_multifasta_sequences_in(const std::string& dir,
 
 }
 
-void 
+void
 delete_file_in(const std::string& filename, const std::string& dir)
 {
   std::string name(dir+std::string("/")+filename);
@@ -473,6 +475,88 @@ delete_contig_in(const Contig& ctg, const std::string& dir)
 
   delete_file_in(fasta_name,dir);
   //delete_file_in(qual_name,dir);
+}
+
+
+void readNextContigID( std::istream &is, std::string &ctg_id )
+{
+	char c = is.peek();
+
+	while( is.good() and (c == ' ' or c == '\n') )
+	{
+		is.ignore(1);
+		if( is.good() ) c = is.peek();
+	}
+
+	if( is.good() and c != '>' )
+	{
+		std::stringstream ss;
+		ss << "Found invalid character: " << c;
+		throw std::domain_error(ss.str().c_str());
+	}
+
+	std::string line, id;
+
+	// get name
+	std::getline( is, line );
+	id = line.substr(1,line.size()-1);
+
+	size_t pos = id.find(' ');
+	if( pos != std::string::npos ) id = id.substr(0,pos);
+
+						 ctg_id = id;
+}
+
+void readNextSequence( std::istream &is, Contig &ctg )
+{
+	if( is.eof() ) return;
+
+	char c('\n');
+	size_t idx = 0;
+
+	// while we do not reach a new contig
+	while( !is.eof() and c != '>' )
+	{
+		// read a new char
+		is.get(c);
+
+		if( c != '\n' and c != '>' and c != ' ' and !is.eof() )
+		{
+			// copy read nucleotide into sequence
+			if(idx >= ctg.size()) ctg.resize(idx+1);
+
+		  ctg.at(idx) = c;
+		  idx++;
+		}
+	}
+
+	if( !is.eof() ) is.unget();
+}
+
+
+
+void
+loadSequences( const std::string &file, RefSequence &refSequence, const std::map< std::string, int32_t > &ctg2Id )
+{
+	std::ifstream ifs( file.c_str(), std::ifstream::in );
+
+	char buffer[BUFFER_LEN];
+	ifs.rdbuf()->pubsetbuf( buffer, BUFFER_LEN );
+
+	while( !ifs.eof() )
+	{
+		std::string ctg_name;
+		readNextContigID( ifs, ctg_name );
+
+		std::map< std::string, int32_t >::const_iterator it = ctg2Id.find( ctg_name );
+
+		Contig *ctg = new Contig( ctg_name, refSequence[it->second].RefLength );
+		readNextSequence( ifs, *ctg );
+
+		refSequence[it->second].Sequence = ctg;
+	}
+
+	ifs.close();
 }
 
 /*

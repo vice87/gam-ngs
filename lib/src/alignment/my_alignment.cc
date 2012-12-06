@@ -128,6 +128,11 @@ MyAlignment::homology() const
     return ((RealType)num_of_matches) * 100 / ((RealType) this->length());*/
 }
 
+void 
+MyAlignment::set_homology( RealType homology )
+{
+    this->_homology = homology;
+}
 
 bool
 first_match_pos( const MyAlignment& A, std::pair<MyAlignment::size_type,MyAlignment::size_type> &pos )

@@ -20,6 +20,9 @@
  *
  */
 
+#include <iostream>
+#include <iomanip>
+
 #include "OptionsStandard.hpp"
 #include "UtilityFunctions.hpp"
 
@@ -30,31 +33,21 @@
 
 using namespace modules;
 
+OptionsStandard g_options;
+
 int main(int argc, char *argv[])
 {
-	/*boost::filesystem::path p(argv[1]);
+	if( not g_options.process(argc,argv) ) exit(2);
 
-	if( boost::filesystem::exists(p) and boost::filesystem::is_directory(p) )
-	{
-		std::cout << "directory " << p << " already exists.\n";
-	}
-	else
-	{
-		if( boost::filesystem::create_directory(p) ) std::cout << "directory " << p << " has been created\n";
-		else std::cout << "creation of directory " << p << " failed\n";
-	}*/
-
-	OptionsStandard options(argc,argv);
-
-    if( options.program_mode == Options::program_create_blocks )
+	if( g_options.program_mode == Options::program_create_blocks )
     {
         CreateBlocks createBlocks;
-        createBlocks.execute(options);
+        createBlocks.execute();
     }
-    else if( options.program_mode == Options::program_merge )
+    else if( g_options.program_mode == Options::program_merge )
     {
         Merge gamMerge;
-        gamMerge.execute(options);
+        gamMerge.execute();
     }
     else
     {
@@ -63,7 +56,20 @@ int main(int argc, char *argv[])
     }
 
     int64_t maxrsskb = 0L;
-    if( getMaxRSS( &maxrsskb ) == 0 ) std::cout << "MAX Memory used: " << maxrsskb << std::endl;
+	getMaxRSS( &maxrsskb );
+
+	double maxrss = maxrsskb;
+	std::string maxrss_suff = "KB";
+
+	if( maxrss > 1024 )
+	{
+		maxrss = maxrss / 1024;
+		if( maxrss <= 1024 ) maxrss_suff = "MB";
+		if( maxrss > 1024 ){ maxrss = maxrss / 1024; maxrss_suff = "GB"; }
+	}
+
+	std::cout << setiosflags(std::ios::fixed) << std::setprecision(2)
+	          << "[gam] MAX Memory used: " << maxrss << " " << maxrss_suff << std::endl;
 
     return 0;
 }

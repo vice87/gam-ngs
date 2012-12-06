@@ -24,8 +24,7 @@ class ContigInPctgInfo
 {
 
 private:
-    IdType _aId;        //!< assembly identifier
-    IdType _ctgId;      //!< contig identifier
+    int32_t _ctgId;      //!< contig identifier
     UIntType _size;     //!< size of the contig
     int64_t _position;  //!< position inside the paired contig
     bool _reversed;     //!< whether the contig is reverse complemented or not.
@@ -43,21 +42,11 @@ public:
     //! A constructor.
     /*!
      * Creates a ContigInPctgInfo object, given a contig ID, its size and a position.
-     * \param aId       assembly identifier
      * \param ctgId     contig identifier
      * \param size      size of the contig
      * \param position  position of the contig inside a paired contig.
      */
-    ContigInPctgInfo(const IdType &aId, const IdType &ctgId, const UIntType &size, const UIntType &position);
-
-    //! A constructor.
-    /*!
-     * Creates a ContigInPctgInfo object, given a contig ID, its size and a position.
-     * \param ctgId     contig identifier
-     * \param size      size of the contig
-     * \param position  position of the contig inside a paired contig.
-     */
-    ContigInPctgInfo(const IdType &ctgId, const UIntType &size, const UIntType &position);
+    ContigInPctgInfo(const int32_t ctgId, const UIntType &size, const UIntType &position);
 
     //! A copy constructor.
     /*!
@@ -69,29 +58,18 @@ public:
     //! A constructor.
     /*!
      * Creates a ContigInPctgInfo object, given a contig ID and a BestPctgCtgAlignment object.
-     * \param aId assembly identifier
-     * \param ctgId contig identifier
-     * \param bestAlign a BestPctgCtgAlignment object
-     *
-     * \sa BestPctgCtgAlignment
-     */
-    ContigInPctgInfo(const IdType &aId, const IdType &ctgId, const BestPctgCtgAlignment &bestAlign);
-
-    //! A constructor.
-    /*!
-     * Creates a ContigInPctgInfo object, given a contig ID and a BestPctgCtgAlignment object.
      * \param ctgId contig's identifier
      * \param bestAlign a BestPctgCtgAlignment object
      *
      * \sa BestPctgCtgAlignment
      */
-    ContigInPctgInfo(const IdType &ctgId, const BestPctgCtgAlignment &bestAlign);
+    ContigInPctgInfo(const int32_t ctgId, const BestPctgCtgAlignment &bestAlign);
 
     //! Gets sequence identifier.
     /*!
-     * \return pair of assembly and contig IDs.
+     * \return contig ID.
      */
-    std::pair<IdType,IdType> getId() const;
+    int32_t getId() const;
 
 	uint64_t getSize() const;
 

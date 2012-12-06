@@ -51,8 +51,8 @@ bool Read::overlaps(Read& read, int minOverlap) const
 {
     if( this->_contigId != read.getContigId() ) return false;
 
-    IntType startDiff = IntType(this->getEndPos()) - IntType(read.getStartPos()) + 1;
-    IntType endDiff = IntType(read.getEndPos()) - IntType(this->getStartPos()) + 1;
+    int32_t startDiff = this->getEndPos() - read.getStartPos() + 1;
+    int32_t endDiff = read.getEndPos() - this->getStartPos() + 1;
 
     return (startDiff >= minOverlap && endDiff >= minOverlap);
 }
@@ -82,22 +82,18 @@ void Read::loadReadsMap(
         // se la molteplicità non è stata definita, assumo che sia pari ad 1
         if( !align.GetTag(std::string("NH"),nh) ) nh = 1;
         if( !align.GetTag(std::string("XT"),xt) ) xt = 'U';
+        bool uniqMapRead = (nh == 1 && xt == 'U');
 
-        // scarto read con molteplicità maggiore di 1
-        if( nh != 1 || xt != 'U' ) continue;
+		if( !uniqMapRead ) continue; // read mappata in modo molteplice
 
-        Read curRead( align.RefID, align.Position, align.GetEndPosition(), align.IsReverseStrand() );
+		Read curRead( align.RefID, align.Position, align.GetEndPosition(), align.IsReverseStrand() );
 
-        // insert reads one of the reads hash-tables depending on whether it is the first or second pair
-        if( align.IsFirstMate() ) readMap_1[align.Name] = curRead; else readMap_2[align.Name] = curRead;
+		// insert reads one of the reads hash-tables depending on whether it is the first or second pair
+		if( !align.IsPaired() || align.IsFirstMate() ) readMap_1[align.Name] = curRead; else readMap_2[align.Name] = curRead;
 
-        //std::string readName = align.Name;
-        //if( align.IsPaired() ) readName = readName + (align.IsFirstMate() ? "1" : "2");
-        //readMap.insert( std::make_pair(readName,curRead) );
-
-        // update vector coverage
-        uint32_t read_len = align.GetEndPosition() - align.Position;
-        for( int i=0; i < read_len; i++ ) coverage[align.RefID][align.Position+i] += 1;
+		// update vector coverage
+		uint32_t read_len = align.GetEndPosition() - align.Position;
+		for( int i=0; i < read_len; i++ ) coverage[align.RefID][align.Position+i] += 1;
     }
 }
 

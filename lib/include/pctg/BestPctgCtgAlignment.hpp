@@ -29,6 +29,7 @@ public:
      * \param main an alignment.
      * \param isCtgReverse whether the contig is reverse complemented or not.
      */
+	BestPctgCtgAlignment();
     BestPctgCtgAlignment(const MyAlignment &main, const bool isCtgReverse);
 	BestPctgCtgAlignment(const std::vector<MyAlignment> &main, const bool isCtgReverse);
 

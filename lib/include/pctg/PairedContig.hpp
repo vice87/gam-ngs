@@ -15,23 +15,32 @@
 #include <string>
 #include <list>
 #include <map>
+#include <set>
 #include <algorithm>
 
 #include "api/BamAux.h"
 
 #include "types.hpp"
 #include "assembly/contig.hpp"
+#include "assembly/RefSequence.hpp"
 #include "pctg/ContigInPctgInfo.hpp"
+#include "pctg/CtgInPctgInfo.hpp"
 
 //! Class implementing a paired contig.
 class PairedContig : public Contig
 {
 private:
-    typedef std::map< std::pair<IdType,IdType>, ContigInPctgInfo > ContigInfoMap;
+    typedef std::map< int32_t, ContigInPctgInfo > ContigInfoMap;
 
     ContigInfoMap _masterCtgMap;        //!< map of master contigs in this paired contig
     ContigInfoMap _slaveCtgMap;         //!< map of slave contigs in this paired contig
     IdType _pctgId;                     //!< paired contig ID
+
+    std::list< CtgInPctgInfo > _mergeList;
+	std::set< int32_t > _masterCtgs;
+	std::set< int32_t > _slaveCtgs;
+
+    std::list< std::pair<uint64_t,uint64_t> > _dupRegionsEst; //!< list of possible duplicate regions lengths
 
 public:
     //! A constructor.
@@ -103,6 +112,9 @@ public:
      */
     const ContigInfoMap& getSlaveCtgMap() const;
 
+	std::list< CtgInPctgInfo >& getMergeList();
+	const std::list< CtgInPctgInfo >& getMergeList() const;
+
     //! Returns a ContigInPctgInfo object of a contig inside the paired contig.
     /*!
      * \param ctgId a contig identifier.
@@ -111,8 +123,8 @@ public:
      *
      * \sa ContigInPctgInfo
      */
-    const ContigInPctgInfo& getContigInfo(const std::pair<IdType,IdType> &ctgId, bool isMasterCtg) const;
-	ContigInPctgInfo& getContigInfo(const std::pair<IdType,IdType> &ctgId, bool isMasterCtg);
+    const ContigInPctgInfo& getContigInfo(const int32_t ctgId, bool isMasterCtg) const;
+	ContigInPctgInfo& getContigInfo(const int32_t ctgId, bool isMasterCtg);
 
     //! Gets the starting position of a given ContigInPctgInfo object.
     /*!
@@ -135,25 +147,32 @@ public:
      * \param isMasterCtg specifies whether \c ctgId is a master contig or not
      */
     uint64_t getBasePosition(
-        const std::pair<IdType,IdType> &ctgId,
+        const int32_t ctgId,
         const UIntType pos,
         const bool isMasterCtg);
 
+	void addDupRegion( uint64_t length, uint64_t ctgId );
+
+	void addMasterCtgId( int32_t id );
+	void addSlaveCtgId( int32_t id );
+
+	const std::set<int32_t>& getMasterCtgIdSet();
+
+	const std::list< std::pair<uint64_t,uint64_t> >& getDupRegions();
+
     //! Returns whether a ctgId is contained into the master contigs map.
     /*!
-     * \param aId assembly identifier.
      * \param ctgId a contig identifier.
      * \return whether \c ctgId is contained into the master contigs map.
      */
-    bool containsMasterCtg(const IdType& aId, const IdType &ctgId) const;
+    bool containsMasterCtg(const int32_t ctgId) const;
 
     //! Returns whether a ctgId is contained into the slave contigs map.
     /*!
-     * \param aId assembly identifier.
      * \param ctgId a contig identifier.
      * \return whether \c ctgId is contained into the slave contigs map.
      */
-    bool containsSlaveCtg(const IdType& aId, const IdType &ctgId) const;
+    bool containsSlaveCtg(const int32_t ctgId) const;
 
     //! Assign operator of PairedContig class.
     const PairedContig& operator =(const PairedContig& orig);
@@ -181,9 +200,22 @@ PairedContig& shiftOf(PairedContig& pctg, const UIntType& shiftSize);
 
 bool orderPctgsByName(const PairedContig &a, const PairedContig &b);
 
-std::ostream& writePctgDescriptors(std::ostream &os, const std::list<PairedContig> &pctgs, BamTools::RefVector &mcRef, std::vector<BamTools::RefVector> &scRef);
+std::ostream& writePctgDescriptors
+(
+	std::ostream &os,
+	const std::list<PairedContig> &pctgs,
+	RefSequence &masterRef,
+	RefSequence &slaveRef,
+	uint64_t pctg_id
+);
 
-std::ostream& writePctgDescriptor(std::ostream &os, const PairedContig &pctg, BamTools::RefVector &mcRef, std::vector<BamTools::RefVector> &scRef);
+std::ostream& writePctgDescriptor
+(
+	std::ostream &os,
+	const PairedContig &pctg,
+	RefSequence &masterRef,
+	RefSequence &slaveRef
+);
 
 #endif	/* PAIREDCONTIG_HPP */
 

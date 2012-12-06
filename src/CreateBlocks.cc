@@ -21,16 +21,19 @@
  */
 
 #include "CreateBlocks.hpp"
+#include "OptionsCreate.hpp"
 
 #include <vector>
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <iostream>
-#include <time.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <time.h>
+
 #include <google/sparse_hash_map>
+#include <boost/filesystem.hpp>
 
 #include "api/BamAux.h"
 #include "api/BamReader.h"
@@ -44,67 +47,107 @@
 using namespace BamTools;
 using google::sparse_hash_map;
 
+extern OptionsCreate g_options;
+
 namespace modules
 {
 
-void CreateBlocks::execute(const Options &options)
+void CreateBlocks::execute()
 {
 	struct stat st;
-	time_t tStart = time(NULL);
+
+	time_t t1 = time(NULL);
+
+	std::cout << "[main] opening BAM files" << std::endl;
+
+	// load master BAM filenames and min/max insert sizes
+	std::vector< std::string > masterBamFiles; // vector of master BAM filenames
+	std::vector< int32_t > master_minInsert, master_maxInsert;
+	loadBamFileNames( g_options.masterBamFile, masterBamFiles, master_minInsert, master_maxInsert );
+
+	// check master's BAM files existence
+	for( int i=0; i < masterBamFiles.size(); i++ )
+	{
+		boost::filesystem::path p(masterBamFiles[i].c_str());
+		if( !boost::filesystem::exists(p) || !boost::filesystem::is_regular_file(p) )
+		{
+			std::cerr << "[error] master BAM file \"" << masterBamFiles[i] << "\" doesn't exist" << std::endl;
+			exit(1);
+		}
+	}
+
+	// load slaves BAM filenames and min/max insert sizes
+	std::vector< std::string > slaveBamFiles;
+	std::vector< int32_t > slave_minInsert, slave_maxInsert;
+
+	loadBamFileNames( g_options.slaveBamFile, slaveBamFiles, slave_minInsert, slave_maxInsert );
+
+	// check slaves' BAM files existence
+	for( int i=0; i < slaveBamFiles.size(); i++ )
+	{
+		boost::filesystem::path p(slaveBamFiles[i].c_str());
+		if( !boost::filesystem::exists(p) || !boost::filesystem::is_regular_file(p) )
+		{
+			std::cerr << "[error] slave BAM file \"" << slaveBamFiles[i] << "\" doesn't exist" << std::endl;
+			exit(1);
+		}
+	}
+
+	/* OPEN MASTER BAM AND LOAD READS IN MEMORY */
 
 	MultiBamReader masterBam; // master (multi) BAM reader
-
-	std::vector< std::string > masterBamFiles; // vector of master BAM filenames
-	loadFileNames( options.masterBamFiles, masterBamFiles );
 	masterBam.Open( masterBamFiles ); // open master BAM files
+	masterBam.setMinMaxInsertSizes( master_minInsert, master_maxInsert );
 
-	std::cout << "[loading reads in memory]" << std::endl;
+	std::cout << "[main] loading reads in memory" << std::endl;
 
 	std::vector< std::vector<uint32_t> > masterCoverage;
 	sparse_hash_map< std::string, Read > masterReadMap_1, masterReadMap_2;
-	//masterReadMap.set_deleted_key("");
 
-	// load only useful reads of the slave assembly
+	// load uniquely mapped reads of the master, while updating master contig's coverage and inserts stats
 	Read::loadReadsMap( masterBam, masterReadMap_1, masterReadMap_2, masterCoverage );
 
-	// output insert size statistics for master assembly
-	std::string isize_stats_file = options.masterBamFiles + ".isize";
+	// output inserts statistics for master assembly
+	std::string isize_stats_file = g_options.masterBamFile + ".isize";
 	masterBam.writeStatsToFile( isize_stats_file );
 
-	time_t tEnd = time(NULL);
-	std::cout << "[reads loaded in " << formatTime(tEnd-tStart) << "]" << std::endl;
+	masterBam.Close(); // close master bam (no longer needed)
 
-	std::cout << "[finding blocks]" << std::endl;
+	time_t t2 = time(NULL);
+	std::cout << "[main] reads loaded in " << formatTime(t2-t1) << std::endl;
 
-	int32_t sid = 0;
+	std::cout << "[main] finding blocks" << std::endl;
+
 	std::vector<Block> blocks;
 
-	for( unsigned int i=0; i < options.slaveBamFiles.size(); i++ )
-	{
-		std::vector< std::string > slaveBamFiles; // vector of slave BAM filenames (of the current fp assembly)
+	/* OPEN SLAVE BAM AND BUILD BLOCKS */
 
-		MultiBamReader slaveBam; // slave (multi) BAM reader
-		loadFileNames( options.slaveBamFiles[i], slaveBamFiles );
-		slaveBam.Open( slaveBamFiles ); // open current fp slave BAM files
+	MultiBamReader slaveBam; // slave (multi) BAM reader
+	slaveBam.Open( slaveBamFiles ); // open slave BAM files
+	slaveBam.setMinMaxInsertSizes( slave_minInsert, slave_maxInsert );
 
-		std::vector< std::vector<uint32_t> > slaveCoverage;
-		Block::findBlocks( blocks, slaveBam, options.minBlockSize, masterReadMap_1, masterReadMap_2, slaveCoverage, sid );
-		Block::updateCoverages( blocks, masterCoverage, slaveCoverage );
+	std::vector< std::vector<uint32_t> > slaveCoverage;
 
-		// output insert size statistcs for each slave assembly
-		isize_stats_file = options.masterBamFiles + ".isize";
-		slaveBam.writeStatsToFile( isize_stats_file );
+	// build blocks, compute slave contig's coverage and inserts stats
+	Block::findBlocks( blocks, slaveBam, g_options.minBlockSize,
+					   masterReadMap_1, masterReadMap_2, slaveCoverage );
 
-		sid++;
-	}
 
-	time_t tEnd2 = time(NULL);
-	std::cout << "[" << blocks.size() << " blocks found in " << formatTime(tEnd2-tEnd) << "]" << std::endl;
+	/* COMPUTE COVERAGE OF THE BLOCKS */
+	Block::updateCoverages( blocks, masterCoverage, slaveCoverage );
 
-	std::cout << "[writing blocks on file: " << getPathBaseName( options.outputFilePrefix ) << "]" << std::endl;
-	Block::writeBlocks( options.outputFilePrefix + ".blocks", blocks );
+	// output inserts statistcs for slave assembly
+	isize_stats_file = g_options.slaveBamFile + ".isize";
+	slaveBam.writeStatsToFile( isize_stats_file );
 
-	std::cout << "[total execution time = " << formatTime( time(NULL)-tStart ) << "]" << std::endl;
+	slaveBam.Close(); // close current slave (no longer needed)
+
+	std::cout << "[main] blocks found = " << blocks.size() << std::endl;
+
+	std::cout << "[main] writing blocks on file: " << getPathBaseName( g_options.outputFilePrefix ) << std::endl;
+	Block::writeBlocks( g_options.outputFilePrefix + ".blocks", blocks );
+
+	std::cout << "[main] total execution time = " << formatTime( time(NULL)-t1 ) << std::endl;
 }
 
 } // namespace modules

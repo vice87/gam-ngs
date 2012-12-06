@@ -18,6 +18,7 @@ class BandedSmithWaterman
         const ScoreType _match_score;
         const ScoreType _mismatch_score;
         const ScoreType _gap_score;
+        const ScoreType _gap_ext_score;
         const size_type _band_size;
 
     public:
@@ -28,6 +29,7 @@ class BandedSmithWaterman
                 const ScoreType& match_score,
                 const ScoreType& mismatch_score,
                 const ScoreType& gap_score,
+                const ScoreType& gap_ext_score,
                 const size_type& band_size
                 );
 

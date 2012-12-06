@@ -23,7 +23,6 @@
 #include "Merge.hpp"
 
 #include <iostream>
-
 #include <map>
 #include <list>
 #include <vector>
@@ -41,325 +40,303 @@
 #include "api/BamReader.h"
 #include "api/BamAlignment.h"
 
-#include "bam/MultiBamReader.hpp"
-
 #include "types.hpp"
-#include "assembly/Read.hpp"
+#include "OptionsMerge.hpp"
+
 #include "assembly/Block.hpp"
+#include "assembly/Read.hpp"
+#include "assembly/RefSequence.hpp"
+#include "assembly/io_contig.hpp"
+#include "bam/MultiBamReader.hpp"
 #include "graphs/PairingEvidencesGraph.hpp"
 #include "pctg/PairedContig.hpp"
-#include "pool/HashContigMemPool.hpp"
+#include "pctg/ThreadedBuildPctg.hpp"
+#include "pctg/BuildPctgFunctions.hpp"
 #include "OrderingFunctions.hpp"
 #include "PartitionFunctions.hpp"
-#include "ThreadedBuildPctg.code.hpp"
 #include "UtilityFunctions.hpp"
 
 using namespace BamTools;
 
-//extern std::ofstream g_badAlignStream;
+extern OptionsMerge g_options;
+
+extern std::ofstream g_badAlignStream;
 //extern std::ofstream ext_ba_desc_stream;
 //extern uint64_t ext_ba_count;
 
 extern std::vector<uint64_t> ext_fpi;
 extern std::vector<uint64_t> ext_fpi_2;
 extern pthread_mutex_t g_badAlignMutex;
+
 std::ofstream _g_statsFile;
+
+MultiBamReader masterBam;
+MultiBamReader masterMpBam;
+MultiBamReader slaveBam;
+MultiBamReader slaveMpBam;
 
 namespace modules
 {
 
-void Merge::execute(const Options &options)
+void Merge::execute()
 {
 	pthread_mutex_init(&g_badAlignMutex,NULL);
 	ext_fpi = std::vector<uint64_t>(1000,0);
 	ext_fpi_2 = std::vector<uint64_t>(1000,0);
 
-	//g_badAlignStream.open( (options.outputFilePrefix + ".bad_align").c_str() );
+	g_badAlignStream.open( (g_options.outputFilePrefix + ".bad_align").c_str() );
 	//ext_ba_desc_stream.open( (options.outputFilePrefix + ".ba_desc").c_str() );
 	//ext_ba_count = 1;
 
 	struct stat st;
 	time_t tStart = time(NULL);
 
-	_g_statsFile.open( (options.outputFilePrefix + ".stats").c_str(), std::ios::out ); // open statistics (output) file
+	_g_statsFile.open( (g_options.outputFilePrefix + ".stats").c_str(), std::ios::out ); // open statistics (output) file
 
-	// lunghezza media e dev.std. degli inserti dei BAM utilizzati
-	// std::vector< double > masterInsertMean, masterInsertStd;
-	// std::vector< std::vector<double> > slavesInsertMean, slavesInsertStd;
+	std::list<Block> blocks;
 
-	std::cout << "[loading blocks]" << std::endl;
-	std::vector<Block> blocks = Block::readBlocks( options.blocksFile, options.minBlockSize );
-	std::cout << "[loaded blocks: " << blocks.size() << "]" << std::endl;
+	std::cout << "[main] loading blocks" << std::endl;
+	Block::loadBlocks( g_options.blocksFile, blocks, g_options.minBlockSize );
+	std::cout << "[main] loaded blocks = " << blocks.size() << std::endl;
 
-	std::cout << "[loading BAM data]\n" << std::endl;
+	std::cout << "[main] loading BAMs data" << std::endl;
 
-	MultiBamReader masterBam; // master (multi) BAM reader
+	std::vector< int32_t > minInsert, maxInsert;
+
+	/* OPEN MASTER BAM FILES */
+
 	std::vector< std::string > masterBamFiles; // vector of master BAM filenames
-	loadFileNames( options.masterBamFiles, masterBamFiles ); // load master BAM alignments filenames
+	loadBamFileNames( g_options.masterBamFile, masterBamFiles, minInsert, maxInsert ); // load master BAM alignments filenames
 
 	masterBam.Open( masterBamFiles ); // open master BAM files
-	if( options.masterISizeFiles != "" ) masterBam.readStatsFromFile( options.masterISizeFiles ); // open inserts statistics
-	BamTools::RefVector mcRef = masterBam.GetReferenceData(); // load master bam sequences
-
-	std::cout << options.masterBamFiles << ":" << std::endl;
-	for( size_t i=0; i < masterBam.size(); i++ )
+	if( masterBam.size() == 0 )
 	{
-		std::cout << masterBam[i].GetFilename() << std::endl;
-		std::cout << "Insert stats => Mean = " << masterBam.getISizeMean(i) << "\tStd = " << masterBam.getISizeStd(i) << std::endl;
+		std::cerr << "[bam] error: cannot open any master's PE-alignment specified in " << g_options.masterBamFile << std::endl;
+		exit(1);
 	}
-	std::cout << std::endl;
+	
+	masterBam.setMinMaxInsertSizes( minInsert, maxInsert );
 
-	std::vector< MultiBamReader > slaveBams( options.slaveBamFiles.size() );
-	std::vector< BamTools::RefVector > scRef( options.slaveBamFiles.size() ); // load slaves bams sequences
-
-	for( int i=0; i < options.slaveBamFiles.size(); i++ )
+	// open inserts statistics for master alignments
+	if( g_options.masterISizeFile != "" )
 	{
-		std::vector< std::string > slaveBamFiles; // vector of slave BAM filenames (of the current fp assembly)
-		loadFileNames( options.slaveBamFiles[i], slaveBamFiles ); // load slaves BAM alignments filenames
-
-		slaveBams[i].Open( slaveBamFiles );
-		if( options.slaveISizeFiles.size() > 0 ) slaveBams[i].readStatsFromFile( options.slaveISizeFiles[i] ); // open inserts statistics
-		scRef[i] = slaveBams[i].GetReferenceData(); // load current slave bam sequences
-
-		std::cout << options.slaveBamFiles[i] << ":" << std::endl;
-		for( size_t j=0; j < slaveBams[i].size(); j++ )
+		if( stat(g_options.masterISizeFile.c_str(),&st) != 0 ) // if statistics file do not exist, create it
 		{
-			std::cout << slaveBams[i][j].GetFilename() << std::endl;
-			std::cout << "Insert stats => Mean = " << slaveBams[i].getISizeMean(j) << "\tStd = " << slaveBams[i].getISizeStd(j) << std::endl;
+			std::cout << "[bam] computing statistics of master's PE-alignments" << std::endl;
+			masterBam.computeStatistics();
+			masterBam.writeStatsToFile( g_options.masterISizeFile );
 		}
-		std::cout << std::endl;
+		
+		masterBam.readStatsFromFile( g_options.masterISizeFile ); 
 	}
 
-	// keep only blocks between contigs that share at least minEvidence blocks.
-	//std::vector< Block > outBlocks = filterBlocksByPairingEvidences( blocks, minEvidence );
+	std::cout << "[bam] master PE-alignments file " << getPathBaseName(g_options.masterBamFile) << " successfully opened:" << std::endl;
+	for( size_t i=0; i < masterBam.size(); i++ ) 
+		std::cout << "      " << masterBam[i].GetFilename() 
+			<< "\n         inserts size = " << masterBam.getISizeMean(i) << " +/- " << masterBam.getISizeStd(i) 
+			<< "\tcoverage = " << masterBam.getCoverage(i) << std::endl;
 
-	// remove adjacent blocks if their frames overlap
-	// blocks = Block::filterBlocksByOverlaps( blocks );
+	/* OPEN MASTER MP BAM FILES */
 
-	std::cout << "[filtering blocks by coverage]" << std::endl;
-	blocks = Block::filterBlocksByCoverage( blocks, 0.75 );
-	std::cout << "[remaining blocks: " << blocks.size() << "]" << std::endl;
-
-	std::cout << "[filtering blocks by length]" << std::endl;
-	blocks = Block::filterBlocksByLength( blocks, mcRef, scRef, 500 );
-	std::cout << "[remaining blocks: " << blocks.size() << "]" << std::endl;
-
-	// create the graph of assemblies, remove cycles and keep remaining blocks.
-	std::cout << "[removing cycles from assemblies graph]" << std::endl;
-	std::list< std::vector<Block> > pcblocks = partitionBlocks( blocks, options );
-
-	std::cout << "[loading contigs lengths]" << std::endl;
-
-	std::map< std::string, int32_t > masterContigs;
-	std::vector< std::map<std::string,int32_t> > slaveCtgsVect( options.slaveBamFiles.size() );
-
-	BamTools::RefVector::const_iterator ref_iter;
-
-	for( ref_iter = masterBam.GetReferenceData().begin(); ref_iter != masterBam.GetReferenceData().end(); ref_iter++ )
-		masterContigs[ ref_iter->RefName ] = ref_iter->RefLength;
-
-	for( int i=0; i < slaveCtgsVect.size(); i++ )
+	if( g_options.masterMpBamFile != "" )
 	{
-		for( ref_iter = scRef[i].begin(); ref_iter != scRef[i].end(); ref_iter++ )
-			slaveCtgsVect[i][ ref_iter->RefName ] = ref_iter->RefLength;
+		std::vector< std::string > masterMpBamFiles; // vector of master BAM filenames
+		loadBamFileNames( g_options.masterMpBamFile, masterMpBamFiles, minInsert, maxInsert ); // load master BAM alignments filenames
+
+		masterMpBam.Open( masterMpBamFiles ); // open master BAM files
+		if( masterMpBam.size() == 0 )
+		{
+			std::cerr << "[bam] error: cannot open any master's MP-alignment specified in " << g_options.masterMpBamFile << std::endl;
+			exit(1);
+		}
+		
+		masterMpBam.setMinMaxInsertSizes( minInsert, maxInsert );
+
+		if( g_options.masterMpISizeFile != "" ) 
+		{
+			if( stat(g_options.masterMpISizeFile.c_str(),&st) != 0 ) // if statistics file do not exist, create it
+			{
+				std::cout << "[bam] computing statistics of master's MP-alignments" << std::endl;
+				masterMpBam.computeStatistics();
+				masterMpBam.writeStatsToFile( g_options.masterMpISizeFile );
+			}
+			
+			masterMpBam.readStatsFromFile( g_options.masterMpISizeFile ); // open inserts statistics
+		}
+
+		std::cout << "[bam] master MP-alignments file " << getPathBaseName(g_options.masterMpBamFile) << " successfully opened:" << std::endl;
+		for( size_t i=0; i < masterMpBam.size(); i++ ) std::cout << "      " << masterMpBam[i].GetFilename() 
+			<< "\n         inserts size = " << masterMpBam.getISizeMean(i) << " +/- " << masterMpBam.getISizeStd(i) 
+			<< "\tcoverage = " << masterMpBam.getCoverage(i) << std::endl;
 	}
 
-	std::cout << "[loading contigs in memory]" << std::endl;
+	/* OPEN SLAVE BAM FILES */
 
-	ExtContigMemPool masterPool, slavePool(scRef.size());
-	HashContigMemPool pctgPool;
-	// load master and slave contigs in memory
-	masterPool.loadPool( 0, options.masterFastaFile, masterContigs );
-	for( int i=0; i < slaveCtgsVect.size(); i++ ) slavePool.loadPool( i, options.slaveFastaFiles[i], slaveCtgsVect[i] );
+	std::vector< std::string > slaveBamFiles; // vector of slave BAM filenames
+	loadBamFileNames( g_options.slaveBamFile, slaveBamFiles, minInsert, maxInsert ); // load slaves BAM alignments filenames
 
-	std::cout << "[building paired contigs]" << std::endl;
+	slaveBam.Open( slaveBamFiles );
+	if( slaveBam.size() == 0 )
+	{
+		std::cerr << "[bam] error: cannot open any slave's PE-alignment specified in " << g_options.slaveBamFile << std::endl;
+		exit(1);
+	}
+	
+	slaveBam.setMinMaxInsertSizes( minInsert, maxInsert );
+
+	if( g_options.slaveISizeFile != "" ) 
+	{
+		if( stat(g_options.slaveISizeFile.c_str(),&st) != 0 ) // if statistics file do not exist, create it
+		{
+			std::cout << "[bam] computing statistics of slave's PE-alignments" << std::endl;
+			slaveBam.computeStatistics();
+			slaveBam.writeStatsToFile( g_options.slaveISizeFile );
+		}
+		
+		slaveBam.readStatsFromFile( g_options.slaveISizeFile ); // open inserts statistics
+	}
+
+	std::cout << "[bam] slave PE-alignments file " << getPathBaseName(g_options.slaveBamFile) << " successfully opened:" << std::endl;
+	for( size_t i=0; i < slaveBam.size(); i++ ) std::cout << "      "<< slaveBam[i].GetFilename() 
+		<< "\n         inserts size = " << slaveBam.getISizeMean(i) << " +/- " << slaveBam.getISizeStd(i)
+		<< "\tcoverage = " << slaveBam.getCoverage(i) << std::endl;
+
+	/* OPEN SLAVE MP BAM FILES */
+
+	if( g_options.slaveMpBamFile != "" )
+	{
+		std::vector< std::string > slaveMpBamFiles; // vector of slave BAM filenames
+		loadBamFileNames( g_options.slaveMpBamFile, slaveMpBamFiles, minInsert, maxInsert ); // load slaves BAM alignments filenames
+
+		slaveMpBam.Open( slaveMpBamFiles );
+		if( slaveMpBam.size() == 0 )
+		{
+			std::cerr << "[bam] error: cannot open any slave's MP-alignment specified in " << g_options.slaveMpBamFile << std::endl;
+			exit(1);
+		}
+		
+		slaveMpBam.setMinMaxInsertSizes( minInsert, maxInsert );
+
+		if( g_options.slaveMpISizeFile != "" ) 
+		{
+			if( stat(g_options.slaveMpISizeFile.c_str(),&st) != 0 ) // if statistics file do not exist, create it
+			{
+				std::cout << "[bam] computing statistics of slave's MP-alignments" << std::endl;
+				slaveMpBam.computeStatistics();
+				slaveMpBam.writeStatsToFile( g_options.slaveMpISizeFile );
+			}
+			
+			slaveMpBam.readStatsFromFile( g_options.slaveMpISizeFile ); // open inserts statistics
+		}
+
+		std::cout << "[bam] slave MP-alignments file " << getPathBaseName(g_options.slaveMpBamFile) << " successfully opened:" << std::endl;
+		for( size_t i=0; i < slaveMpBam.size(); i++ ) std::cout << "      "<< slaveMpBam[i].GetFilename() 
+			<< "\n         inserts size = " << slaveMpBam.getISizeMean(i) << " +/- " << slaveMpBam.getISizeStd(i)
+			<< "\tcoverage = " << slaveMpBam.getCoverage(i) << std::endl;
+	}
+
+	/* LOAD SEQUENCES DATA */
+
+	std::cout << "[main] loading contigs data" << std::endl;
+
+	uint64_t master_ctgs = masterBam.GetReferenceData().size();
+	uint64_t slave_ctgs = slaveBam.GetReferenceData().size();
+
+	RefSequence masterRef(master_ctgs);
+	for( uint64_t i=0; i < master_ctgs; i++ )
+	{
+		masterRef[i].RefName = masterBam.GetReferenceData().at(i).RefName;
+		masterRef[i].RefLength = masterBam.GetReferenceData().at(i).RefLength;
+	}
+
+	RefSequence slaveRef(slave_ctgs);
+	for( uint64_t i=0; i < slave_ctgs; i++ )
+	{
+		slaveRef[i].RefName = slaveBam.GetReferenceData().at(i).RefName;
+		slaveRef[i].RefLength = slaveBam.GetReferenceData().at(i).RefLength;
+	}
+
+	/* BLOCKS FILTERING */
+
+	std::set< std::pair<int32_t,int32_t> > sl_blocks;
+	getSingleLinkBlocks( blocks, sl_blocks );
+
+	std::set<int32_t> masterNBC_BF, slaveNBC_BF; // contigs without blocks (before filtering)
+	getNoBlocksContigs( masterRef, slaveRef, blocks, masterNBC_BF, slaveNBC_BF );
+	
+	double min_cov = std::min( masterBam.getGlobCoverage(), slaveBam.getGlobCoverage() ) / 2;
+
+	std::cout << "[main] filtering blocks by coverage" << std::endl;
+	Block::filterBlocksByCoverage( blocks, sl_blocks, min_cov, g_options.coverageThreshold );
+	std::cout << "[main] remaining blocks = " << blocks.size() << std::endl;
+	
+	//TODO: sistemare la funzione per eliminare blocchi dovuti a repeats
+	//Block::filterBlocksByOverlaps(blocks);
+
+	//TODO: migliorare il filtraggio dei blocchi per lunghezza
+	//std::cout << "[main] filtering blocks by length" << std::endl;
+	//Block::filterBlocksByLength( blocks, masterRef, slaveRef, sl_blocks, 500 );
+	//std::cout << "[main] length filtered blocks = " << blocks.size() << std::endl;
+
+	std::set<int32_t> masterNBC_AF, slaveNBC_AF; // contigs without blocks (after filtering)
+	getNoBlocksAfterFilterContigs( masterRef, slaveRef, blocks, masterNBC_BF, slaveNBC_BF, masterNBC_AF, slaveNBC_AF );
+
+	/* PARTITIONING BLOCKS */
+
+	std::cout << "[main] partitioning blocks" << std::endl;
+	std::list< std::vector<Block> > pcblocks = partitionBlocks( blocks );
+
+	/* LOADING CONTIGS SEQUENCES IN MEMORY */
+
+	std::cout << "[main] loading contigs sequences" << std::endl;
+
+	std::map< std::string, int32_t > masterCtg2Id; // master contig Name => ID
+	std::map< std::string, int32_t > slaveCtg2Id;  // slave contig Name => ID
+
+	for( size_t i=0; i < masterRef.size(); i++ ) masterCtg2Id[ masterRef[i].RefName ] = i;
+	for( size_t i=0; i < slaveRef.size(); i++ ) slaveCtg2Id[ slaveRef[i].RefName ] = i;
+
+	loadSequences( g_options.masterFastaFile, masterRef, masterCtg2Id );
+	loadSequences( g_options.slaveFastaFile, slaveRef, slaveCtg2Id );
+
+	// output slave contigs with no blocks (before filtering)
+	std::string noblocks_fasta_file = g_options.outputFilePrefix + ".noblocks.BF.fasta";
+	std::cout << "[merge] writing contigs with no blocks to file \"" << noblocks_fasta_file << "\"" << std::endl;
+	std::ofstream noblocks_fasta_stream( noblocks_fasta_file.c_str() );
+	for( std::set< int32_t >::const_iterator it = slaveNBC_BF.begin(); it != slaveNBC_BF.end(); it++ )
+	{
+		const Contig *ctg = slaveRef[*it].Sequence;
+		noblocks_fasta_stream << *ctg << std::endl;
+	}
+	noblocks_fasta_stream.close();
+	
+	// output slave contigs with no blocks (after filtering)
+	noblocks_fasta_file = g_options.outputFilePrefix + ".noblocks.AF.fasta";
+	std::cout << "[merge] writing contigs with no blocks (after filtering) to file \"" << noblocks_fasta_file << "\"" << std::endl;
+	noblocks_fasta_stream.open( noblocks_fasta_file.c_str() );
+	for( std::set< int32_t >::const_iterator it = slaveNBC_AF.begin(); it != slaveNBC_AF.end(); it++ )
+	{
+		const Contig *ctg = slaveRef[*it].Sequence;
+		noblocks_fasta_stream << *ctg << std::endl;
+	}
+	noblocks_fasta_stream.close();
+	
 	// build paired contigs (threaded)
-	ThreadedBuildPctg tbp( pcblocks, &pctgPool, &masterPool, &slavePool, masterBam, slaveBams, &mcRef, &scRef, options );
-	std::pair< std::list<PairedContig>, std::vector<bool> > result = tbp.run();
-
-	IdType pctgNum( result.first.size() );
-	std::cout << "[paired contigs built: " << pctgNum << "]" << std::endl;
-
-
-	// compute some statistics on merging and blocks' construction
+	std::cout << "[merge] building paired contigs" << std::endl;
+	ThreadedBuildPctg tbp( pcblocks, masterRef, slaveRef );
+	std::list<PairedContig> *result = tbp.run();
+	
+	// assign unique IDs to paired contigs
+	uint64_t pctg_id = 0;
+	for( std::list<PairedContig>::iterator pctg = result->begin(); pctg != result->end(); pctg++ )
 	{
-		std::set< int32_t > m_ctg_ids;
-		std::vector< std::set< int32_t > > s_ctg_ids( options.slaveBamFiles.size() );
-
-		uint64_t m_sum_len = 0, s_sum_len = 0;
-		uint64_t m_ctg_num = 0, s_ctg_num = 0;
-
-		int32_t aId, ctgId;
-
-		uint64_t mb_ctgs = 0, sb_ctgs = 0;
-
-		for( std::vector<Block>::const_iterator b = blocks.begin(); b != blocks.end(); b++ )
-		{
-			const Frame& mf = b->getMasterFrame();
-			const Frame& sf = b->getSlaveFrame();
-
-			ctgId = mf.getContigId();
-
-			if( m_ctg_ids.insert( ctgId ).second )
-			{
-				m_sum_len += mcRef[ctgId].RefLength;
-				m_ctg_num++;
-				mb_ctgs++;
-			}
-
-			aId = sf.getAssemblyId();
-			ctgId = sf.getContigId();
-
-			if( s_ctg_ids[aId].insert( ctgId ).second )
-			{
-				s_sum_len += scRef[aId][ctgId].RefLength;
-				s_ctg_num++;
-				sb_ctgs++;
-			}
-		}
-
-		m_ctg_ids.clear();
-		s_ctg_ids.clear();
-
-		_g_statsFile << "[contigs without blocks]\n"
-			<< "Master = " << masterPool.size() - mb_ctgs << " / " << masterPool.size() << "\n"
-			<< "Slave  = " << slavePool.size() - sb_ctgs << " / " << slavePool.size() << "\n"
-			<< "Master Total Length = " << m_sum_len << "\t Average = " << m_sum_len / double(m_ctg_num) << "\n"
-			<< " Slave Total Length = " << s_sum_len << "\t Average = " << s_sum_len / double(s_ctg_num) << "\n"
-			<< std::endl;
-
-		std::set< int32_t > m_ctg_ids_1k;
-		std::vector< std::set<int32_t> > s_ctg_ids_1k( options.slaveBamFiles.size() );
-
-		uint64_t mb_ctgs_1k = 0, sb_ctgs_1k = 0, mp_1k = 0, sp_1k = 0;
-
-		m_sum_len = s_sum_len = m_ctg_num = s_ctg_num = 0;
-
-		for( std::vector<Block>::const_iterator b = blocks.begin(); b != blocks.end(); b++ )
-		{
-			const Frame& mf = b->getMasterFrame();
-			const Frame& sf = b->getSlaveFrame();
-
-			ctgId = mf.getContigId();
-
-			if( mcRef[ctgId].RefLength < 1000 ) continue;
-			if( m_ctg_ids_1k.insert( ctgId ).second )
-			{
-				m_sum_len += mcRef.at(ctgId).RefLength;
-				m_ctg_num++;
-				mb_ctgs_1k++;
-			}
-
-			aId = sf.getAssemblyId();
-			ctgId = sf.getContigId();
-
-			if( scRef[aId][ctgId].RefLength < 1000 ) continue;
-			if( s_ctg_ids_1k[aId].insert( ctgId ).second )
-			{
-				s_sum_len += scRef[aId][ctgId].RefLength;
-				s_ctg_num++;
-				sb_ctgs_1k++;
-			}
-		}
-
-		m_ctg_ids_1k.clear();
-		s_ctg_ids_1k.clear();
-
-		for( size_t i=0; i < mcRef.size(); i++ ) if( mcRef[i].RefLength >= 1000 ) mp_1k++;
-		for( size_t i=0; i < scRef.size(); i++ ) for( size_t j=0; j < scRef[i].size(); j++ ) if( scRef[i][j].RefLength >= 1000 ) sp_1k++;
-
-		_g_statsFile << "[contigs >= 1K without blocks]\n"
-		<< "Master = " << mp_1k - mb_ctgs_1k << " / " << mp_1k << "\n"
-		<< "Slave  = " << sp_1k - sb_ctgs_1k << " / " << sp_1k << "\n"
-		<< "Master Total Length = " << m_sum_len << "\t Average = " << m_sum_len / double(m_ctg_num) << "\n"
-		<< " Slave Total Length = " << s_sum_len << "\t Average = " << s_sum_len / double(s_ctg_num) << "\n"
-		<< std::endl;
-
-		std::set< int32_t > m_ctg_ids_5k;
-		std::vector< std::set<int32_t> > s_ctg_ids_5k( options.slaveBamFiles.size() );
-
-		uint64_t mb_ctgs_5k = 0, sb_ctgs_5k = 0, mp_5k = 0, sp_5k = 0;
-		m_sum_len = s_sum_len = m_ctg_num = s_ctg_num = 0;
-
-		for( std::vector<Block>::const_iterator b = blocks.begin(); b != blocks.end(); b++ )
-		{
-			const Frame& mf = b->getMasterFrame();
-			const Frame& sf = b->getSlaveFrame();
-
-			ctgId = mf.getContigId();
-
-			if( mcRef[ctgId].RefLength < 5000 ) continue;
-			if( m_ctg_ids_5k.insert( ctgId ).second )
-			{
-				m_sum_len += mcRef.at(ctgId).RefLength;
-				m_ctg_num++;
-				mb_ctgs_5k++;
-			}
-
-			aId = sf.getAssemblyId();
-			ctgId = sf.getContigId();
-
-			if( scRef[aId][ctgId].RefLength < 5000 ) continue;
-			if( s_ctg_ids_5k[aId].insert( ctgId ).second )
-			{
-				s_sum_len += scRef[aId][ctgId].RefLength;
-				s_ctg_num++;
-				sb_ctgs_5k++;
-			}
-		}
-
-		m_ctg_ids_5k.clear();
-		s_ctg_ids_5k.clear();
-
-		for( size_t i=0; i < mcRef.size(); i++ ) if( mcRef[i].RefLength >= 5000 ) mp_5k++;
-		for( size_t i=0; i < scRef.size(); i++ ) for( size_t j=0; j < scRef[i].size(); j++ ) if( scRef[i][j].RefLength >= 5000 ) sp_5k++;
-
-		_g_statsFile << "[contigs >= 5K without blocks]\n"
-		<< "Master = " << mp_5k - mb_ctgs_5k << " / " << mp_5k << "\n"
-		<< "Slave  = " << sp_5k - sb_ctgs_5k << " / " << sp_5k << "\n"
-		<< "Master Total Length = " << m_sum_len << "\t Average = " << m_sum_len / double(m_ctg_num) << "\n"
-		<< " Slave Total Length = " << s_sum_len << "\t Average = " << s_sum_len / double(s_ctg_num) << "\n"
-		<< std::endl;
-
-		_g_statsFile << "[merging stats]\n";
-
-		uint64_t m_merged = 0, s_merged = 0, m_merged_tot = 0, s_merged_tot = 0;
-		uint64_t merged_len = 0, merged_num = 0;
-		std::list< uint32_t > m_merged_list, s_merged_list;
-
-		// Per ogni PairedContig stampa il numero di contig master/slave coinvolti nel merge
-		for( std::list<PairedContig>::const_iterator pctg = result.first.begin(); pctg != result.first.end(); pctg++ )
-		{
-			m_merged = (pctg->getMasterCtgMap()).size();
-			s_merged = (pctg->getSlaveCtgMap()).size();
-
-			m_merged_list.push_back( m_merged );
-			s_merged_list.push_back( s_merged );
-
-			m_merged_tot += m_merged;
-			s_merged_tot += s_merged;
-
-			merged_len += pctg->size();
-			merged_num++;
-		}
-
-		_g_statsFile << "Master merged (mean) = " << double( double(m_merged_tot) / result.first.size() ) << "\n";
-		_g_statsFile << " Slave merged (mean) = " << double( double(s_merged_tot) / result.first.size() ) << "\n";
-		_g_statsFile << " Merged Total Length = " << merged_len << "\tAverage = " << merged_len / double(merged_num) << "\n";
-
-		/*_g_statsFile << "Master merged list = ";
-		for( std::list<uint32_t>::const_iterator m = m_merged_list.begin(); m != m_merged_list.end(); m++ )
-			if( m == m_merged_list.begin() ) _g_statsFile << *m; else _g_statsFile << "\t" << *m;
-		_g_statsFile << std::endl;
-
-		_g_statsFile << "Slave merged list = ";
-		for( std::list<uint32_t>::const_iterator m = s_merged_list.begin(); m != s_merged_list.end(); m++ )
-			if( m == s_merged_list.begin() ) _g_statsFile << *m; else _g_statsFile << "\t" << *m;
-		_g_statsFile << std::endl;*/
-
-		_g_statsFile << std::endl;
+		pctg->setId(pctg_id);
+		pctg_id++;
 	}
-
+	
+	std::cout << "[merge] paired contigs built = " << pctg_id << std::endl;
+	
+	// TODO: sistemare codice commentato qui sotto
 	// output assemblies made exclusively by contigs involved in merging
 	/*std::fstream masterMergeFile( (options.outputFilePrefix + ".onlymaster.fasta").c_str(), std::fstream::out );
 	std::fstream slaveMergeFile( (options.outputFilePrefix + ".onlyslave.fasta").c_str(), std::fstream::out );
@@ -382,57 +359,70 @@ void Merge::execute(const Options &options)
 	slaveMergeFile.close();
 	linearMergeFile.close();*/
 
-	slavePool.resize(0); // slaves pool is no longer needed
+	// TODO: sistemare codice commentato qui sotto
+	// save IDs of (slave) contigs NOT merged
+	/*std::cout << "[merge] writing not merged (slave) contigs on file \"" << ( g_options.outputFilePrefix + ".notmerged.fasta" ) << "\"" << std::endl;
+	std::fstream unusedCtgsFile( (g_options.outputFilePrefix + ".notmerged.fasta").c_str(), std::fstream::out );
+	std::vector<bool> usedCtgs( slaveRef.size(), false );
 
-	std::list<IdType> ctgIds;
-	for(IdType i = 0; i < result.second.size(); i++) if( !result.second.at(i) ) ctgIds.push_back(i);
+	for( std::list< PairedContig >::const_iterator pctg = result->begin(); pctg != result->end(); pctg++ )
+	{
+		typedef std::map< int32_t, ContigInPctgInfo > ContigInfoMap;
+		const ContigInfoMap& slaveCtgs = pctg->getSlaveCtgMap();
+
+		for( ContigInfoMap::const_iterator ctg = slaveCtgs.begin(); ctg != slaveCtgs.end(); ctg++ )
+			usedCtgs[ctg->first] = true;
+	}
+
+	for( std::set<int32_t>::const_iterator it = slaveNBC_BF.begin(); it != slaveNBC_BF.end(); it++ )
+		usedCtgs[*it] = true;
+
+	for( std::set<int32_t>::const_iterator it = slaveNBC_AF.begin(); it != slaveNBC_AF.end(); it++ )
+		usedCtgs[*it] = true;
+
+	for( size_t i=0; i < usedCtgs.size(); i++ )
+		if( !usedCtgs[i] ) unusedCtgsFile << *(slaveRef[i].Sequence) << "\n";
+
+	unusedCtgsFile.close();
+	usedCtgs.clear(); // linea commentata perchè mi servono dopo per le regioni duplicate
+	*/
+
+	// delete slave contigs, which are no longer needed
+	for( size_t i=0; i < slaveRef.size(); i++ ) delete slaveRef[i].Sequence;
+	slaveNBC_BF.clear(); slaveNBC_AF.clear();
+
+	// get master contigs that have not been included in any pctg
+	std::vector< bool > usedMasterCtgs( masterRef.size(), false );
+	for( std::list< PairedContig >::iterator pctg = result->begin(); pctg != result->end(); pctg++ )
+	{
+		std::set<int32_t>::const_iterator it;
+		for( it = (pctg->getMasterCtgIdSet()).begin(); it != (pctg->getMasterCtgIdSet()).end(); it++ ) usedMasterCtgs[*it] = true;
+	}
+
+	std::list<int32_t> ctgIds;
+	for(int32_t i=0; i < usedMasterCtgs.size(); i++) if( !usedMasterCtgs[i] ) ctgIds.push_back(i);
 
 	// add unused contigs in paired contigs pool
-	generateSingleCtgPctgs( result.first, ctgIds, &masterPool, &mcRef, pctgNum);
+	uint64_t old_pctg_id = pctg_id;
+	generateSingleCtgPctgs( *result, ctgIds, masterRef, pctg_id);
 
 	// save paired contig pool to disk
-	std::cout << "[writing paired contigs on file: " << ( options.outputFilePrefix + ".fasta" ) << "]" << std::endl;
+	std::cout << "[merge] writing paired contigs on file \"" << ( g_options.outputFilePrefix + ".gam.fasta" ) << "\"" << std::endl;
 
-	result.first.sort( orderPctgsByName );
-
-	std::ofstream outFasta((options.outputFilePrefix + ".fasta").c_str(),std::ios::out);
-	std::list< PairedContig >::const_iterator i;
-	for( i = result.first.begin(); i != result.first.end(); i++ ) outFasta << *i << std::endl;
+	std::ofstream outFasta((g_options.outputFilePrefix + ".gam.fasta").c_str(),std::ios::out);
+	for( std::list< PairedContig >::const_iterator pctg = result->begin(); pctg != result->end(); pctg++ ) outFasta << *pctg << std::endl;
 	outFasta.close();
 
 	// save paired contigs descriptors to file
-	std::cout << "[writing paired contigs descriptors on file: " << ( options.outputFilePrefix + ".pctgs" ) << "]" << std::endl;
-	std::fstream pctgDescFile( (options.outputFilePrefix + ".pctgs").c_str(), std::fstream::out );
-	writePctgDescriptors( pctgDescFile, result.first, mcRef, scRef );
+	std::cout << "[merge] writing paired contigs descriptors on file \"" << ( g_options.outputFilePrefix + ".pctgs" ) << "\"" << std::endl;
+	std::fstream pctgDescFile( (g_options.outputFilePrefix + ".pctgs").c_str(), std::fstream::out );
+	writePctgDescriptors( pctgDescFile, *result, masterRef, slaveRef, old_pctg_id );
 	pctgDescFile.close();
 
-	// save IDs of (slave) contigs NOT merged
-	std::cout << "[writing unused slave contigs on file: " << ( options.outputFilePrefix + ".unused" ) << "]" << std::endl;
-	std::fstream unusedCtgsFile( (options.outputFilePrefix + ".unused").c_str(), std::fstream::out );
-	std::vector< std::vector<bool> > usedCtgs;
-	for( size_t i=0; i < scRef.size(); i++ ) usedCtgs.push_back( std::vector<bool>( scRef[i].size(), false ) );
-
-	for( std::list< PairedContig >::const_iterator pctg = result.first.begin(); pctg != result.first.end(); pctg++ )
-	{
-		typedef std::map< std::pair<IdType,IdType>, ContigInPctgInfo > ContigInfoMap;
-		ContigInfoMap slaveCtgs = pctg->getSlaveCtgMap();
-
-		for( ContigInfoMap::const_iterator ctg = slaveCtgs.begin(); ctg != slaveCtgs.end(); ctg++ )
-			usedCtgs[(ctg->first).first][(ctg->first).second] = true;
-	}
-
-	for( unsigned int i = 0; i < usedCtgs.size(); i++ )
-	{
-		for( size_t j=0; j < usedCtgs[i].size(); j++ )
-			if( !usedCtgs[i][j] ){ unusedCtgsFile << i << "\t" << scRef[i][j].RefName << "\n"; }
-	}
-
-	unusedCtgsFile.close();
 	_g_statsFile.close();
 
-	std::cout << "[total execution time = " << formatTime( time(NULL)-tStart ) << "]" << std::endl;
-
-	std::ofstream ofs_fpi( (options.outputFilePrefix + ".fpi").c_str() );
+	// DEBUG // TODO: incorporare meglio nel codice il calcolo delle seguenti statistiche
+	/*std::ofstream ofs_fpi( (g_options.outputFilePrefix + ".fpi").c_str() );
 	int max_frame_num = 0;
 	for( int i=1; i < ext_fpi.size(); i++ ){ if( (ext_fpi[i] > 0 || ext_fpi_2[i] > 0) && i > max_frame_num) max_frame_num = i; }
 	ofs_fpi << "          \t";
@@ -441,9 +431,11 @@ void Merge::execute(const Options &options)
 	for( int i=1; i <= max_frame_num; i++ ){ ofs_fpi << ext_fpi[i] << "\t"; } ofs_fpi << std::endl;
 	ofs_fpi << "failed    \t";
 	for( int i=1; i <= max_frame_num; i++ ){ ofs_fpi << ext_fpi_2[i] << "\t"; } ofs_fpi << std::endl;
-	ofs_fpi.close();
+	ofs_fpi.close();*/
 
-	//g_badAlignStream.close();
+	std::cout << "[merge] total execution time = " << formatTime( time(NULL)-tStart ) << std::endl;
+
+	g_badAlignStream.close();
 }
 
 } // namespace modules

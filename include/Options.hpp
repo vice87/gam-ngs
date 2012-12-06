@@ -49,14 +49,17 @@ public:
 	char **argv;
 
 	// input options
-	std::string masterBamFiles;
-	std::vector< std::string > slaveBamFiles;
+	std::string masterBamFile;
+	std::string slaveBamFile;
 
-	std::string masterISizeFiles;
-	std::vector< std::string > slaveISizeFiles;
+	std::string masterISizeFile;
+	std::string slaveISizeFile;
 
         std::string masterMpBamFile;
-        std::vector< std::string > slaveMpBamFiles;
+        std::string slaveMpBamFile;
+
+		std::string masterMpISizeFile;
+		std::string slaveMpISizeFile;
 
 	std::string masterNameSortedBamFile;
 	std::string slaveNameSortedBamFile;
@@ -64,7 +67,7 @@ public:
 	std::string blocksFile;
 
 	std::string masterFastaFile;
-	std::vector< std::string > slaveFastaFiles;
+	std::string slaveFastaFile;
 
 	int minBlockSize;
 	int threadsNum;

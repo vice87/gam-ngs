@@ -16,6 +16,7 @@
 #define GAP_SCORE -8
 #define MATCH_SCORE 5
 #define MISMATCH_SCORE -4
+#define GAP_EXT_SCORE -1
 
 #ifndef FULL_ALIGNMENT_SIZE_PERCENTAGE
 #define FULL_ALIGNMENT_SIZE_PERCENTAGE 95.00
@@ -88,6 +89,8 @@ public:
 
 	void set_begin_a( size_type begin_a );
 	void set_begin_b( size_type begin_b );
+    
+    void set_homology( RealType homology );
 
     const MyAlignment& operator=(const MyAlignment& orig);
 };

@@ -6,13 +6,19 @@
  */
 
 #ifndef UTILITYFUNCTIONS_HPP
-#define	UTILITYFUNCTIONS_HPP
+#define UTILITYFUNCTIONS_HPP
 
+#include <stdio.h>
 #include <stdint.h>
+#include <string.h>
+#include <iostream>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
+#include <unistd.h>
 
-char * getPathBaseName( char *path );
+char* getPathBaseName( char *path );
 
 std::string getPathBaseName( const std::string path );
 
@@ -22,7 +28,16 @@ std::string formatTime( time_t seconds );
 
 int getMaxRSS(int64_t *maxrsskb);
 
-void loadFileNames( const std::string &input_file, std::vector< std::string > &names );
+void loadBamFileNames(
+	const std::string &input_file,
+	std::vector< std::string > &names,
+	std::vector<int32_t> &minInsert,
+	std::vector<int32_t> &maxInsert
+);
+
+void loadFileNames(
+	const std::string &input_file,
+	std::vector< std::string > &names
+);
 
 #endif	/* UTILITYFUNCTIONS_HPP */
-

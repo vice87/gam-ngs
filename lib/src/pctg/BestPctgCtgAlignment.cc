@@ -1,5 +1,7 @@
 #include "pctg/BestPctgCtgAlignment.hpp"
 
+BestPctgCtgAlignment::BestPctgCtgAlignment() {}
+
 
 BestPctgCtgAlignment::BestPctgCtgAlignment(const MyAlignment& main, const bool isCtgReverse):
         _main(1,main),

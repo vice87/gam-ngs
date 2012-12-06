@@ -17,10 +17,6 @@ Frame::Frame( int32_t ctg, char strand, int32_t begin, int32_t end )
         : _assemblyId(0), _ctgId(ctg), _strand(strand), _begin(begin), _end(end), _readsLen(0), _blockReadsLen(0)
 {}
 
-Frame::Frame( int32_t assemblyId, int32_t ctg, char strand, int32_t begin, int32_t end )
-        : _assemblyId(assemblyId), _ctgId(ctg), _strand(strand), _begin(begin), _end(end), _readsLen(0), _blockReadsLen(0)
-{}
-
 Frame::Frame(const Frame& orig)
         : _assemblyId(orig._assemblyId), _ctgId(orig._ctgId), _strand(orig._strand),
           _begin(orig._begin),_end(orig._end), _readsLen(orig._readsLen), _blockReadsLen(orig._blockReadsLen)
@@ -121,20 +117,22 @@ bool Frame::overlaps(Read& read, int minOverlap) const
 
 bool Frame::frameOverlap( const Frame& a, const Frame& b, double minOverlap )
 {
-    if( a.getAssemblyId() != b.getAssemblyId() ) return false;
     if( a.getContigId() != b.getContigId() ) return false;
 
+	int32_t end = std::min( a.getEnd(), b.getEnd() );
+	
     if( a.getBegin() <= b.getBegin() )
     {
-        double overlap = (a.getEnd()>=b.getBegin()) ? (100.0 * (double)(a.getEnd() - b.getBegin() + 1) / b.getLength()) : 0.0;
+        double overlap = (a.getEnd()>=b.getBegin()) ? (100.0 * (double)(end - b.getBegin() + 1) / b.getLength()) : 0.0;
         return ( overlap >= minOverlap );
     }
     else
     {
-        double overlap = (b.getEnd()>=a.getBegin()) ? (100.0 * (double)(b.getEnd() - a.getBegin() + 1) / b.getLength()) : 0.0;
+        double overlap = (b.getEnd()>=a.getBegin()) ? (100.0 * (double)(end - a.getBegin() + 1) / b.getLength()) : 0.0;
         return ( overlap >= minOverlap );
     }
 }
+
 
 const Frame&
 Frame::operator=(const Frame& frame)
@@ -175,7 +173,7 @@ Frame::operator ==(const Frame& frame) const
 
 std::ostream &operator<<( std::ostream &output, const Frame &frame )
 {
-    output << frame.getAssemblyId() << "\t"
+    output << 0 << "\t"
            << frame.getContigId() << "\t" << frame.getStrand() << "\t"
            << frame.getBegin() << "\t" << frame.getEnd() << "\t"
            << frame.getBlockReadsLen() << "\t" << frame.getReadsLen();
@@ -185,7 +183,7 @@ std::ostream &operator<<( std::ostream &output, const Frame &frame )
 
 std::istream &operator>>( std::istream &input, Frame &frame )
 {
-    int32_t assemblyId;
+    int32_t assemblyId; // unused
     int32_t ctgId;
     char strand;
     int32_t begin, end;
@@ -193,7 +191,7 @@ std::istream &operator>>( std::istream &input, Frame &frame )
 
     input >> assemblyId >> ctgId >> strand >> begin >> end >> blockReadsLen >> readsLen;
 
-    frame = Frame( assemblyId, ctgId, strand, begin, end );
+    frame = Frame( ctgId, strand, begin, end );
     frame.setReadsLen(readsLen);
     frame.setBlockReadsLen(blockReadsLen);
 

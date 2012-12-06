@@ -1,4 +1,4 @@
-/*! 
+/*!
  * \file PairingEvidencesGraph.hpp
  * \brief Definition of PairingEvidencesGraph class.
  * \details This class construct a PairedContigGraph whose edges are weighted
@@ -16,26 +16,26 @@
  */
 class PairingEvidencesGraph : public PairedContigGraph<>
 {
-    
+
 public:
     typedef PairedContigGraph<>::Edge Edge; //!< edge descriptor type
     typedef PairedContigGraph<>::Vertex Vertex; //!< vertex descriptor type
-    
-private: 
+
+private:
     //! Adds edge weights.
     /*!
      * For each block, the weight of the edge connecting its master and slave contigs
      * is increased by 1.
-     * \param blocks a vector of blocks.
+     * \param blocks a list of blocks.
      */
-    void addEdgeWeights( const std::vector<Block>& blocks );
+    void addEdgeWeights( const std::list<Block>& blocks );
 
 public:
     //! A constructor.
     /*!
-     * \param blocks a vector of blocks.
+     * \param blocks a list of blocks.
      */
-    PairingEvidencesGraph( const std::vector<Block> &blocks );
+    PairingEvidencesGraph( const std::list<Block> &blocks );
 
 };
 
@@ -45,7 +45,12 @@ public:
  * \param minPairEvid minimum number of blocks between two contigs.
  * \return a filtered vector of blocks.
  */
-std::vector<Block> filterBlocksByPairingEvidences( const std::vector<Block> &blocks, const int minPairEvid = 1 );
+//std::vector<Block> filterBlocksByPairingEvidences( const std::vector<Block> &blocks, const int minPairEvid = 1 );
+
+void getSingleLinkBlocks(
+	const std::list<Block> &blocks,
+	std::set< std::pair<int32_t,int32_t> > &slb
+);
 
 #endif	/* PAIRINGEVIDENCESGRAPH_HPP */
 

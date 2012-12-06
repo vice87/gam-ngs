@@ -89,21 +89,31 @@ public:
      * \param bamSlave alignment of reads in slave assembly (read-name sorted).
      * \param readMap map where the reads are loaded.
      */
-    static void loadMasterReadsMap( BamReader &bamMaster, BamReader &bamSlave, sparse_hash_map< std::string, Read > &readMap );
+    static void loadMasterReadsMap(
+		BamReader &bamMaster,
+		BamReader &bamSlave,
+		sparse_hash_map< std::string, Read > &readMap
+	);
 
     //! Loads a set of (mapped) reads from a bam file.
     /*!
      * Reads with multiple alignments or unmapped are discarded.
      *
      * \param bamReader BamReader object.
-     * \param readMap map where the reads are loaded (output)
+     * \param readMap_1 map where the first uniquely mapped pairs are loaded (output)
+	 * \param readMap_2 map where the second uniquely mapped pairs are loaded (output)
      * \param coverage vector of coverages of the contigs (output)
+	 * \param dupReadMap_1 map where the first mutiple mapped pairs are loaded (output)
+	 * \param dupReadMap_2 map where the second mutiple mapped pairs are loaded (output)
+	 * \param loadDupReads whether duplicate reads maps should be filled
+	 *
      */
     static void loadReadsMap(
         MultiBamReader &bamReader,
         sparse_hash_map< std::string, Read > &readMap_1,
         sparse_hash_map< std::string, Read > &readMap_2,
-        std::vector< std::vector<uint32_t> > &coverage );
+        std::vector< std::vector<uint32_t> > &coverage
+	);
 };
 
 #endif	/* READS_HPP */

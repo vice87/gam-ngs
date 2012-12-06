@@ -18,23 +18,24 @@
 #include "types.hpp"
 #include "alignment/my_alignment.hpp"
 #include "assembly/Block.hpp"
-#include "pctg/BestPctgCtgAlignment.hpp"
+#include "assembly/RefSequence.hpp"
+#include "pctg/BestCtgAlignment.hpp"
 #include "pctg/ContigInPctgInfo.hpp"
+#include "pctg/CtgInPctgInfo.hpp"
 #include "pctg/PairedContig.hpp"
 #include "pctg/constraints_disattended.hpp"
-#include "pool/HashContigMemPool.hpp"
+#include "pctg/ThreadedBuildPctg.hpp"
+#include "PartitionFunctions.hpp"
 
-#include "ThreadedBuildPctg.hpp"
-
-#include "Options.hpp"
-using namespace options;
+#include "graphs/CompactAssemblyGraph.hpp"
+#include "pctg/MergeDescriptor.hpp"
 
 #ifndef MIN_HOMOLOGY
-#define MIN_HOMOLOGY 90.0
+#define MIN_HOMOLOGY 95.0
 #endif
 
 #ifndef MIN_HOMOLOGY_2
-#define MIN_HOMOLOGY_2 85.0
+#define MIN_HOMOLOGY_2 90.0
 #endif
 
 #ifndef MIN_ALIGNMENT_LEN
@@ -48,6 +49,7 @@ using namespace options;
 #define MIN_ALIGNMENT_QUOTIENT 0.001
 #endif
 
+
 //! Class implementing a builder of paired contigs.
 class PctgBuilder
 {
@@ -55,11 +57,8 @@ class PctgBuilder
 private:
 	ThreadedBuildPctg *_tbp;
 
-	const BamTools::RefVector *_masterRefVector;        //!< Reference to the id->name vector of the master contigs.
-    const std::vector<BamTools::RefVector> *_slaveRefVector;         //!< Reference to the id->name vector of the slave contigs.
-
-    const ExtContigMemPool *_masterPool;                   //!< Reference to the master contig pool
-    const ExtContigMemPool *_slavePool;                    //!< Reference to the slave contig pool
+	const RefSequence *_masterRef;        //!< Reference to the id->name vector of the master contigs.
+	const RefSequence *_slaveRef;         //!< Reference to the id->name vector of the slave contigs.
 
     UIntType _maxAlignment;                             //!< Maximum alignment size
     UIntType _maxPctgGap;                               //!< Maximum paired contig gaps
@@ -76,31 +75,86 @@ public:
      */
     PctgBuilder(
 			ThreadedBuildPctg *tbp = NULL,
-            const ExtContigMemPool *masterPool = NULL,
-            const ExtContigMemPool *slavePool = NULL,
-            const BamTools::RefVector *masterRefVector = NULL,
-            const std::vector<BamTools::RefVector> *slaveRefVector = NULL);
+            const RefSequence *masterRef = NULL,
+            const RefSequence *slaveRef = NULL);
 
     //! Gets a master contig, given its ID.
     /*!
      * \param ctgId pair consisting in master sequence's assembly and contig identifiers.
      * \return reference to the master contig with ID \c ctgId.
      */
-    const Contig& loadMasterContig(const std::pair<IdType,IdType> &ctgId) const;
+    const Contig& loadMasterContig(const int32_t ctgId) const;
 
     //! Gets a slave contig, given its ID.
     /*!
      * \param ctgId pair consisting in slave sequence's assembly and contig identifiers.
      * \return reference to the slave contig with ID \c ctgId.
      */
-    const Contig& loadSlaveContig(const std::pair<IdType,IdType> &ctgId) const;
+    const Contig& loadSlaveContig(const int32_t ctgId) const;
+
+	void appendMasterToPctg( PairedContig &pctg, MergeStruct &ctgInfo, int64_t start, int64_t end );
+	void appendSlaveToPctg( PairedContig &pctg, MergeStruct &ctgInfo, int64_t start, int64_t end );
+
+	void prependMasterToPctg( PairedContig &pctg, MergeStruct &ctgInfo, int64_t start, int64_t end );
+	void prependSlaveToPctg( PairedContig &pctg, MergeStruct &ctgInfo, int64_t start, int64_t end );
+
+	void appendBlocksRegionToPctg
+	(
+		PairedContig &pctg,
+		MergeStruct &masterInfo, int64_t masterStart, int64_t masterEnd,
+		MergeStruct &slaveInfo, int64_t slaveStart, int64_t slaveEnd
+	);
+
+	void prependBlocksRegionToPctg
+	(
+		PairedContig &pctg,
+		MergeStruct &masterInfo, int64_t masterStart, int64_t masterEnd,
+		MergeStruct &slaveInfo, int64_t slaveStart, int64_t slaveEnd
+	);
+
+	// new merge
+	void appendMasterToPctg( PairedContig &pctg, int32_t id, Contig &ctg, int32_t start, int32_t end, bool rev );
+	void appendSlaveToPctg( PairedContig &pctg, int32_t id, Contig &ctg, int32_t start, int32_t end, bool rev );
+	void appendBlocksRegionToPctg( PairedContig &pctg, int32_t m_id, Contig &m_ctg, int32_t m_start, int32_t m_end, bool m_rev,
+								   int32_t s_id, Contig &s_ctg, int32_t s_start, int32_t s_end, bool s_rev );
+
+	void buildPctgs( std::list<PairedContig> &pctgList, MergeBlockLists &mergeLists );
+	void buildPctgs( std::list<PairedContig> &pctgList, std::list<MergeBlock> &ml );
+
+	void splitMergeBlocksByInclusions( MergeBlockLists &ml_in );
+	void sortMergeBlocksByDirection( MergeBlockLists &ml );
+	void splitMergeBlocksByDirection( MergeBlockLists &ml_in );
+	void splitMergeBlocksByAlign( MergeBlockLists &ml_in );
+	void alignMergeBlock( const CompactAssemblyGraph &graph, MergeBlock &mb ) const;
+	void getMergePath( const CompactAssemblyGraph &graph, CompactAssemblyGraph::Vertex &v, MergeBlockLists &merge_paths,
+					   bool prevMisAssembly = false, EdgeKindType prevEdgeKind = BOTH_EDGE, bool sharedFirst = false ) const;
+    bool getMergePaths( const CompactAssemblyGraph &graph, CompactAssemblyGraph::Vertex &v, std::vector<MergeBlock> &mbv, 
+                        MergeBlockLists &merge_paths ) const;
+    bool solveForks( CompactAssemblyGraph &graph, std::vector<MergeBlock> &mbv ) const;
+    void getNextContigs( const CompactAssemblyGraph &graph, CompactAssemblyGraph::Vertex &v, std::set<int32_t> &masterCtgs, std::set<int32_t> &slaveCtgs ) const;
+    void getPrevContigs( const CompactAssemblyGraph &graph, CompactAssemblyGraph::Vertex &v, std::set<int32_t> &masterCtgs, std::set<int32_t> &slaveCtgs ) const;
+	// end new merge
+
+	void mergeContigs( std::list<PairedContig> &pctgList, MergeDescriptorLists &mergeLists );
+	void mergeContigs( std::list<PairedContig> &pctgList, std::list<MergeDescriptor> &mergeList );
+
+	void reverseCoordinates( std::pair<int64_t,int64_t> &coords, size_t ctg_size );
+
+	bool isAlignmentFailed( BestCtgAlignment &align, std::pair<uint64_t,uint64_t> masterPos, std::pair<uint64_t,uint64_t> slavePos, bool isMasterRev );
+
+    /*void getMergeLists( const CompactAssemblyGraph &graph, CompactAssemblyGraph::Vertex v, MergeDescriptorLists &mergeLists,
+						bool hasMisAssembly = false, EdgeKindType edgeKind = BOTH_EDGE, bool sharedFirst = false ) const;*/
+
+	ForkType getForkType( const CompactAssemblyGraph &graph, CompactAssemblyGraph::Vertex &v, CompactAssemblyGraph::Vertex &mv, CompactAssemblyGraph::Vertex &sv ) const;
+	ForkType getInForkType( const CompactAssemblyGraph &graph, CompactAssemblyGraph::Vertex &v ) const;
+	ForkType getOutForkType( const CompactAssemblyGraph &graph, CompactAssemblyGraph::Vertex &v ) const;
 
     //! Builds a paired contig with a single (master) contig.
     /*!
      * \param pctgId the paired contig's identifier
      * \param ctgId  a (master) contig identifier
      */
-    PairedContig initByContig(const IdType &pctgId, const std::pair<IdType,IdType> &ctgId) const;
+    PairedContig initByContig(const IdType &pctgId, const int32_t ctgId) const;
 
     //! Returns a paired contig extended using a block on the assemblies.
     /*!
@@ -108,10 +162,9 @@ public:
      * if it contains exactly one of them.
      * \param pctg a paired contig
      * \param blocks_list list of blocks considered in the merging
-	 * \param options options from command line
      * \return the paired contig \c pctg extended using \c block.
      */
-    PairedContig& extendByBlock(PairedContig &pctg, const std::list<Block> &blocks_list, const Options &options) const;
+    PairedContig& extendByBlock(PairedContig &pctg, const std::list<Block> &blocks_list) const;
 
     //! Adds the first block to a paired contig.
     /*!
@@ -119,12 +172,11 @@ public:
      * \param pctg a paired contig.
      * \param firstBlock first block in common between the contigs
      * \param lastBlock last block in common between the contigs
-	 * \param options options from command line
      * \return a paired contig in which the contigs of \c block may have been merged.
      *
      * \throws std::invalid_argument if the \c pctg is not empty.
      */
-	PairedContig& addFirstBlockTo(PairedContig &pctg, const std::list<Block> &blocks_list, const Options &options) const;
+	PairedContig& addFirstBlockTo(PairedContig &pctg, const std::list<Block> &blocks_list) const;
 
     //! Adds the first contig to a paired contig.
     /*!
@@ -135,9 +187,9 @@ public:
      *
      * \throws std::invalid_argument if the \c pctg is not empty.
      */
-    PairedContig& addFirstContigTo(PairedContig &pctg, const std::pair<IdType,IdType> &ctgId) const;
+    PairedContig& addFirstContigTo(PairedContig &pctg, const int32_t ctgId) const;
 
-	PairedContig& addFirstSlaveContigTo(PairedContig& pctg, const std::pair<IdType,IdType> &ctgId) const;
+	PairedContig& addFirstSlaveContigTo(PairedContig& pctg, const int32_t ctgId) const;
 
     //! Returns a paired contig extended with a contig.
     /*!
@@ -193,10 +245,9 @@ public:
      * \param pctg a paired contig
 	 * \param blocks_list list of blocks considered in merging
      * \param mergeMasterCtg whether to merge the master or slave contig of \c block
-	 * \param options options from command line
      * \return the paired contig obtained from merging.
      */
-	PairedContig& mergeContig( PairedContig &pctg, const std::list<Block> &blocks_list, bool mergeMasterCtg, const Options &options ) const;
+	PairedContig& mergeContig( PairedContig &pctg, const std::list<Block> &blocks_list, bool mergeMasterCtg ) const;
 
     //! Merge a paired contig with a contig, using an alignment.
     /*!
@@ -210,8 +261,8 @@ public:
     PairedContig& mergeCtgInPos(
         PairedContig &pctg,
         const Contig &ctg,
-		const std::pair<IdType,IdType>& ctgInPctgId,
-        const std::pair<IdType,IdType> &ctgId,
+		const int32_t ctgInPctgId,
+        const int32_t ctgId,
         const BestPctgCtgAlignment &bestAlign,
         bool mergeMaster ) const;
 
@@ -253,26 +304,23 @@ public:
 	 * \param mergeMasterCtg whether \c ctg is a master or a slave contig
      * \param blocks_list list of blocks between the contigs to be merged
      */
-    BestPctgCtgAlignment findBestAlignment(
-        const PairedContig &pctg,
-		const ContigInPctgInfo& pctgInfo,
-        const uint64_t startPos,
-		const uint64_t endPos,
-		Contig &ctg,
-		bool isMasterCtg,
-		const std::list<Block> &blocks_list) const;
+    void findBestAlignment(
+        BestCtgAlignment &bestAlign,
+        Contig &masterCtg,
+		uint64_t masterStart,
+		uint64_t masterEnd,
+		Contig &slaveCtg,
+        uint64_t slaveStart,
+        uint64_t slaveEnd,
+        const std::list<Block>& blocks_list ) const;
 
 	void alignBlocks(
-		const PairedContig &pctg,
-		const uint64_t &pctgStart,
-		const Contig &ctg,
-		const uint64_t &ctgStart,
+		const Contig &masterCtg,
+		const uint64_t &masterStart,
+		const Contig &slaveCtg,
+		const uint64_t &slaveStart,
 		const std::list<Block> &blocks_list,
-		const bool &isCtgInPctgRev,
-		const bool &isMasterCtg,
-		std::vector< MyAlignment > &alignments,
-		std::vector< int64_t > &pctg_gaps,
-		std::vector< int64_t > &ctg_gaps ) const;
+		std::vector< MyAlignment > &alignments ) const;
 
 	bool is_good( const std::vector<MyAlignment> &align, uint64_t min_align_len = MIN_ALIGNMENT_LEN ) const;
 	bool is_good( const MyAlignment &align, uint64_t min_align_len = MIN_ALIGNMENT_LEN ) const;

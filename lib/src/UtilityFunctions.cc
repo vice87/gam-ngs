@@ -1,10 +1,4 @@
-
 #include "UtilityFunctions.hpp"
-#include <string.h>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <stdio.h>
 
 char * getPathBaseName( char *path )
 {
@@ -37,6 +31,48 @@ std::string formatTime( time_t seconds )
 
     return out.str();
 }
+
+
+void loadBamFileNames( const std::string &input_file, std::vector< std::string > &names, std::vector<int32_t> &minInsert, std::vector<int32_t> &maxInsert )
+{
+	names.resize(0);
+	minInsert.resize(0);
+	maxInsert.resize(0);
+
+	int32_t min_is, max_is;
+	std::string line1, line2; // read line
+	std::ifstream ifs( input_file.c_str() );
+
+	while( ifs.good() )
+	{
+		min_is = 0;
+		max_is = 0;
+
+		getline(ifs,line1);
+
+		if( line1 != "" )
+		{
+			names.push_back(line1);
+			getline(ifs,line2);
+
+			if( line2 != "" )
+			{
+				std::stringstream ss( line2 );
+				ss >> min_is >> max_is;
+				minInsert.push_back( min_is );
+				maxInsert.push_back( max_is );
+			}
+			else
+			{
+				minInsert.push_back( min_is ); // min_is = 0
+				maxInsert.push_back( max_is ); // max_is = 0
+			}
+		}
+	}
+
+	ifs.close();
+}
+
 
 void loadFileNames( const std::string &input_file, std::vector< std::string > &names )
 {

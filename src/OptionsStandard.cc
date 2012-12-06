@@ -46,16 +46,18 @@ bool OptionsStandard::process(int argc, char *argv[])
 
 		// input
 		("master-bam", po::value< std::string >(), "coordinate sorted BAM file of the master assembly")
-		("slave-bam", po::value< std::vector< std::string > >(), "coordinate sorted BAM files of the slave assembly (can be repeated several times, using GAM with fosmid pools)")
+		("slave-bam", po::value< std::string >(), "coordinate sorted BAM file of the slave assembly")
 		("master-isize", po::value< std::string >(), "insert size statistics file corresponding to master assembly")
-		("slave-isize", po::value< std::vector< std::string > >(), "insert size statistics file corresponding to slave assembly (can be repeated several times, using GAM with fosmid pools)")
+		("slave-isize", po::value< std::string >(), "insert size statistics file corresponding to slave assembly")
                 ("master-mp-bam", po::value< std::string >(), "coordinate sorted mate-pairs BAM file of the master assembly" )
-                ("slave-mp-bam", po::value< std::vector< std::string > >(), "coordinate sorted mate-pairs BAM file of the slave assembly (can be repeated several times)" )
+                ("slave-mp-bam", po::value< std::string >(), "coordinate sorted mate-pairs BAM file of the slave assembly" )
+				("master-mp-isize", po::value< std::string >(), "insert size statistics file corresponding to master assembly MP alignments")
+				("slave-mp-isize", po::value< std::string >(), "insert size statistics file corresponding to slave assembly MP alignments")
 		("master-namesorted-bam", po::value< std::string >(), "name sorted BAM file of the master assembly")
 		("slave-namesorted-bam", po::value< std::string >(), "name sorted BAM file of the slave assembly")
 		("blocks-file", po::value< std::string >(), "file .blocks created with the --create-blocks option")
 		("master-fasta", po::value< std::string >(), "fasta file of the master assembly")
-		("slave-fasta", po::value< std::vector<std::string> >(), "fasta file of the slave assembly (can be repeated several times, using GAM with fosmid pools)")
+		("slave-fasta", po::value< std::string >(), "fasta file of the slave assembly")
 
                 ("reads-prefix", po::value< std::string >(), "common prefix of all reads" )
 		("min-block-size", po::value<int>(), "number of reads needed to build a block [default 50]")
@@ -96,6 +98,12 @@ bool OptionsStandard::process(int argc, char *argv[])
 		exit(1);
 	}
 
+	if( vm.count("create-blocks") and vm.count("merge") )
+	{
+		std::cerr << "Only one between --create-blocks and --merge must be specified" << std::endl;
+		exit(1);
+	}
+
 	if( not( vm.count("master-bam") and vm.count("slave-bam") ) )
 	{
 		std::cerr << "Either --master-bam and --slave-bam are required" << std::endl;
@@ -108,24 +116,21 @@ bool OptionsStandard::process(int argc, char *argv[])
 		exit(1);
 	}
 
-	masterBamFiles = vm["master-bam"].as< std::string >();
-	slaveBamFiles = vm["slave-bam"].as< std::vector<std::string> >();
+	masterBamFile = vm["master-bam"].as< std::string >();
+	slaveBamFile = vm["slave-bam"].as< std::string >();
 
 	// Check for master bam file existence */
-	if( stat(masterBamFiles.c_str(),&st) != 0 )
+	if( stat(masterBamFile.c_str(),&st) != 0 )
 	{
-		std::cerr << "Master BAM file " << masterBamFiles << " doesn't exist." << std::endl;
+		std::cerr << "Master BAM file " << masterBamFile << " doesn't exist." << std::endl;
 		exit(1);
 	}
 
 	// Check for slave bam files existence */
-	for( unsigned int i=0; i < slaveBamFiles.size(); i++ )
+	if( stat(slaveBamFile.c_str(),&st) != 0 )
 	{
-		if( stat( slaveBamFiles[i].c_str(),&st) != 0 )
-		{
-			std::cerr << "Slave BAM file " << slaveBamFiles[i] << " doesn't exist" << std::endl;
-			exit(1);
-		}
+		std::cerr << "Slave BAM file " << slaveBamFile << " doesn't exist" << std::endl;
+		exit(1);
 	}
 
 	if( vm.count("min-block-size") )
@@ -165,10 +170,10 @@ bool OptionsStandard::process(int argc, char *argv[])
 			}
 		}
 
-                if( vm.count("reads-prefix") )
-                {
-                    this->readsPrefix = vm["reads-prefix"].as< std::string >();
-                }
+		if( vm.count("reads-prefix") )
+		{
+			this->readsPrefix = vm["reads-prefix"].as< std::string >();
+		}
 	}
 	else if( vm.count("merge") ) // LOAD MERGE PARAMETERS
 	{
@@ -187,7 +192,7 @@ bool OptionsStandard::process(int argc, char *argv[])
 		}
 
 		masterFastaFile = vm["master-fasta"].as< std::string >();
-		slaveFastaFiles = vm["slave-fasta"].as< std::vector<std::string> >();
+		slaveFastaFile = vm["slave-fasta"].as< std::string >();
 
 		// Check for master fasta file existence */
 		if( stat(masterFastaFile.c_str(),&st) != 0 )
@@ -197,13 +202,10 @@ bool OptionsStandard::process(int argc, char *argv[])
 		}
 
 		// Check for slave fasta files existence */
-		for( unsigned int i=0; i < slaveFastaFiles.size(); i++ )
+		if( stat( slaveFastaFile.c_str(),&st) != 0 )
 		{
-			if( stat( slaveFastaFiles[i].c_str(),&st) != 0 )
-			{
-				std::cerr << "Slave BAM file " << slaveFastaFiles[i] << " doesn't exist" << std::endl;
-				exit(1);
-			}
+			std::cerr << "Slave BAM file " << slaveFastaFile << " doesn't exist" << std::endl;
+			exit(1);
 		}
 
 		blocksFile = vm["blocks-file"].as< std::string >();
@@ -215,16 +217,13 @@ bool OptionsStandard::process(int argc, char *argv[])
 			exit(1);
 		}
 
-		if( vm.count("master-isize") ) masterISizeFiles = vm["master-isize"].as< std::string >();
-		if( vm.count("slave-isize") ) slaveISizeFiles = vm["slave-isize"].as< std::vector<std::string> >();
-		if( slaveISizeFiles.size() > 0 && slaveISizeFiles.size() != slaveBamFiles.size() )
-		{
-			std::cerr << "The number of --slave-isize options must be equal to --slave-bam options" << std::endl;
-			exit(1);
-		}
+		if( vm.count("master-isize") ) masterISizeFile = vm["master-isize"].as< std::string >();
+		if( vm.count("slave-isize") ) slaveISizeFile = vm["slave-isize"].as< std::string >();
 
                 if( vm.count("master-mp-bam") ) masterMpBamFile = vm["master-mp-bam"].as< std::string >();
-                if( vm.count("slave-mp-bam") ) slaveMpBamFiles = vm["slave-mp-bam"].as< std::vector<std::string> >();
+                if( vm.count("slave-mp-bam") ) slaveMpBamFile = vm["slave-mp-bam"].as< std::string >();
+				if( vm.count("master-mp-isize") ) masterMpISizeFile = vm["master-mp-isize"].as< std::string >();
+				if( vm.count("slave-mp-isize") ) slaveMpISizeFile = vm["slave-mp-isize"].as< std::string >();
 
                 if( not vm.count("min-block-size") ) minBlockSize = 1;
 

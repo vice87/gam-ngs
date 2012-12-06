@@ -1,55 +1,55 @@
 #include "assembly/io_contig.code.hpp"
 
 QualSeqType
-read_quality(const std::string& filename, const std::string& name); 
+read_quality(const std::string& filename, const std::string& name);
 
 SeqType
 read_fasta(const std::string& filename, const std::string& name);
 
 Contig
-read_contig(const std::string& filename, 
-            const std::string& name); 
+read_contig(const std::string& filename,
+            const std::string& name);
 
 Contig
-read_contig(const std::string& fasta_filename, 
+read_contig(const std::string& fasta_filename,
             const std::string& quality_filename, const std::string& name);
 
 Contig
-read_contig_in(const std::string& name, const std::string& dir); 
+read_contig_in(const std::string& name, const std::string& dir);
 
-std::istream& 
+std::istream&
 operator>>(std::istream& is, Contig& ctg);
 
-std::ostream& 
+std::ostream&
 operator<<(std::ostream& os, const Contig& ctg);
 
-const std::vector<Contig>& 
-write_fasta(const std::vector<Contig>& ctgs, 
+const std::vector<Contig>&
+write_fasta(const std::vector<Contig>& ctgs,
                                 const std::string& fasta_filename);
 
-const std::vector<Contig>& 
-write_quality(const std::vector<Contig>& ctgs, 
-                                const std::string& quality_filename); 
+const std::vector<Contig>&
+write_quality(const std::vector<Contig>& ctgs,
+                                const std::string& quality_filename);
 
-const std::vector<Contig>& 
-write_contig(const std::vector<Contig>& ctgs, 
+const std::vector<Contig>&
+write_contig(const std::vector<Contig>& ctgs,
                                 const std::string& fasta_filename,
                                 const std::string& quality_filename);
 
-const Contig& 
+const Contig&
 write_fasta(const Contig& ctg, const std::string& fasta_filename);
 
-const Contig& 
-write_quality(const Contig& ctg, const std::string& quality_filename); 
+const Contig&
+write_quality(const Contig& ctg, const std::string& quality_filename);
 
-const Contig& 
+const Contig&
 write_contig(const Contig& ctg, const std::string& fasta_filename,
                                 const std::string& quality_filename);
 
-const Contig& 
+const Contig&
 write_contig(const Contig& ctg, const std::string& fasta_filename);
 
-const Contig& 
+const Contig&
 write_contig_in(const Contig& ctg, const std::string& dir);
 
 void
@@ -59,10 +59,19 @@ void
 delete_contig_in(const Contig& ctg, const std::string& dir);
 
 void
-split_multifasta_sequence_in(const std::string& dir, 
+split_multifasta_sequence_in(const std::string& dir,
                     const std::string& multifasta_filename);
 
 void
 merge_multifasta_sequences_in(const std::string& dir,
                     const std::string& multifasta_filename);
+
+void
+readNextContigID( std::istream &is, std::string &ctg_id );
+
+void
+readNextSequence( std::istream &is, Contig &ctg );
+
+void
+loadSequences( const std::string &file, RefSequence &refSequence, const std::map< std::string, int32_t > &ctg2Id );
 

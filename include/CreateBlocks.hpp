@@ -26,13 +26,13 @@
 
 namespace modules {
 
-class CreateBlocks : public Module 
+class CreateBlocks : public Module
 {
 public:
 	CreateBlocks() { }
 	virtual ~CreateBlocks() { }
 
-	void execute(const Options & options);
+	void execute();
 
 };
 

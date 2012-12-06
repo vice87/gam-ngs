@@ -35,7 +35,7 @@ void Options::set_defaults()
 	coverageThreshold = 0.75;
 
 	// output options
-
+	outputFilePrefix = "out";
 }
 
 } // end of namespace options

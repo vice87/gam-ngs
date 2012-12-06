@@ -7,6 +7,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <fstream>
 #include <list>
 #include <unistd.h>
 #include <boost/detail/container_fwd.hpp>
@@ -15,9 +16,24 @@
 #include "OrderingFunctions.hpp"
 #include "UtilityFunctions.hpp"
 
+
 Block::Block():
         _numReads(0)
 {}
+
+Block::Block( Read &mRead, Read &sRead, int minOverlap ):
+	_numReads(0)
+{
+	if( mRead.getLength() < minOverlap || sRead.getLength() < minOverlap ) return;
+
+	_numReads = 1;
+
+	_masterFrame = Frame( mRead.getContigId(), '?', mRead.getStartPos(), mRead.getEndPos() );
+	_slaveFrame  = Frame( sRead.getContigId(), '?', sRead.getStartPos(), sRead.getEndPos() );
+
+	if( mRead.getLength() > 0 ) _masterFrame.setBlockReadsLen( UIntType(mRead.getLength()) ); else _masterFrame.setBlockReadsLen(0);
+	if( sRead.getLength() > 0 ) _slaveFrame.setBlockReadsLen( UIntType(sRead.getLength()) ); else _slaveFrame.setBlockReadsLen(0);
+}
 
 Block::Block(const Block &block):
         _numReads(block._numReads), _masterFrame(block._masterFrame), _slaveFrame(block._slaveFrame)
@@ -58,6 +74,11 @@ Frame& Block::getMasterFrame()
 	return _masterFrame;
 }
 
+int32_t Block::getMasterId() const
+{
+	return _masterFrame.getContigId();
+}
+
 const Frame& Block::getSlaveFrame() const
 {
     return _slaveFrame;
@@ -66,6 +87,11 @@ const Frame& Block::getSlaveFrame() const
 Frame& Block::getSlaveFrame()
 {
 	return _slaveFrame;
+}
+
+int32_t Block::getSlaveId() const
+{
+	return _slaveFrame.getContigId();
 }
 
 bool Block::isEmpty()
@@ -143,12 +169,12 @@ bool Block::addReads( Read &mRead, Read &sRead, int minOverlap )
     return false;
 }
 
-std::vector< Block > Block::filterBlocksByOverlaps(std::vector<Block>& blocks)
+std::vector< Block > Block::filterBlocksByOverlaps(std::list<Block>& blocks)
 {
     std::list< Block > sortedBlocks;
     std::list< Block >::iterator block, cur, next;
 
-    for( UIntType i = 0; i < blocks.size(); i++ ) sortedBlocks.push_back( blocks[i] );
+	for( std::list< Block >::iterator b = blocks.begin(); b != blocks.end(); b++ ) sortedBlocks.push_back(*b);
 
     MasterBlocksOrderer mbo;
     sortedBlocks.sort( mbo );
@@ -162,16 +188,18 @@ std::vector< Block > Block::filterBlocksByOverlaps(std::vector<Block>& blocks)
 
         if( next != sortedBlocks.end() )
         {
-            if ( Frame::frameOverlap(cur->getMasterFrame(), next->getMasterFrame()) )
+            if( Frame::frameOverlap(cur->getMasterFrame(), next->getMasterFrame(), 95.0) )
             {
-                sortedBlocks.erase( next );
-                block = cur;
+                std::cerr << "[debug] master overlap >=95%: (" << cur->getMasterId() << "," << cur->getSlaveId() << ") - ("
+					<< next->getMasterId() << "," << next->getSlaveId() << ")" << std::endl;
+				std::cerr << *cur << std::endl;
+				std::cerr << *next << std::endl;
+				//sortedBlocks.erase( next );
+                //block = cur;
             }
         }
-        else
-        {
-            block = next;
-        }
+        
+        block = next;
     }
 
     SlaveBlocksOrderer sbo;
@@ -185,16 +213,18 @@ std::vector< Block > Block::filterBlocksByOverlaps(std::vector<Block>& blocks)
 
         if( next != sortedBlocks.end() )
         {
-            if ( Frame::frameOverlap(cur->getSlaveFrame(), next->getSlaveFrame(), 100) )
+            if ( Frame::frameOverlap(cur->getSlaveFrame(), next->getSlaveFrame(), 95.0) )
             {
-                sortedBlocks.erase( next );
-                block = cur;
+				std::cerr << "[debug] slave overlap >=95%: (" << cur->getMasterId() << "," << cur->getSlaveId() << ") - ("
+					<< next->getMasterId() << "," << next->getSlaveId() << ")" << std::endl;
+				std::cerr << *cur << std::endl;
+				std::cerr << *next << std::endl;
+                //sortedBlocks.erase( next );
+                //block = cur;
             }
         }
-        else
-        {
-            block = next;
-        }
+        
+        block = next;
     }
 
     std::vector< Block > outBlocks( sortedBlocks.size() );
@@ -210,56 +240,209 @@ std::vector< Block > Block::filterBlocksByOverlaps(std::vector<Block>& blocks)
 }
 
 
-std::vector< Block > Block::filterBlocksByCoverage(std::vector<Block>& blocks, double t )
+void Block::filterBlocksByCoverage(
+	std::list<Block>& blocks, 
+	const std::set< std::pair<int32_t,int32_t> > &slb,
+	double min_cov,
+	double t )
 {
-    std::vector< Block > outBlocks;
+	//std::cerr << "low coverage block threshold = " << min_cov << "X" << std::endl;
+	std::list<Block>::iterator b = blocks.begin();
 
-    for( std::vector<Block>::const_iterator b = blocks.begin(); b != blocks.end(); b++ )
-    {
-        double mcRatio = ((double) (b->getMasterFrame()).getBlockReadsLen()) / ((double) (b->getMasterFrame()).getReadsLen());
-        double scRatio = ((double) (b->getSlaveFrame()).getBlockReadsLen()) / ((double) (b->getSlaveFrame()).getReadsLen());
+	while( b != blocks.end() )
+	{
+		double mcRatio = ((double) (b->getMasterFrame()).getBlockReadsLen()) / ((double) (b->getMasterFrame()).getReadsLen());
+		double scRatio = ((double) (b->getSlaveFrame()).getBlockReadsLen()) / ((double) (b->getSlaveFrame()).getReadsLen());
 
-        if( std::max(mcRatio,scRatio) >= t ) outBlocks.push_back(*b);
-    }
+		if( std::max(mcRatio,scRatio) < t )
+		{ 
+			b = blocks.erase(b); continue; 
+		}
+		else // FILTRAGGIO BASATO SULLA COPERTURA DEL BLOCCO RISPETTO ALLA COPERTURA MEDIA //TODO:verificare di non togliere blocchi importanti
+		{
+			int32_t mid = b->getMasterId();
+			int32_t sid = b->getSlaveId();
+			
+			if( slb.find( std::make_pair(mid,sid) ) == slb.end() )
+			{
+				double m_cov = ((double) (b->getMasterFrame()).getBlockReadsLen()) / (b->getMasterFrame()).getLength();
+				double s_cov = ((double) (b->getSlaveFrame()).getBlockReadsLen()) / (b->getSlaveFrame()).getLength();
+				double cov = mcRatio >= scRatio ? m_cov : s_cov;
+				
+				if( cov < min_cov )
+				{ 
+					//std::cerr << "low coverage block removed: (" << b->getMasterId() << "," << b->getSlaveId() << ")" << std::endl;
+					b = blocks.erase(b); continue; 
+				}
+			}
+		}
 
-    return outBlocks;
+		++b;
+	}
 }
 
 
-std::vector<Block> Block::filterBlocksByLength(
-	std::vector<Block> &blocks,
-	const BamTools::RefVector &masterRefVector,
-	const std::vector< BamTools::RefVector > &slaveRefVectors,
+void Block::filterBlocksByLength(
+	std::list<Block> &blocks,
+	const RefSequence &masterRef,
+	const RefSequence &slaveRef,
+	const std::set< std::pair<int32_t,int32_t> > &slb,
 	int32_t min_length )
 {
-	std::vector<Block> out_blocks;
 	std::ofstream output( "filtered_blocks" );
+	std::list<Block>::iterator b, cur, prev, next;
 
-	for( std::vector<Block>::const_iterator b = blocks.begin(); b != blocks.end(); b++ )
+	MasterBlocksOrderer mbo;
+	blocks.sort( mbo );
+
+	b = blocks.begin();
+	while( b != blocks.end() )
+	{
+		cur = b;
+		next = ++b;
+
+		const Frame& mf = cur->getMasterFrame();
+		const Frame& sf = cur->getSlaveFrame();
+
+		int32_t mid = mf.getContigId();
+		int32_t sid = sf.getContigId();
+
+		if( slb.find( std::make_pair(mid,sid) ) != slb.end() ){ prev = cur; continue; }
+
+		double m_len = 0.3 * masterRef[mid].RefLength;
+		double s_len = 0.3 * slaveRef[sid].RefLength;
+
+		double m_threshold = std::min( double(min_length), m_len );
+		double s_threshold = std::min( double(min_length), s_len );
+
+		if( mf.getLength() < m_threshold && sf.getLength() < s_threshold )
+		{
+			if( cur == blocks.begin() )
+			{
+				if( next != blocks.end() && Frame::frameOverlap(next->getMasterFrame(), cur->getMasterFrame(), 0.5) )
+				{
+					output << mf.getLength() << " < " << m_threshold << " and " << sf.getLength() << " < " << s_threshold << "\n" << *cur << "\n" << std::endl;
+
+					b = blocks.erase(cur);
+					continue;
+				}
+			}
+			else
+			{
+				if( Frame::frameOverlap(prev->getMasterFrame(), cur->getMasterFrame(), 0.5) )
+				{
+					output << mf.getLength() << " < " << m_threshold << " and " << sf.getLength() << " < " << s_threshold << "\n" << *cur << "\n" << std::endl;
+
+					b = blocks.erase(cur);
+					continue;
+				}
+
+				if( next != blocks.end() && Frame::frameOverlap(next->getMasterFrame(), cur->getMasterFrame(), 0.5) )
+				{
+					output << mf.getLength() << " < " << m_threshold << " and " << sf.getLength() << " < " << s_threshold << "\n" << *cur << "\n" << std::endl;
+
+					b = blocks.erase(cur);
+					continue;
+				}
+			}
+		}
+
+		prev = cur;
+	}
+
+	SlaveBlocksOrderer sbo;
+	blocks.sort( sbo );
+
+	b = blocks.begin();
+	while( b != blocks.end() )
+	{
+		cur = b;
+		next = ++b;
+
+		const Frame& mf = cur->getMasterFrame();
+		const Frame& sf = cur->getSlaveFrame();
+
+		int32_t mid = mf.getContigId();
+		int32_t sid = sf.getContigId();
+
+		if( slb.find( std::make_pair(mid,sid) ) != slb.end() ){ prev = cur; continue; }
+
+		double m_len = 0.3 * masterRef[mid].RefLength;
+		double s_len = 0.3 * slaveRef[sid].RefLength;
+
+		double m_threshold = std::min( double(min_length), m_len );
+		double s_threshold = std::min( double(min_length), s_len );
+
+		if( mf.getLength() < m_threshold && sf.getLength() < s_threshold )
+		{
+			if( cur == blocks.begin() )
+			{
+				if( next != blocks.end() && Frame::frameOverlap(next->getSlaveFrame(), cur->getSlaveFrame(), 0.5) )
+				{
+					output << mf.getLength() << " < " << m_threshold << " and " << sf.getLength() << " < " << s_threshold << "\n" << *cur << "\n" << std::endl;
+
+					b = blocks.erase(cur);
+					continue;
+				}
+			}
+			else
+			{
+				if( Frame::frameOverlap(prev->getSlaveFrame(), cur->getSlaveFrame(), 0.5) )
+				{
+					output << mf.getLength() << " < " << m_threshold << " and " << sf.getLength() << " < " << s_threshold << "\n" << *cur << "\n" << std::endl;
+
+					b = blocks.erase(cur);
+					continue;
+				}
+
+				if( next != blocks.end() && Frame::frameOverlap(next->getSlaveFrame(), cur->getSlaveFrame(), 0.5) )
+				{
+					output << mf.getLength() << " < " << m_threshold << " and " << sf.getLength() << " < " << s_threshold << "\n" << *cur << "\n" << std::endl;
+
+					b = blocks.erase(cur);
+					continue;
+				}
+			}
+		}
+
+		prev = cur;
+	}
+
+	output.close();
+}
+
+
+/*
+void Block::filterBlocksByLength(
+	std::list<Block> &blocks,
+	const RefSequence &masterRef,
+	const RefSequence &slaveRef,
+	const std::set< std::pair<int32_t,int32_t> > &slb,
+	int32_t min_length )
+{
+	std::list<Block>::iterator b = blocks.begin();
+
+	while( b != blocks.end() )
 	{
 		const Frame& mf = b->getMasterFrame();
 		const Frame& sf = b->getSlaveFrame();
 
-		int32_t m_len = 0.3 * masterRefVector.at(mf.getContigId()).RefLength;
-		int32_t s_len = 0.3 * slaveRefVectors.at(sf.getAssemblyId()).at(sf.getContigId()).RefLength;
+		int32_t m_len = 0.3 * masterRef[mf.getContigId()].RefLength;
+		int32_t s_len = 0.3 * slaveRef[sf.getContigId()].RefLength;
 
 		int32_t m_threshold = std::min( min_length, m_len );
 		int32_t s_threshold = std::min( min_length, s_len );
 
-		if( mf.getLength() >= m_threshold || sf.getLength() >= s_threshold )
+		if( mf.getLength() < m_threshold && sf.getLength() < s_threshold )
 		{
-			out_blocks.push_back(*b);
+			b = blocks.erase(b);
+			continue;
 		}
-		else
-		{
-			output << mf.getLength() << " < " << m_threshold << " and " << sf.getLength() << " < " << s_threshold << std::endl;
-			output << (*b) << "\n" << std::endl;
-		}
-	}
 
-	output.close();
-	return out_blocks;
+		++b;
+	}
 }
+*/
 
 
 void Block::findBlocks(
@@ -268,8 +451,7 @@ void Block::findBlocks(
         const int minBlockSize,
         sparse_hash_map< std::string, Read > &readsMap_1,
         sparse_hash_map< std::string, Read > &readsMap_2,
-        std::vector< std::vector< uint32_t > > &coverage,
-        int32_t assemblyId )
+        std::vector< std::vector< uint32_t > > &coverage )
 {
     typedef sparse_hash_map< std::string, Read > ReadMap;
     typedef std::list< std::string > ReadNameList;
@@ -278,7 +460,6 @@ void Block::findBlocks(
     BamAlignment align;
 	std::list< Block > cur_blocks;
 	std::list< std::pair<uint64_t,uint64_t> > cur_evid;
-    //std::list< ReadNameList > curreads; // reads associated to a block
 
     // initialize slave coverage vector
     const RefVector& refVect = bamReader.GetReferenceData();
@@ -287,51 +468,46 @@ void Block::findBlocks(
 
     int32_t nh, xt; // molteplicità delle read (nh->standard, xt->bwa)
 
-    // Costruzione dei blocchi considerando le reads del master (ordinate per contig e posizione in esso)
+    // process reads to build blocks (updating inserts statistics) by coordinate order
     while( bamReader.GetNextAlignment(align,true) )
     {
-        // ignoro le reads che non sono mappate o di cattiva qualità
-        if( !align.IsMapped() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
+		// skip unmapped or bad-quality reads
+		if( !align.IsMapped() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
 
-        // carico i campi di tipo stringa
-        //if( !align.BuildCharData() ) continue;
-
-        // se la molteplicità non è stata definita, assumo che sia pari ad 1
+        // load read's moltiplicity (if the field is missing, assume it as uniquely mapped)
         if( !align.GetTag(std::string("NH"),nh) ) nh = 1;	// standard SAM format field
         if( !align.GetTag(std::string("XT"),xt) ) xt = 'U'; // bwa field
+		bool uniqMapRead = (nh == 1 && xt == 'U');
 
-        // scarto read con molteplicità maggiore di 1
-        if( nh != 1 || xt != 'U' ) continue;
+		if( !uniqMapRead ) continue; // skip reads mapped in multiple positions
 
-        //std::string readName = align.Name;
-        //if( align.IsPaired() ) readName = readName + (align.IsFirstMate() ? "1" : "2");
         Read slaveRead(align.RefID, align.Position, align.GetEndPosition(), align.IsReverseStrand());
 
         // update slave vector coverage
         uint32_t read_len = align.GetEndPosition() - align.Position;
         for( int i=0; i < read_len; i++ ) coverage[align.RefID][align.Position+i] += 1;
 
-        ReadMap::iterator ref;
-        if( align.IsFirstMate() ) // cerca la read corrente fra quelle del master
-        {
-            ref = readsMap_1.find(align.Name);
-            if( ref == readsMap_1.end() ) continue;
-        }
-        else
-        {
-            ref = readsMap_2.find(align.Name);
-            if( ref == readsMap_2.end() ) continue;
-        }
+		ReadMap::iterator ref;
 
-        // blocks extension
+		if( !align.IsPaired() || align.IsFirstMate() ) // find the read in the first map
+		{
+			ref = readsMap_1.find(align.Name);
+			if( ref == readsMap_1.end() ) continue; // skip the read if it has not been mapped on the other assembly
+		}
+		else // if second mate, find the read in the second map
+		{
+			ref = readsMap_2.find(align.Name);
+			if( ref == readsMap_2.end() ) continue; // skip the read if it has not been mapped on the other assembly
+		}
+
+        // try to extend one of the memorized blocks
         bool readsAdded = false;
 		std::list< Block >::iterator block = cur_blocks.begin();
 		std::list< std::pair<uint64_t,uint64_t> >::iterator evid = cur_evid.begin();
-        //std::list< ReadNameList >::iterator readlist = curreads.begin();
 
-        while( block != cur_blocks.end() ) // per ogni blocco ancora in costruzione
+        while( block != cur_blocks.end() ) // for each memorized block
         {
-            if( block->addReads( ref->second, slaveRead ) ) // se read aggiunta al blocco
+			if( block->addReads( ref->second, slaveRead ) ) // if read has been succesfully added to the current block
             {
                 readsAdded = true;
 
@@ -342,22 +518,23 @@ void Block::findBlocks(
 				// readlist->push_back(ref->first); // aggiungo un riferimento alla read in posizione corrispondente al blocco
                 break;
             }
-            else if( block->getSlaveFrame().getEnd() + 1 < slaveRead.getStartPos() || block->getSlaveFrame().getContigId() != slaveRead.getContigId() ) // block out of scope
+
+            bool blockOutOfScope = block->getSlaveFrame().getEnd() + 1 < slaveRead.getStartPos() ||
+				block->getSlaveFrame().getContigId() < slaveRead.getContigId();
+
+			if( !readsAdded && blockOutOfScope ) // block out of scope
             {
                 Frame& mf = block->getMasterFrame();
 				Frame& sf = block->getSlaveFrame();
 
+				// set frames' strand according to the numbero of concordant/discordant reads in the block
 				mf.setStrand('+');
 				sf.setStrand( evid->first >= evid->second ? '+' : '-' );
 
 				if( block->getReadsNumber() >= minBlockSize ) outblocks.push_back( *block );
 
-                // free allocated reads associated to the block
-                // ReadNameList::iterator ril;
-                // for( ril = readlist->begin(); ril != readlist->end(); ril++ ) masterReadMap.erase(*ril);
-                // readlist = curreads.erase(readlist);
-
-                block = cur_blocks.erase(block);
+                // remove block and its strand evidences
+				block = cur_blocks.erase(block);
 				evid = cur_evid.erase(evid);
 
                 continue;
@@ -365,52 +542,39 @@ void Block::findBlocks(
 
             ++block;
 			++evid;
-            //++readlist;
         }
 
-        // se la read non può essere aggiunta ad alcun blocco in costruzione, creane uno nuovo
+        // if the read has not been added to any existing block, create a new block.
         if( !readsAdded )
         {
-			Block new_block;
-			new_block.addReads( ref->second, slaveRead );
-			new_block.getSlaveFrame().setAssemblyId( assemblyId );
-
-			std::pair<uint64_t,uint64_t> pair_evid(0,0);
-
-			//ReadNameList newReadMapIterList;
-            //newReadMapIterList.push_back(ref->first);
+			Block new_block( ref->second, slaveRead, minBlockSize );
+			std::pair<uint64_t,uint64_t> strand_evid(0,0);
 
 			cur_blocks.push_back(new_block);
-			cur_evid.push_back(pair_evid);
-            //curreads.push_back(newReadMapIterList);
-        }
+			cur_evid.push_back(strand_evid);
+		}
     }
 
-    // save or delete remaining blocks
+    // after all reads have been processed, save or delete remaining blocks
     std::list< Block >::iterator block = cur_blocks.begin();
 	std::list< std::pair<uint64_t,uint64_t> >::iterator evid = cur_evid.begin();
-	//std::list< ReadNameList >::iterator readlist = curreads.begin();
 
 	while( block != cur_blocks.end() )
 	{
 		Frame& mf = block->getMasterFrame();
 		Frame& sf = block->getSlaveFrame();
 
+		// set frames' strand according to the numbero of concordant/discordant reads in the block
 		mf.setStrand('+');
 		sf.setStrand( evid->first >= evid->second ? '+' : '-' );
 
 		if( block->getReadsNumber() >= minBlockSize ) outblocks.push_back( *block );
 
-		// free allocated reads associated to the block
-		//ReadNameList::iterator ril;
-		//for( ril = readlist->begin(); ril != readlist->end(); ril++ ) masterReadMap.erase(*ril);
-		//++readlist;
-
-		++block;
-		++evid;
+		// remove block and its strand evidences
+		block = cur_blocks.erase(block);
+		evid = cur_evid.erase(evid);
 	}
 
-	// clear the hashtables of the paired reads memorized
     readsMap_1.clear();
     readsMap_2.clear();
 }
@@ -463,13 +627,13 @@ void Block::updateCoverages(
 
 bool Block::shareMasterContig(const Block& a, const Block& b)
 {
-    return (a.getMasterFrame().getAssemblyId() == b.getMasterFrame().getAssemblyId() && a.getMasterFrame().getContigId() == b.getMasterFrame().getContigId());
+    return a.getMasterId() == b.getMasterId();
 }
 
 
 bool Block::shareSlaveContig(const Block& a, const Block& b)
 {
-    return (a.getSlaveFrame().getAssemblyId() == b.getSlaveFrame().getAssemblyId() && a.getSlaveFrame().getContigId() == b.getSlaveFrame().getContigId());
+    return a.getSlaveId() == b.getSlaveId();
 }
 
 
@@ -479,18 +643,27 @@ bool Block::shareContig(const Block& a, const Block& b)
 }
 
 
-std::vector< Block > Block::readBlocks( const std::string& blockFile, int minBlockSize )
+void Block::loadBlocks( const std::string& blockFile, std::list<Block> &blocks, int minBlockSize )
 {
-    std::ifstream input( blockFile.c_str() );
+    std::ifstream ifs( blockFile.c_str() );
 
-    Block block;
-    std::vector< Block > blocks;
+	Block block;
+	std::string line;
 
-    while( input >> block ){ if( block.getReadsNumber() >= minBlockSize ) blocks.push_back(block); }
+	while( ifs.good() )
+	{
+		// discard heading line
+		getline( ifs, line );
 
-    input.close();
+		if( line == "" ) continue; // empty line
+		if( line[0] == '#' ) continue; // heading/comment line
 
-    return blocks;
+		std::stringstream ss(line);
+		if( ss >> block && block.getReadsNumber() >= minBlockSize ) blocks.push_back(block);
+	}
+
+
+    ifs.close();
 }
 
 
@@ -533,11 +706,15 @@ std::vector< Block > Block::readCoreBlocks( const std::string& blockFile, int mi
 }
 
 
-void Block::writeBlocks( const std::string& blockFile, std::vector< Block >& blocks  )
+void Block::writeBlocks( const std::string &blockFile, std::vector< Block > &blocks  )
 {
     std::ofstream output( blockFile.c_str() );
 
-    for( std::vector<Block>::iterator it = blocks.begin(); it != blocks.end(); it++ )
+	// block file header
+	output << "# MasterAssemblyID\tMasterContigID\tMasterStrand\tMasterBegin\tMasterEnd\tMasterBlockReadsLength\tMasterReadsLength\t"
+		   << "SlaveAssemblyID\tSlaveContigID\tSlaveStrand\tSlaveBegin\tSlaveEnd\tSlaveBlockReadsLength\tSlaveReadsLength\n";
+
+	for( std::vector<Block>::iterator it = blocks.begin(); it != blocks.end(); it++ )
     {
         output << (*it) << std::endl;
     }
@@ -596,4 +773,60 @@ std::istream& operator >>( std::istream &input, Block &block )
     input >> block._numReads >> block._masterFrame >> block._slaveFrame;
 
     return input;
+}
+
+
+void getNoBlocksContigs(
+	const RefSequence &masterRef,
+	const RefSequence &slaveRef,
+	const std::list<Block> &blocks,
+	std::set< int32_t > &masterNBC,
+	std::set< int32_t > &slaveNBC )
+{
+	std::vector<bool> master_ctgWithBlock( masterRef.size(), false );
+	std::vector<bool> slave_ctgWithBlock( slaveRef.size(), false );
+
+	for( std::list<Block>::const_iterator b = blocks.begin(); b != blocks.end(); ++b )
+	{
+		master_ctgWithBlock.at( b->getMasterId() ) = true;
+		slave_ctgWithBlock.at( b->getSlaveId() ) = true;
+	}
+
+	for( size_t i=0; i < master_ctgWithBlock.size(); i++ )
+		if( !master_ctgWithBlock.at(i) ) masterNBC.insert(i);
+
+	for( size_t i=0; i < slave_ctgWithBlock.size(); i++ )
+		if( !slave_ctgWithBlock.at(i) ) slaveNBC.insert(i);
+}
+
+
+void getNoBlocksAfterFilterContigs(
+	const RefSequence &masterRef,
+	const RefSequence &slaveRef,
+	const std::list<Block> &blocks,
+	const std::set< int32_t > &masterNBC,
+	const std::set< int32_t > &slaveNBC,
+	std::set< int32_t > &masterNBC_AF,
+	std::set< int32_t > &slaveNBC_AF )
+{
+	std::vector<bool> master_ctgWithBlockAF( masterRef.size(), false );
+	std::vector<bool> slave_ctgWithBlockAF( slaveRef.size(), false );
+
+	for( std::list<Block>::const_iterator b = blocks.begin(); b != blocks.end(); ++b )
+	{
+		master_ctgWithBlockAF.at( b->getMasterId() ) = true;
+		slave_ctgWithBlockAF.at( b->getSlaveId() ) = true;
+	}
+
+	for( std::set< int32_t >::const_iterator it = masterNBC.begin(); it != masterNBC.end(); it++ )
+		master_ctgWithBlockAF.at(*it) = true;
+
+	for( std::set< int32_t >::const_iterator it = slaveNBC.begin(); it != slaveNBC.end(); it++ )
+		slave_ctgWithBlockAF.at(*it) = true;
+
+	for( size_t i=0; i < master_ctgWithBlockAF.size(); i++ )
+		if( !master_ctgWithBlockAF.at(i) ) masterNBC_AF.insert(i);
+
+	for( size_t i=0; i < slave_ctgWithBlockAF.size(); i++ )
+		if( !slave_ctgWithBlockAF.at(i) ) slaveNBC_AF.insert(i);
 }

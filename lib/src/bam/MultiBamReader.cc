@@ -12,7 +12,10 @@ MultiBamReader::MultiBamReader() :
 	_valid_aligns(),
 	_isize_mean(),
 	_isize_std(),
-	_isize_count()
+	_isize_count(),
+	_asm_size(0),
+	_reads_len(),
+	_coverage()
 {}
 
 
@@ -30,9 +33,18 @@ bool MultiBamReader::Open( const std::vector< std::string > &filenames )
 	_bam_aligns.resize( bams );
 	_valid_aligns.resize( bams );
 
+	_bam_mutex.resize( bams );
+
+	_minInsert.resize( bams );
+	_maxInsert.resize( bams );
+
 	_isize_mean.resize( bams, 0 );
 	_isize_std.resize( bams, 0 );
 	_isize_count.resize( bams, 1 );
+	
+	_asm_size = 0;
+	_reads_len.resize( bams, 0 );
+	_coverage.resize( bams, 0 );
 
 	std::string index_filename;
 	bool ret = true;
@@ -44,20 +56,26 @@ bool MultiBamReader::Open( const std::vector< std::string > &filenames )
 		if( not _bam_readers[i]->Open( filenames[i] ) )
 		{
 			ret = false;
-			std::cerr << "Unable to open BAM file:\n" << filenames[i] << std::endl;
+			std::cerr << "[bam] warning: unable to open BAM file:\n" << filenames[i] << std::endl;
 		}
 		else
 		{
-			std::cerr << filenames[i] << " successfully opened!" << std::endl;
+			std::cerr << "[bam] " << filenames[i] << " successfully opened!" << std::endl;
 		}
+
+		pthread_mutex_init( &(this->_bam_mutex[i]), NULL );
 	}
 
 	this->OpenIndices( filenames ); // try opening indices files (same filenames with .bai extension)
 
-	for( size_t i=0; i < bams; i++ )
-	{
-		_valid_aligns[i] = _bam_readers[i]->GetNextAlignment( _bam_aligns[i] );
-	}
+	// initialization of min/max inserts sizes
+	for( size_t i=0; i < bams; i++ ) _minInsert[i] = MIN_ISIZE;
+	for( size_t i=0; i < bams; i++ ) _maxInsert[i] = MAX_ISIZE;
+
+	// get first alignment from each bam files
+	for( size_t i=0; i < bams; i++ ) _valid_aligns[i] = _bam_readers[i]->GetNextAlignment( _bam_aligns[i] );
+	
+	this->computeAssemblySize();
 
 	return ret;
 }
@@ -82,7 +100,7 @@ bool MultiBamReader::OpenIndices( const std::vector< std::string > &filenames )
 		if( not _bam_readers[i]->OpenIndex( index_filename ) )
 		{
 			ret = false;
-			std::cerr << "Unable to open BAM index file:\n" << index_filename << std::endl;
+			std::cerr << "[bam] warning: unable to open BAM index file:\n" << index_filename << std::endl;
 		}
 	}
 
@@ -96,6 +114,30 @@ void MultiBamReader::Close()
 }
 
 
+void MultiBamReader::setMinMaxInsertSizes( const std::vector<int32_t> &minInsert, const std::vector<int32_t> &maxInsert )
+{
+	if( minInsert.size() != maxInsert.size() || minInsert.size() != _bam_readers.size() )
+	{
+		std::cerr << "min/max insert size has not been set, previous assigned values will be used (or default)." << std::endl;
+		return;
+	}
+
+	for( size_t i=0; i < _bam_readers.size(); i++ )
+	{
+		if( _minInsert[i] > 0 && _maxInsert[i] > 0 )
+		{
+			_minInsert[i] = minInsert[i];
+			_maxInsert[i] = maxInsert[i];
+		}
+		else
+		{
+			_minInsert[i] = MIN_ISIZE;
+			_maxInsert[i] = MAX_ISIZE;
+		}
+	}
+}
+
+
 uint32_t MultiBamReader::size() const
 {
 	return _bam_readers.size();
@@ -104,7 +146,7 @@ uint32_t MultiBamReader::size() const
 
 BamReader* MultiBamReader::getBamReader( uint32_t idx )
 {
-	if( idx >= _bam_readers.size() ) throw MultiBamReaderException( "getBamReader index out of bound." );
+	if( idx >= _bam_readers.size() ) throw MultiBamReaderException( "MultiBamReader::getBamReader index out of bound." );
 
 	return _bam_readers[idx];
 }
@@ -112,7 +154,7 @@ BamReader* MultiBamReader::getBamReader( uint32_t idx )
 
 double MultiBamReader::getISizeMean( uint32_t idx )
 {
-	if( idx >= _isize_mean.size() ) throw MultiBamReaderException( "getISizeMean index out of bound." );
+	if( idx >= _isize_mean.size() ) throw MultiBamReaderException( "MultiBamReader::getISizeMean index out of bound." );
 
 	return _isize_mean[idx];
 }
@@ -120,18 +162,68 @@ double MultiBamReader::getISizeMean( uint32_t idx )
 
 double MultiBamReader::getISizeStd( uint32_t idx )
 {
-	if( idx >= _isize_std.size() ) throw MultiBamReaderException( "getISizeStd index out of bound." );
+	if( idx >= _isize_std.size() ) throw MultiBamReaderException( "MultiBamReader::getISizeStd index out of bound." );
 
 	return _isize_std[idx];
 }
 
 
-
 uint64_t MultiBamReader::getISizeNum( uint32_t idx )
 {
-	if( idx >= _isize_count.size() ) throw MultiBamReaderException( "getISizeNum index out of bound." );
+	if( idx >= _isize_count.size() ) throw MultiBamReaderException( "MultiBamReader::getISizeNum index out of bound." );
 
 	return _isize_count[idx];
+}
+
+
+double MultiBamReader::getCoverage( uint32_t idx )
+{
+	if( idx >= _coverage.size() ) throw MultiBamReaderException( "MultiBamReader::getISizeStd index out of bound." );
+	
+	return _coverage[idx];
+}
+
+
+double MultiBamReader::getMeanCoverage()
+{
+    double mean_coverage = 0;
+    
+    for( size_t i=0; i < _coverage.size(); i++ ) mean_coverage += _coverage[i];
+    
+	return (mean_coverage / _coverage.size());
+}
+
+
+double MultiBamReader::getGlobCoverage()
+{
+    double glob_coverage = 0;
+    for( size_t i=0; i < _coverage.size(); i++ ) glob_coverage += _coverage[i];
+    
+	return glob_coverage;
+}
+
+
+int MultiBamReader::getProperLibrary( uint64_t gap )
+{
+	int idx = -1;
+
+	for( size_t i=0; i < _isize_mean.size(); i++ )
+	{
+		if( _isize_mean[i] != 0 && _isize_mean[i] + _isize_std[i] >= gap ) return i;
+	}
+
+	return idx;
+}
+
+
+void MultiBamReader::lockBamReader( uint32_t idx )
+{
+	pthread_mutex_lock(&(this->_bam_mutex[idx]));
+}
+
+void MultiBamReader::unlockBamReader( uint32_t idx )
+{
+	pthread_mutex_unlock(&(this->_bam_mutex[idx]));
 }
 
 
@@ -192,7 +284,7 @@ bool MultiBamReader::SetRegion ( const uint32_t &leftRefID, const uint32_t &left
 
 const RefVector& MultiBamReader::GetReferenceData() const
 {
-	if( _bam_readers.size() == 0 ) throw MultiBamReaderException( "GetReferenceData called on empty MultiBamReader object" );
+	if( _bam_readers.size() == 0 ) throw MultiBamReaderException( "MultiBamReader::GetReferenceData called on empty MultiBamReader object" );
 
 	return (_bam_readers.front())->GetReferenceData();
 }
@@ -203,8 +295,9 @@ bool MultiBamReader::GetNextAlignment( BamAlignment &align, bool update_stats )
 	if( _bam_readers.size() == 0 ) return false;
 
 	bool found = false;
-	size_t idx = 0;
+	size_t libId = 0;
 
+	// retrieve next read
 	for( size_t i=0; i < _bam_readers.size(); i++ )
 	{
 		if( not found ) // if a valid alignment hasn't been found yet
@@ -213,7 +306,7 @@ bool MultiBamReader::GetNextAlignment( BamAlignment &align, bool update_stats )
 
 			found = true;
 			align = _bam_aligns[i];
-			idx = i;
+			libId = i;
 		}
 		else
 		{
@@ -222,7 +315,7 @@ bool MultiBamReader::GetNextAlignment( BamAlignment &align, bool update_stats )
 				if( (_bam_aligns[i].RefID == align.RefID && _bam_aligns[i].Position < align.Position) || _bam_aligns[i].RefID < align.RefID )
 				{
 					align = _bam_aligns[i];
-					idx = i;
+					libId = i;
 				}
 			}
 		}
@@ -231,74 +324,201 @@ bool MultiBamReader::GetNextAlignment( BamAlignment &align, bool update_stats )
 	// update alignments vector retrieving a new one from the proper BamReader
 	if( found )
 	{
-		_valid_aligns[idx] = _bam_readers[idx]->GetNextAlignment( _bam_aligns[idx] );
+		// load the read following the one extracted
+		_valid_aligns[libId] = _bam_readers[libId]->GetNextAlignment( _bam_aligns[libId] );
+		
+		if( update_stats && align.IsMapped() && !align.IsDuplicate() && align.IsPrimaryAlignment() && !align.IsFailedQC() )
+		{
+			_reads_len[libId] += (align.GetEndPosition() - align.Position);
+		}
 
-		// update statistics
+		// if needed, update statistics only if the read extracted has good quality and its mate is mapped on the same contig
 		if( update_stats && align.IsMapped() && !align.IsDuplicate() && align.IsPrimaryAlignment() && !align.IsFailedQC() &&
 			align.IsFirstMate() && align.IsMateMapped() && align.RefID == align.MateRefID )
 		{
 			int32_t alignmentLength = align.GetEndPosition() - align.Position;
 			int32_t startRead = align.Position;
-			int32_t startPaired = align.MatePosition;
+			int32_t startMate = align.MatePosition;
 
 			int32_t iSize;
 
-			if( startRead < startPaired )
+			if( startRead < startMate )
 			{
-				iSize = (startPaired + align.Length) - startRead;
-				if( iSize < MIN_ISIZE || iSize > MAX_ISIZE ) return found;
+				iSize = (startMate + align.Length) - startRead;
+				if( iSize < _minInsert[libId] || iSize > _maxInsert[libId] ) return found;
 
+				// if the read and its mate are properly oriented update mean and std
 				if( !align.IsReverseStrand() && align.IsMateReverseStrand() )
 				{
-					if(_isize_count[idx] == 1)
+					if(_isize_count[libId] == 1)
 					{
-						_isize_mean[idx] = iSize;
-						_isize_std[idx] = 0;
-						_isize_count[idx]++;
+						_isize_mean[libId] = iSize;
+						_isize_std[libId] = 0;
+						_isize_count[libId]++;
 					}
 					else
 					{
-						double oldMean = _isize_mean[idx];
-						double oldStd = _isize_std[idx];
+						double oldMean = _isize_mean[libId];
+						double oldStd = _isize_std[libId];
 
-						_isize_mean[idx] = oldMean + (iSize - oldMean)/double(_isize_count[idx]);
-						_isize_std[idx] = oldStd + (_isize_count[idx]-1)*(iSize - oldMean)*(iSize - oldMean)/double(_isize_count[idx]);
-						_isize_count[idx]++;
+						_isize_mean[libId] = oldMean + (iSize - oldMean)/double(_isize_count[libId]);
+						_isize_std[libId] = oldStd + (_isize_count[libId]-1)*(iSize - oldMean)*(iSize - oldMean)/double(_isize_count[libId]);
+						_isize_count[libId]++;
 					}
 				}
 			}
 			else
 			{
-				iSize = (startRead + alignmentLength) - startPaired;
-				if( iSize < MIN_ISIZE || iSize > MAX_ISIZE ) return found;
+				iSize = (startRead + alignmentLength) - startMate;
+				if( iSize < _minInsert[libId] || iSize > _maxInsert[libId] ) return found;
 
+				// if the read and its mate are properly oriented update mean and std
 				if( align.IsReverseStrand() && !align.IsMateReverseStrand() )
 				{
-					if(_isize_count[idx] == 1)
+					if(_isize_count[libId] == 1)
 					{
-						_isize_mean[idx] = iSize;
-						_isize_std[idx] = 0;
-						_isize_count[idx]++;
+						_isize_mean[libId] = iSize;
+						_isize_std[libId] = 0;
+						_isize_count[libId]++;
 					}
 					else
 					{
-						double oldMean = _isize_mean[idx];
-						double oldStd = _isize_std[idx];
+						double oldMean = _isize_mean[libId];
+						double oldStd = _isize_std[libId];
 
-						_isize_mean[idx] = oldMean + (iSize - oldMean)/double(_isize_count[idx]);
-						_isize_std[idx] = oldStd + (_isize_count[idx]-1)*(iSize - oldMean)*(iSize - oldMean)/double(_isize_count[idx]);
-						_isize_count[idx]++;
+						_isize_mean[libId] = oldMean + (iSize - oldMean)/double(_isize_count[libId]);
+						_isize_std[libId] = oldStd + (_isize_count[libId]-1)*(iSize - oldMean)*(iSize - oldMean)/double(_isize_count[libId]);
+						_isize_count[libId]++;
 					}
 				}
 			}
 		}
 	}
-	else
+	else // the end of all bam files has been reached
 	{
-		if( update_stats ){ for( size_t i=0; i < _isize_std.size(); i++ ) _isize_std[i] = sqrt( _isize_std[i] / double(_isize_count[i]) ); }
+		// if needed, compute standard deviation
+		if( update_stats )
+		{ 
+			for( size_t i=0; i < _isize_std.size(); i++ )
+			{
+				_isize_std[i] = sqrt( _isize_std[i] / double(_isize_count[i]) );
+				_coverage[libId] = (_asm_size != 0) ? _reads_len[libId] / ((double)_asm_size) : 0.0;
+			}
+		}
 	}
 
 	return found;
+}
+
+
+uint64_t MultiBamReader::computeAssemblySize()
+{
+	_asm_size = 0;
+	
+	const RefVector& ref_vect = this->GetReferenceData();
+	for( size_t i=0; i < ref_vect.size(); i++ ) _asm_size += ref_vect[i].RefLength;
+	
+	return _asm_size;
+}
+
+
+bool MultiBamReader::computeStatistics()
+{
+	if( (this->_bam_readers).size() == 0 ) return false;
+	
+	BamAlignment align;
+	
+	// for each library compute its statistics
+	for( size_t libId=0; libId < _bam_readers.size(); libId++ )
+	{
+		_bam_readers[libId]->Rewind();
+		
+		this->_isize_mean[libId] = 0;
+		this->_isize_std[libId] = 0;
+		this->_isize_count[libId] = 1;
+		
+		this->_reads_len[libId] = 0;
+		
+		while( _bam_readers[libId]->GetNextAlignmentCore(align) )
+		{
+			// skip unmapped or bad-quality reads
+			if( !align.IsMapped() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
+			
+			int32_t alignmentLength = align.GetEndPosition() - align.Position;
+			int32_t startRead = align.Position;
+			int32_t startMate = align.MatePosition;
+			
+			// update reads' length
+			this->_reads_len[libId] += alignmentLength;
+			
+			// update insert statistics only if the read extracted has its mate mapped on the same contig
+			if( align.IsFirstMate() && align.IsMateMapped() && align.RefID == align.MateRefID )
+			{
+				int32_t iSize;
+				
+				if( startRead < startMate )
+				{
+					iSize = (startMate + align.Length) - startRead;
+					if( iSize < _minInsert[libId] || iSize > _maxInsert[libId] ) continue;
+					
+					// if the read and its mate are properly oriented update mean and std
+					if( !align.IsReverseStrand() && align.IsMateReverseStrand() )
+					{
+						if(_isize_count[libId] == 1)
+						{
+							_isize_mean[libId] = iSize;
+							_isize_std[libId] = 0;
+							_isize_count[libId]++;
+						}
+						else
+						{
+							double oldMean = _isize_mean[libId];
+							double oldStd = _isize_std[libId];
+							
+							_isize_mean[libId] = oldMean + (iSize - oldMean)/double(_isize_count[libId]);
+							_isize_std[libId] = oldStd + (_isize_count[libId]-1)*(iSize - oldMean)*(iSize - oldMean)/double(_isize_count[libId]);
+							_isize_count[libId]++;
+						}
+					}
+				}
+				else
+				{
+					iSize = (startRead + alignmentLength) - startMate;
+					if( iSize < _minInsert[libId] || iSize > _maxInsert[libId] ) continue;
+					
+					// if the read and its mate are properly oriented update mean and std
+					if( align.IsReverseStrand() && !align.IsMateReverseStrand() )
+					{
+						if(_isize_count[libId] == 1)
+						{
+							_isize_mean[libId] = iSize;
+							_isize_std[libId] = 0;
+							_isize_count[libId]++;
+						}
+						else
+						{
+							double oldMean = _isize_mean[libId];
+							double oldStd = _isize_std[libId];
+							
+							_isize_mean[libId] = oldMean + (iSize - oldMean)/double(_isize_count[libId]);
+							_isize_std[libId] = oldStd + (_isize_count[libId]-1)*(iSize - oldMean)*(iSize - oldMean)/double(_isize_count[libId]);
+							_isize_count[libId]++;
+						}
+					}
+				}
+			}
+		}
+		
+		// compute standard deviation
+		this->_isize_std[libId] = sqrt( _isize_std[libId] / double(_isize_count[libId]) );
+		
+		// compute library's mean coverage
+		this->_coverage[libId] = (this->_asm_size != 0) ? this->_reads_len[libId] / ((double)this->_asm_size) : 0.0;
+	}
+	
+	this->Rewind();
+	
+	return true;
 }
 
 
@@ -308,8 +528,8 @@ void MultiBamReader::writeStatsToFile( const std::string &filename ) const
 
 	for( size_t i=0; i < _bam_readers.size(); i++ )
 	{
-		ofs << getPathBaseName(_bam_readers[i]->GetFilename()) << std::endl;
-		ofs << _isize_mean[i] << "\t" << _isize_std[i] << "\t" << _isize_count[i] << std::endl;
+		ofs << _bam_readers[i]->GetFilename() << std::endl;
+		ofs << _isize_mean[i] << "\t" << _isize_std[i] << "\t" << _coverage[i] << std::endl; //"\t" << _isize_count[i] << std::endl;
 	}
 
 	ofs.close();
@@ -329,19 +549,21 @@ uint32_t MultiBamReader::readStatsFromFile( const std::string &filename )
 
 		if( idx >= _bam_readers.size() )
 		{
-			std::cerr << "The number of inserts statistics doesn't match the number of BAM files.\nStats file: " << filename << std::endl;
+			std::cerr << "The number of inserts statistics does not match the number of BAM files.\nStats file: " << filename << std::endl;
 			return idx;
 		}
 
-		if( bamfile != getPathBaseName(_bam_readers[idx]->GetFilename()) )
+		if( bamfile != _bam_readers[idx]->GetFilename() )
 		{
 			std::cerr << "Error loading bam statistics file (corresponding BAM file not found): " << bamfile << std::endl;
 			return idx;
 		}
+		
+		_isize_mean[idx] = _isize_std[idx] = _coverage[idx] = 0.0;
 
 		getline( ifs, data );
 		std::stringstream ss(data);
-		ss >> _isize_mean[idx] >> _isize_std[idx] >> _isize_count[idx];
+		ss >> _isize_mean[idx] >> _isize_std[idx] >> _coverage[idx]; // >> _isize_count[idx];
 
 		idx++;
 	}
