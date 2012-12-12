@@ -7,6 +7,7 @@
 #include "UtilityFunctions.hpp"
 
 MultiBamReader::MultiBamReader() :
+	_is_open(false),
 	_bam_readers(),
 	_bam_aligns(),
 	_valid_aligns(),
@@ -21,13 +22,15 @@ MultiBamReader::MultiBamReader() :
 
 MultiBamReader::~MultiBamReader()
 {
-	this->Close();
-	for( size_t i=0; i < _bam_readers.size(); i++ ) delete _bam_readers[i];
+	if(_is_open) this->Close();
 }
 
 bool MultiBamReader::Open( const std::vector< std::string > &filenames )
 {
+	if(_is_open) this->Close();
+	
 	size_t bams = filenames.size();
+	if( bams == 0 ) return false;
 
 	_bam_readers.resize( bams );
 	_bam_aligns.resize( bams );
@@ -42,42 +45,50 @@ bool MultiBamReader::Open( const std::vector< std::string > &filenames )
 	_isize_std.resize( bams, 0 );
 	_isize_count.resize( bams, 1 );
 	
-	_asm_size = 0;
 	_reads_len.resize( bams, 0 );
 	_coverage.resize( bams, 0 );
 
 	std::string index_filename;
-	bool ret = true;
+	bool opened = true;
 
 	for( size_t i=0; i < bams; i++ )
 	{
 		_bam_readers[i] = new BamReader();
 
-		if( not _bam_readers[i]->Open( filenames[i] ) )
+		if( not _bam_readers[i]->Open(filenames[i]) )
 		{
-			ret = false;
-			std::cerr << "[bam] warning: unable to open BAM file:\n" << filenames[i] << std::endl;
+			opened = false;
+			std::cerr << "[bam] ERROR: unable to open BAM file:\n" << filenames[i] << std::endl;
 		}
-		else
+		else // if bam file opened successfully
 		{
-			std::cerr << "[bam] " << filenames[i] << " successfully opened!" << std::endl;
+			index_filename = filenames[i] + ".bai";
+			
+			if( not _bam_readers[i]->OpenIndex( index_filename ) )
+			{
+				opened = false;
+				std::cerr << "[bam] ERROR: unable to open BAM index file:\n" << index_filename << std::endl;
+			}
 		}
-
+		
 		pthread_mutex_init( &(this->_bam_mutex[i]), NULL );
 	}
-
-	this->OpenIndices( filenames ); // try opening indices files (same filenames with .bai extension)
+	
+	if(!opened) exit(1); else _is_open = true;
 
 	// initialization of min/max inserts sizes
 	for( size_t i=0; i < bams; i++ ) _minInsert[i] = MIN_ISIZE;
 	for( size_t i=0; i < bams; i++ ) _maxInsert[i] = MAX_ISIZE;
 
-	// get first alignment from each bam files
+	// load first alignment from each bam file
 	for( size_t i=0; i < bams; i++ ) _valid_aligns[i] = _bam_readers[i]->GetNextAlignment( _bam_aligns[i] );
 	
-	this->computeAssemblySize();
+	// compute assembly size
+	_asm_size = 0;
+	const RefVector& ref_data = _bam_readers[0]->GetReferenceData();
+	for( size_t i=0; i < ref_data.size(); i++ ) _asm_size += ref_data[i].RefLength;
 
-	return ret;
+	return opened;
 }
 
 
@@ -88,29 +99,13 @@ bool MultiBamReader::Open( const std::string &filename )
 }
 
 
-bool MultiBamReader::OpenIndices( const std::vector< std::string > &filenames )
-{
-	std::string index_filename;
-	bool ret = true;
-
-	for( size_t i=0; i < filenames.size(); i++ )
-	{
-		index_filename = filenames[i] + ".bai";
-
-		if( not _bam_readers[i]->OpenIndex( index_filename ) )
-		{
-			ret = false;
-			std::cerr << "[bam] warning: unable to open BAM index file:\n" << index_filename << std::endl;
-		}
-	}
-
-	return ret;
-}
-
-
 void MultiBamReader::Close()
 {
-	for( size_t i=0; i < _bam_readers.size(); i++ ) _bam_readers[i]->Close();
+	for( size_t i=0; i < _bam_readers.size(); i++ )
+	{ 
+		_bam_readers[i]->Close(); 
+		delete _bam_readers[i]; 
+	}
 }
 
 
@@ -118,8 +113,8 @@ void MultiBamReader::setMinMaxInsertSizes( const std::vector<int32_t> &minInsert
 {
 	if( minInsert.size() != maxInsert.size() || minInsert.size() != _bam_readers.size() )
 	{
-		std::cerr << "min/max insert size has not been set, previous assigned values will be used (or default)." << std::endl;
-		return;
+		std::cerr << "[bam] min/max insert size has not been provided for all bam files" << std::endl;
+		exit(1);
 	}
 
 	for( size_t i=0; i < _bam_readers.size(); i++ )
@@ -138,16 +133,9 @@ void MultiBamReader::setMinMaxInsertSizes( const std::vector<int32_t> &minInsert
 }
 
 
-uint32_t MultiBamReader::size() const
-{
-	return _bam_readers.size();
-}
-
-
 BamReader* MultiBamReader::getBamReader( uint32_t idx )
 {
 	if( idx >= _bam_readers.size() ) throw MultiBamReaderException( "MultiBamReader::getBamReader index out of bound." );
-
 	return _bam_readers[idx];
 }
 
@@ -155,7 +143,6 @@ BamReader* MultiBamReader::getBamReader( uint32_t idx )
 double MultiBamReader::getISizeMean( uint32_t idx )
 {
 	if( idx >= _isize_mean.size() ) throw MultiBamReaderException( "MultiBamReader::getISizeMean index out of bound." );
-
 	return _isize_mean[idx];
 }
 
@@ -163,7 +150,6 @@ double MultiBamReader::getISizeMean( uint32_t idx )
 double MultiBamReader::getISizeStd( uint32_t idx )
 {
 	if( idx >= _isize_std.size() ) throw MultiBamReaderException( "MultiBamReader::getISizeStd index out of bound." );
-
 	return _isize_std[idx];
 }
 
@@ -171,7 +157,6 @@ double MultiBamReader::getISizeStd( uint32_t idx )
 uint64_t MultiBamReader::getISizeNum( uint32_t idx )
 {
 	if( idx >= _isize_count.size() ) throw MultiBamReaderException( "MultiBamReader::getISizeNum index out of bound." );
-
 	return _isize_count[idx];
 }
 
@@ -179,7 +164,6 @@ uint64_t MultiBamReader::getISizeNum( uint32_t idx )
 double MultiBamReader::getCoverage( uint32_t idx )
 {
 	if( idx >= _coverage.size() ) throw MultiBamReaderException( "MultiBamReader::getISizeStd index out of bound." );
-	
 	return _coverage[idx];
 }
 
@@ -187,7 +171,6 @@ double MultiBamReader::getCoverage( uint32_t idx )
 double MultiBamReader::getMeanCoverage()
 {
     double mean_coverage = 0;
-    
     for( size_t i=0; i < _coverage.size(); i++ ) mean_coverage += _coverage[i];
     
 	return (mean_coverage / _coverage.size());
@@ -203,26 +186,15 @@ double MultiBamReader::getGlobCoverage()
 }
 
 
-int MultiBamReader::getProperLibrary( uint64_t gap )
-{
-	int idx = -1;
-
-	for( size_t i=0; i < _isize_mean.size(); i++ )
-	{
-		if( _isize_mean[i] != 0 && _isize_mean[i] + _isize_std[i] >= gap ) return i;
-	}
-
-	return idx;
-}
-
-
 void MultiBamReader::lockBamReader( uint32_t idx )
 {
+	if( idx >= (this->_bam_mutex).size() ) throw MultiBamReaderException( "MultiBamReader::lockBamReader index out of bound." );
 	pthread_mutex_lock(&(this->_bam_mutex[idx]));
 }
 
 void MultiBamReader::unlockBamReader( uint32_t idx )
 {
+	if( idx >= (this->_bam_mutex).size() ) throw MultiBamReaderException( "MultiBamReader::unlockBamReader index out of bound." );
 	pthread_mutex_unlock(&(this->_bam_mutex[idx]));
 }
 
@@ -233,7 +205,14 @@ bool MultiBamReader::Rewind()
 
 	for( size_t i=0; i < _bam_readers.size(); i++ )
 	{
-		if( not _bam_readers[i]->Rewind() ) ret = false; else _valid_aligns[i] = _bam_readers[i]->GetNextAlignment( _bam_aligns[i] );
+		if( not _bam_readers[i]->Rewind() )
+		{
+			ret = false; 
+		}
+		else
+		{
+			_valid_aligns[i] = _bam_readers[i]->GetNextAlignment( _bam_aligns[i] );
+		}
 	}
 
 	return ret;
@@ -285,14 +264,13 @@ bool MultiBamReader::SetRegion ( const uint32_t &leftRefID, const uint32_t &left
 const RefVector& MultiBamReader::GetReferenceData() const
 {
 	if( _bam_readers.size() == 0 ) throw MultiBamReaderException( "MultiBamReader::GetReferenceData called on empty MultiBamReader object" );
-
-	return (_bam_readers.front())->GetReferenceData();
+	return _bam_readers[0]->GetReferenceData();
 }
 
 
 bool MultiBamReader::GetNextAlignment( BamAlignment &align, bool update_stats )
 {
-	if( _bam_readers.size() == 0 ) return false;
+	if( this->size() == 0 ) return false;
 
 	bool found = false;
 	size_t libId = 0;
@@ -321,6 +299,7 @@ bool MultiBamReader::GetNextAlignment( BamAlignment &align, bool update_stats )
 		}
 	}
 
+	// if a valid alignment has been found
 	// update alignments vector retrieving a new one from the proper BamReader
 	if( found )
 	{
@@ -411,26 +390,16 @@ bool MultiBamReader::GetNextAlignment( BamAlignment &align, bool update_stats )
 }
 
 
-uint64_t MultiBamReader::computeAssemblySize()
-{
-	_asm_size = 0;
-	
-	const RefVector& ref_vect = this->GetReferenceData();
-	for( size_t i=0; i < ref_vect.size(); i++ ) _asm_size += ref_vect[i].RefLength;
-	
-	return _asm_size;
-}
-
-
 bool MultiBamReader::computeStatistics()
 {
-	if( (this->_bam_readers).size() == 0 ) return false;
+	if( this->size() == 0 ) return false;
 	
 	BamAlignment align;
 	
 	// for each library compute its statistics
 	for( size_t libId=0; libId < _bam_readers.size(); libId++ )
 	{
+		// rewind current library
 		_bam_readers[libId]->Rewind();
 		
 		this->_isize_mean[libId] = 0;
@@ -516,6 +485,7 @@ bool MultiBamReader::computeStatistics()
 		this->_coverage[libId] = (this->_asm_size != 0) ? this->_reads_len[libId] / ((double)this->_asm_size) : 0.0;
 	}
 	
+	// rewind all the libraries
 	this->Rewind();
 	
 	return true;
@@ -549,13 +519,13 @@ uint32_t MultiBamReader::readStatsFromFile( const std::string &filename )
 
 		if( idx >= _bam_readers.size() )
 		{
-			std::cerr << "The number of inserts statistics does not match the number of BAM files.\nStats file: " << filename << std::endl;
+			std::cerr << "[bam] The number of libraries statistics does not match the number of bam files.\n      " << filename << std::endl;
 			return idx;
 		}
 
 		if( bamfile != _bam_readers[idx]->GetFilename() )
 		{
-			std::cerr << "Error loading bam statistics file (corresponding BAM file not found): " << bamfile << std::endl;
+			std::cerr << "[bam] Error loading libraries statistics file (corresponding BAM file not found).\n      " << bamfile << std::endl;
 			return idx;
 		}
 		
@@ -563,7 +533,7 @@ uint32_t MultiBamReader::readStatsFromFile( const std::string &filename )
 
 		getline( ifs, data );
 		std::stringstream ss(data);
-		ss >> _isize_mean[idx] >> _isize_std[idx] >> _coverage[idx]; // >> _isize_count[idx];
+		ss >> _isize_mean[idx] >> _isize_std[idx] >> _coverage[idx];
 
 		idx++;
 	}
@@ -571,15 +541,4 @@ uint32_t MultiBamReader::readStatsFromFile( const std::string &filename )
 	ifs.close();
 
 	return idx;
-}
-
-BamReader& MultiBamReader::at( const size_t &index ) const
-{
-	return *(this->_bam_readers.at(index));
-}
-
-
-BamReader& MultiBamReader::operator[](const size_t &index ) const
-{
-	return *(this->_bam_readers[index]);
 }
