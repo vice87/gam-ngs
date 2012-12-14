@@ -25,7 +25,6 @@ std::list< PairedContig >& buildPctg(
 	typedef CompactAssemblyGraph::OutEdgeIterator OutEdgeIterator;
 	typedef CompactAssemblyGraph::InEdgeIterator InEdgeIterator;
 	
-	PairedContig pctg;
 	VertexIterator vbegin,vend;
 	MergeBlockLists mergeLists;
 	

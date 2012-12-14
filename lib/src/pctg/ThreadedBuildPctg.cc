@@ -76,12 +76,12 @@ void ThreadedBuildPctg::incProcBlocks( uint64_t num, uint64_t tid )
 		
 		if( isatty(fileno(stdout)) )
 		{
-			std::cout << "\r[merge] building paired contigs " << perc << "% done." << std::flush;
+			std::cout << "\r[merge] Merging contigs " << perc << "% done." << std::flush;
 			if( perc >= 100 ) std::cout << std::endl;
 		}
 		else
 		{
-			if( perc % 5 == 0 ) std::cout << "[merge] building paired contigs " << perc << "% done." << std::endl;
+			if( perc % 5 == 0 ) std::cout << "[merge] Merging contigs " << perc << "% done." << std::endl;
 		}
     }
 
