@@ -19,14 +19,14 @@
 #include "OrderingFunctions.hpp"
 
 
-AssemblyGraph::AssemblyGraph()
-{
+AssemblyGraph::AssemblyGraph( uint64_t id ) : _agId(id)
+{	
     std::list< Block > blocks;
     this->initGraph( blocks );
 }
 
 
-AssemblyGraph::AssemblyGraph( const std::list< Block > &blocks )
+AssemblyGraph::AssemblyGraph( const std::list< Block > &blocks, uint64_t id ) : _agId(id)
 {
     this->initGraph( blocks );
 }
@@ -37,6 +37,7 @@ AssemblyGraph::operator =(const AssemblyGraph& orig)
 {
     *((Graph *)this) = *((Graph *)&orig);
     this->_blockVector = orig._blockVector;
+	this->_agId = orig._agId;
 
     return *this;
 }
@@ -52,121 +53,6 @@ const Block&
 AssemblyGraph::getBlock(const UIntType& pos) const
 {
     return this->_blockVector.at(pos);
-}
-
-
-/*std::list<Block>
-AssemblyGraph::removeCyclesFromSCC( std::list<Block> &sccBlocks )
-{
-    if( sccBlocks.size() <= 1 ) return sccBlocks;
-
-    int i = 0;
-
-    // remove block with the minimum number of reads
-    ReadNumBlocksOrderer rno;
-    sccBlocks.erase( std::min_element( sccBlocks.begin(), sccBlocks.end(), rno) );
-
-    // copy block list into a vector
-    std::vector<Block> blockVect( sccBlocks.size() );
-    for( std::list<Block>::iterator block = sccBlocks.begin(); block != sccBlocks.end(); block++ )
-    {
-        blockVect[i] = *block;
-        i++;
-    }
-
-    // build graph of assemblies
-    AssemblyGraph graph( blockVect );
-
-    typedef std::vector< size_t > container;
-    container c;
-
-    try
-    {
-        boost::topological_sort( graph, std::back_inserter(c) );
-    }
-    catch( boost::not_a_dag ) // if the graph still contains cycles
-    {
-        sccBlocks.clear();
-
-        std::vector< UIntType > component( boost::num_vertices(graph) ),
-                            discoverTime( boost::num_vertices(graph) ),
-                            root( boost::num_vertices(graph) );
-        std::vector< boost::default_color_type > color( boost::num_vertices(graph) );
-
-        // compute strongly connected components
-        UIntType sccNum = boost::strong_components( graph, &component[0],
-                boost::root_map(&root[0]).color_map(&color[0]).discover_time_map(&discoverTime[0]) );
-
-        // group vertices by scc
-        std::vector< std::list<Block> > components(sccNum);
-        for( UIntType h=0; h != component.size(); ++h ) components[ component[h] ].push_back( blockVect[h] );
-
-        // recursively remove cycles from SCCs
-        for( UIntType h=0; h != sccNum; ++h )
-        {
-            if( components[h].size() > 1 )
-            {
-                std::list<Block> tmpList = removeCyclesFromSCC( components[h] );
-                sccBlocks.splice( sccBlocks.end(), tmpList );
-            }
-            else sccBlocks.splice( sccBlocks.end(), components[h] );
-        }
-    }
-
-    return sccBlocks;
-}*/
-
-
-void //std::vector< std::vector<Block> >
-AssemblyGraph::removeCycles()
-{
-	std::vector< uint64_t > component( boost::num_vertices(*this) );
-	std::vector< uint64_t > discoverTime( boost::num_vertices(*this) );
-	std::vector< uint64_t > root( boost::num_vertices(*this) );
-	std::vector< boost::default_color_type > color( boost::num_vertices(*this) );
-
-    // compute strongly connected components
-    uint64_t sccNum = boost::strong_components( *this, &component[0],
-            boost::root_map(&root[0]).color_map(&color[0]).discover_time_map(&discoverTime[0]) );
-
-    // group vertices by scc
-    std::vector< std::list<uint64_t> > components(sccNum);
-    for( uint64_t h=0; h < component.size(); ++h )
-        components.at( component.at(h) ).push_back(h);
-
-    // compute the number of strong components which include more than one vertex
-    UIntType scc = 0;
-    for( uint64_t h=0; h != sccNum; ++h ) if( components[h].size() > 1 ) scc++;
-
-    std::vector< std::list<Block> > sComponents(scc);
-    scc = 0;
-
-    // fill strong components data structure
-    for( uint64_t h=0; h < sccNum; ++h )
-    {
-        if( components[h].size() > 1 )
-        {
-			for( std::list<uint64_t>::iterator j = components[h].begin(); j != components[h].end(); j++ )
-                sComponents[scc].push_back( this->_blockVector.at(*j) );
-
-            scc++;
-        }
-    }
-
-    // remove strong components from graph
-    std::list<Block> newBlockList;
-    for( UIntType i = 0; i < this->_blockVector.size(); i++ )
-    {
-        if( components.at( component.at(i) ).size() == 1 )
-			newBlockList.push_back( this->_blockVector[i] );
-    }
-
-    // re-initialize the graph with blocks that do not create cycles
-    this->initGraph( newBlockList );
-
-    //std::cout << "Filtered blocks after cycles removal = " << newBlockVector.size() << std::endl << std::flush;
-
-    //return sComponents;
 }
 
 
@@ -1017,7 +903,8 @@ void AssemblyGraph::agTopologicalSort( const AssemblyGraph &g, std::list<Vertex>
     }
 }
 
-void AssemblyGraph::getForks( std::vector<Vertex> &v_forks )
+
+bool AssemblyGraph::hasForks()
 {
 	typedef boost::graph_traits<Graph>::vertex_iterator VertexIterator;
 	typedef boost::graph_traits<AssemblyGraph>::edge_iterator EdgeIterator;
@@ -1025,15 +912,15 @@ void AssemblyGraph::getForks( std::vector<Vertex> &v_forks )
 	VertexIterator vbegin,vend;
 	boost::tie(vbegin,vend) = boost::vertices(*this);
 
-	v_forks.clear();
-
 	for (VertexIterator v=vbegin; v!=vend; v++)
 	{
 		int in_deg = boost::in_degree(*v,*this);
 		int out_deg = boost::out_degree(*v,*this);
-		if( in_deg > 1 ) v_forks.push_back(*v);
-		if( out_deg > 1 ) v_forks.push_back(*v);
+		
+		if( in_deg > 1 || out_deg > 1 ) return true;
 	}
+	
+	return false;
 }
 
 

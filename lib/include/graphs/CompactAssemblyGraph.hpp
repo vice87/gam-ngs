@@ -37,6 +37,7 @@ public:
 	typedef boost::graph_traits<Graph>::in_edge_iterator InEdgeIterator;
 
 private:
+	uint64_t _cgId;
     uint64_t _num_vertices;
 	std::vector< std::list<Block> > _blockVector; //!< associate at each vertex a list of blocks (with the same master/slave)
 
@@ -68,6 +69,8 @@ public:
      * \param blocks a list of blocks.
      */
 	CompactAssemblyGraph( const AssemblyGraph &ag );
+	
+	inline uint64_t getId() const { return this->_cgId; }
 
     //! Gets the blocks vector of the graph.
     /*!

@@ -11,8 +11,8 @@
 #include <pthread.h>
 #include <list>
 
-#include <bam/MultiBamReader.hpp>
-
+#include "bam/MultiBamReader.hpp"
+#include "graphs/CompactAssemblyGraph.hpp"
 #include "pctg/PairedContig.hpp"
 
 void * buildPctgThread(void *argv);
@@ -24,9 +24,9 @@ private:
 
     typedef struct thread_arg
     {
-            ThreadedBuildPctg *tbp;
-            uint64_t tid;
-            std::list< PairedContig > *output;
+		ThreadedBuildPctg *tbp;
+		uint64_t tid;
+		std::list< PairedContig > *output;
 
     } thread_arg_t;
 
@@ -38,7 +38,7 @@ private:
     UIntType _pctgsDone;
     UIntType _lastPerc;
 
-    std::vector< std::list<Block>* > _blocksVect;
+    std::vector< CompactAssemblyGraph* > _graphs;
     uint64_t _nextPctg;
 
     uint64_t _procBlocks;
@@ -57,14 +57,14 @@ private:
     pthread_mutex_t _mutexSlaveBam; // mutex per accedere al BAM slave
 
 	// private methods
-    std::list<Block>* extractNextPctg();
+    CompactAssemblyGraph* extractNextPctg();
 	IdType readPctgNumAndIncrease();
 	void incProcBlocks( uint64_t num, uint64_t tid );
 
 public:
 
     ThreadedBuildPctg(
-            const std::list< std::vector<Block> > &blocksList,
+            const std::list< CompactAssemblyGraph* > &graphsList,
             const RefSequence &masterRef,
             const RefSequence &slaveRef
 	);

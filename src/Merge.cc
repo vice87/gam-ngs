@@ -49,6 +49,7 @@
 #include "assembly/io_contig.hpp"
 #include "bam/MultiBamReader.hpp"
 #include "graphs/PairingEvidencesGraph.hpp"
+#include "graphs/CompactAssemblyGraph.hpp"
 #include "pctg/PairedContig.hpp"
 #include "pctg/ThreadedBuildPctg.hpp"
 #include "pctg/BuildPctgFunctions.hpp"
@@ -95,11 +96,11 @@ void Merge::execute()
 
 	std::list<Block> blocks;
 
-	std::cout << "[main] loading blocks" << std::endl;
+	std::cout << "[main] Loading blocks" << std::endl;
 	Block::loadBlocks( g_options.blocksFile, blocks, g_options.minBlockSize );
-	std::cout << "[main] loaded blocks = " << blocks.size() << std::endl;
+	std::cout << "[main] Loaded blocks = " << blocks.size() << std::endl;
 
-	std::cout << "[main] loading BAMs data" << std::endl;
+	std::cout << "[main] Loading BAMs data" << std::endl;
 
 	std::vector< int32_t > minInsert, maxInsert;
 
@@ -108,66 +109,60 @@ void Merge::execute()
 	std::vector< std::string > masterBamFiles; // vector of master BAM filenames
 	loadBamFileNames( g_options.masterBamFile, masterBamFiles, minInsert, maxInsert ); // load master BAM alignments filenames
 
-	masterBam.Open( masterBamFiles ); // open master BAM files
-	if( masterBam.size() == 0 )
+	if( not masterBam.Open(masterBamFiles) ) // open master BAM files
 	{
-		std::cerr << "[bam] error: cannot open any master's PE-alignment specified in " << g_options.masterBamFile << std::endl;
+		std::cerr << "[bam] ERROR: Master PE-alignments file is empty. Check file: " << g_options.masterBamFile << std::endl;
 		exit(1);
 	}
 	
 	masterBam.setMinMaxInsertSizes( minInsert, maxInsert );
 
-	// open inserts statistics for master alignments
-	if( g_options.masterISizeFile != "" )
+	// compute/load statistics for master PE-alignment libraries
+	if( stat(g_options.masterISizeFile.c_str(),&st) != 0 ) // if statistics file do not exist, create it
 	{
-		if( stat(g_options.masterISizeFile.c_str(),&st) != 0 ) // if statistics file do not exist, create it
-		{
-			std::cout << "[bam] computing statistics of master's PE-alignments" << std::endl;
-			masterBam.computeStatistics();
-			masterBam.writeStatsToFile( g_options.masterISizeFile );
-		}
-		
-		masterBam.readStatsFromFile( g_options.masterISizeFile ); 
+		std::cout << "[bam] Computing statistics of master's PE-alignments" << std::endl;
+		masterBam.computeStatistics();
+		masterBam.writeStatsToFile( g_options.masterISizeFile );
 	}
+		
+	masterBam.readStatsFromFile( g_options.masterISizeFile );
 
-	std::cout << "[bam] master PE-alignments file " << getPathBaseName(g_options.masterBamFile) << " successfully opened:" << std::endl;
+	std::cout << "[bam] Master PE-alignments file " << getPathBaseName(g_options.masterBamFile) << " successfully opened:" << std::endl;
 	for( size_t i=0; i < masterBam.size(); i++ ) 
 		std::cout << "      " << masterBam[i].GetFilename() 
-			<< "\n         inserts size = " << masterBam.getISizeMean(i) << " +/- " << masterBam.getISizeStd(i) 
-			<< "\tcoverage = " << masterBam.getCoverage(i) << std::endl;
+				<< "\n         inserts size = " << masterBam.getISizeMean(i) << " +/- " << masterBam.getISizeStd(i) 
+				<< "\tcoverage = " << masterBam.getCoverage(i) << std::endl;
 
 	/* OPEN MASTER MP BAM FILES */
 
-	if( g_options.masterMpBamFile != "" )
+	if( g_options.masterMpBamFile != "" ) // if master MP-alignments have been specified
 	{
 		std::vector< std::string > masterMpBamFiles; // vector of master BAM filenames
 		loadBamFileNames( g_options.masterMpBamFile, masterMpBamFiles, minInsert, maxInsert ); // load master BAM alignments filenames
 
-		masterMpBam.Open( masterMpBamFiles ); // open master BAM files
-		if( masterMpBam.size() == 0 )
+		if( not masterMpBam.Open(masterMpBamFiles) )
 		{
-			std::cerr << "[bam] error: cannot open any master's MP-alignment specified in " << g_options.masterMpBamFile << std::endl;
+			std::cerr << "[bam] ERROR: Master MP-alignments file is empty. Check file: " << g_options.masterMpBamFile << std::endl;
 			exit(1);
 		}
 		
 		masterMpBam.setMinMaxInsertSizes( minInsert, maxInsert );
 
-		if( g_options.masterMpISizeFile != "" ) 
+		// compute/load statistics for master MP-alignment libraries
+		if( stat(g_options.masterMpISizeFile.c_str(),&st) != 0 ) // if statistics file do not exist, create it
 		{
-			if( stat(g_options.masterMpISizeFile.c_str(),&st) != 0 ) // if statistics file do not exist, create it
-			{
-				std::cout << "[bam] computing statistics of master's MP-alignments" << std::endl;
-				masterMpBam.computeStatistics();
-				masterMpBam.writeStatsToFile( g_options.masterMpISizeFile );
-			}
-			
-			masterMpBam.readStatsFromFile( g_options.masterMpISizeFile ); // open inserts statistics
+			std::cout << "[bam] Computing statistics of master's MP-alignments" << std::endl;
+			masterMpBam.computeStatistics();
+			masterMpBam.writeStatsToFile( g_options.masterMpISizeFile );
 		}
 
-		std::cout << "[bam] master MP-alignments file " << getPathBaseName(g_options.masterMpBamFile) << " successfully opened:" << std::endl;
-		for( size_t i=0; i < masterMpBam.size(); i++ ) std::cout << "      " << masterMpBam[i].GetFilename() 
-			<< "\n         inserts size = " << masterMpBam.getISizeMean(i) << " +/- " << masterMpBam.getISizeStd(i) 
-			<< "\tcoverage = " << masterMpBam.getCoverage(i) << std::endl;
+		masterMpBam.readStatsFromFile( g_options.masterMpISizeFile ); // open inserts statistics
+
+		std::cout << "[bam] Master MP-alignments file " << getPathBaseName(g_options.masterMpBamFile) << " successfully opened:" << std::endl;
+		for( size_t i=0; i < masterMpBam.size(); i++ ) 
+			std::cout << "      " << masterMpBam[i].GetFilename() 
+					<< "\n         inserts size = " << masterMpBam.getISizeMean(i) << " +/- " << masterMpBam.getISizeStd(i) 
+					<< "\tcoverage = " << masterMpBam.getCoverage(i) << std::endl;
 	}
 
 	/* OPEN SLAVE BAM FILES */
@@ -175,61 +170,54 @@ void Merge::execute()
 	std::vector< std::string > slaveBamFiles; // vector of slave BAM filenames
 	loadBamFileNames( g_options.slaveBamFile, slaveBamFiles, minInsert, maxInsert ); // load slaves BAM alignments filenames
 
-	slaveBam.Open( slaveBamFiles );
-	if( slaveBam.size() == 0 )
+	if( not slaveBam.Open(slaveBamFiles) )
 	{
-		std::cerr << "[bam] error: cannot open any slave's PE-alignment specified in " << g_options.slaveBamFile << std::endl;
+		std::cerr << "[bam] ERROR: Slave PE-alignments file is empty. Check file: " << g_options.slaveBamFile << std::endl;
 		exit(1);
 	}
 	
 	slaveBam.setMinMaxInsertSizes( minInsert, maxInsert );
 
-	if( g_options.slaveISizeFile != "" ) 
+	if( stat(g_options.slaveISizeFile.c_str(),&st) != 0 ) // if statistics file do not exist, create it
 	{
-		if( stat(g_options.slaveISizeFile.c_str(),&st) != 0 ) // if statistics file do not exist, create it
-		{
-			std::cout << "[bam] computing statistics of slave's PE-alignments" << std::endl;
-			slaveBam.computeStatistics();
-			slaveBam.writeStatsToFile( g_options.slaveISizeFile );
-		}
-		
-		slaveBam.readStatsFromFile( g_options.slaveISizeFile ); // open inserts statistics
+		std::cout << "[bam] Computing statistics of slave's PE-alignments" << std::endl;
+		slaveBam.computeStatistics();
+		slaveBam.writeStatsToFile( g_options.slaveISizeFile );
 	}
 
-	std::cout << "[bam] slave PE-alignments file " << getPathBaseName(g_options.slaveBamFile) << " successfully opened:" << std::endl;
-	for( size_t i=0; i < slaveBam.size(); i++ ) std::cout << "      "<< slaveBam[i].GetFilename() 
-		<< "\n         inserts size = " << slaveBam.getISizeMean(i) << " +/- " << slaveBam.getISizeStd(i)
-		<< "\tcoverage = " << slaveBam.getCoverage(i) << std::endl;
+	slaveBam.readStatsFromFile( g_options.slaveISizeFile ); // open inserts statistics
+
+	std::cout << "[bam] Slave PE-alignments file " << getPathBaseName(g_options.slaveBamFile) << " successfully opened:" << std::endl;
+	for( size_t i=0; i < slaveBam.size(); i++ ) 
+		std::cout << "      "<< slaveBam[i].GetFilename() 
+				<< "\n         inserts size = " << slaveBam.getISizeMean(i) << " +/- " << slaveBam.getISizeStd(i)
+				<< "\tcoverage = " << slaveBam.getCoverage(i) << std::endl;
 
 	/* OPEN SLAVE MP BAM FILES */
 
-	if( g_options.slaveMpBamFile != "" )
+	if( g_options.slaveMpBamFile != "" ) // if slave MP-alignments have been specified
 	{
 		std::vector< std::string > slaveMpBamFiles; // vector of slave BAM filenames
 		loadBamFileNames( g_options.slaveMpBamFile, slaveMpBamFiles, minInsert, maxInsert ); // load slaves BAM alignments filenames
 
-		slaveMpBam.Open( slaveMpBamFiles );
-		if( slaveMpBam.size() == 0 )
+		if( not slaveMpBam.Open(slaveMpBamFiles) )
 		{
-			std::cerr << "[bam] error: cannot open any slave's MP-alignment specified in " << g_options.slaveMpBamFile << std::endl;
+			std::cerr << "[bam] ERROR: Slave MP-alignments file is empty. Check file: " << g_options.slaveMpBamFile << std::endl;
 			exit(1);
 		}
 		
 		slaveMpBam.setMinMaxInsertSizes( minInsert, maxInsert );
 
-		if( g_options.slaveMpISizeFile != "" ) 
+		if( stat(g_options.slaveMpISizeFile.c_str(),&st) != 0 ) // if statistics file do not exist, create it
 		{
-			if( stat(g_options.slaveMpISizeFile.c_str(),&st) != 0 ) // if statistics file do not exist, create it
-			{
-				std::cout << "[bam] computing statistics of slave's MP-alignments" << std::endl;
-				slaveMpBam.computeStatistics();
-				slaveMpBam.writeStatsToFile( g_options.slaveMpISizeFile );
-			}
-			
-			slaveMpBam.readStatsFromFile( g_options.slaveMpISizeFile ); // open inserts statistics
+			std::cout << "[bam] Computing statistics of slave's MP-alignments" << std::endl;
+			slaveMpBam.computeStatistics();
+			slaveMpBam.writeStatsToFile( g_options.slaveMpISizeFile );
 		}
 
-		std::cout << "[bam] slave MP-alignments file " << getPathBaseName(g_options.slaveMpBamFile) << " successfully opened:" << std::endl;
+		slaveMpBam.readStatsFromFile( g_options.slaveMpISizeFile ); // open inserts statistics
+
+		std::cout << "[bam] Slave MP-alignments file " << getPathBaseName(g_options.slaveMpBamFile) << " successfully opened:" << std::endl;
 		for( size_t i=0; i < slaveMpBam.size(); i++ ) std::cout << "      "<< slaveMpBam[i].GetFilename() 
 			<< "\n         inserts size = " << slaveMpBam.getISizeMean(i) << " +/- " << slaveMpBam.getISizeStd(i)
 			<< "\tcoverage = " << slaveMpBam.getCoverage(i) << std::endl;
@@ -237,23 +225,29 @@ void Merge::execute()
 
 	/* LOAD SEQUENCES DATA */
 
-	std::cout << "[main] loading contigs data" << std::endl;
+	std::cout << "[main] Loading contigs data" << std::endl;
 
 	uint64_t master_ctgs = masterBam.GetReferenceData().size();
 	uint64_t slave_ctgs = slaveBam.GetReferenceData().size();
 
 	RefSequence masterRef(master_ctgs);
-	for( uint64_t i=0; i < master_ctgs; i++ )
-	{
-		masterRef[i].RefName = masterBam.GetReferenceData().at(i).RefName;
-		masterRef[i].RefLength = masterBam.GetReferenceData().at(i).RefLength;
-	}
-
 	RefSequence slaveRef(slave_ctgs);
-	for( uint64_t i=0; i < slave_ctgs; i++ )
+	
 	{
-		slaveRef[i].RefName = slaveBam.GetReferenceData().at(i).RefName;
-		slaveRef[i].RefLength = slaveBam.GetReferenceData().at(i).RefLength;
+		const RefVector& master_ref_data = masterBam.GetReferenceData();
+		const RefVector& slave_ref_data = slaveBam.GetReferenceData();
+		
+		for( uint64_t i=0; i < master_ctgs; i++ )
+		{
+			masterRef[i].RefName = master_ref_data.at(i).RefName;
+			masterRef[i].RefLength = master_ref_data.at(i).RefLength;
+		}
+		
+		for( uint64_t i=0; i < slave_ctgs; i++ )
+		{
+			slaveRef[i].RefName = slave_ref_data.at(i).RefName;
+			slaveRef[i].RefLength = slave_ref_data.at(i).RefLength;
+		}
 	}
 
 	/* BLOCKS FILTERING */
@@ -266,9 +260,9 @@ void Merge::execute()
 	
 	double min_cov = std::min( masterBam.getGlobCoverage(), slaveBam.getGlobCoverage() ) / 2;
 
-	std::cout << "[main] filtering blocks by coverage" << std::endl;
+	std::cout << "[main] Filtering blocks by coverage" << std::endl;
 	Block::filterBlocksByCoverage( blocks, sl_blocks, min_cov, g_options.coverageThreshold );
-	std::cout << "[main] remaining blocks = " << blocks.size() << std::endl;
+	std::cout << "[main] Remaining blocks = " << blocks.size() << std::endl;
 	
 	//TODO: sistemare la funzione per eliminare blocchi dovuti a repeats
 	//Block::filterBlocksByOverlaps(blocks);
@@ -283,12 +277,12 @@ void Merge::execute()
 
 	/* PARTITIONING BLOCKS */
 
-	std::cout << "[main] partitioning blocks" << std::endl;
-	std::list< std::vector<Block> > pcblocks = partitionBlocks( blocks );
+	std::cout << "[main] Partitioning blocks" << std::endl;
+	std::list< CompactAssemblyGraph* > graphs_list = partitionBlocks( blocks );
 
 	/* LOADING CONTIGS SEQUENCES IN MEMORY */
 
-	std::cout << "[main] loading contigs sequences" << std::endl;
+	std::cout << "[main] Loading contig sequences" << std::endl;
 
 	std::map< std::string, int32_t > masterCtg2Id; // master contig Name => ID
 	std::map< std::string, int32_t > slaveCtg2Id;  // slave contig Name => ID
@@ -299,9 +293,11 @@ void Merge::execute()
 	loadSequences( g_options.masterFastaFile, masterRef, masterCtg2Id );
 	loadSequences( g_options.slaveFastaFile, slaveRef, slaveCtg2Id );
 
+	/* OUTPUT SLAVE CONTIGS WITH NO BLOCKS */
+	
 	// output slave contigs with no blocks (before filtering)
 	std::string noblocks_fasta_file = g_options.outputFilePrefix + ".noblocks.BF.fasta";
-	std::cout << "[merge] writing contigs with no blocks to file \"" << noblocks_fasta_file << "\"" << std::endl;
+	std::cout << "[merge] Writing contigs with no blocks to file: " << noblocks_fasta_file << std::endl;
 	std::ofstream noblocks_fasta_stream( noblocks_fasta_file.c_str() );
 	for( std::set< int32_t >::const_iterator it = slaveNBC_BF.begin(); it != slaveNBC_BF.end(); it++ )
 	{
@@ -312,7 +308,7 @@ void Merge::execute()
 	
 	// output slave contigs with no blocks (after filtering)
 	noblocks_fasta_file = g_options.outputFilePrefix + ".noblocks.AF.fasta";
-	std::cout << "[merge] writing contigs with no blocks (after filtering) to file \"" << noblocks_fasta_file << "\"" << std::endl;
+	std::cout << "[merge] Writing contigs with no blocks (after filtering) to file: " << noblocks_fasta_file << std::endl;
 	noblocks_fasta_stream.open( noblocks_fasta_file.c_str() );
 	for( std::set< int32_t >::const_iterator it = slaveNBC_AF.begin(); it != slaveNBC_AF.end(); it++ )
 	{
@@ -321,9 +317,9 @@ void Merge::execute()
 	}
 	noblocks_fasta_stream.close();
 	
-	// build paired contigs (threaded)
-	std::cout << "[merge] building paired contigs" << std::endl;
-	ThreadedBuildPctg tbp( pcblocks, masterRef, slaveRef );
+	/* BUILD PAIRED CONTIGS */
+	
+	ThreadedBuildPctg tbp( graphs_list, masterRef, slaveRef );
 	std::list<PairedContig> *result = tbp.run();
 	
 	// assign unique IDs to paired contigs
@@ -334,7 +330,7 @@ void Merge::execute()
 		pctg_id++;
 	}
 	
-	std::cout << "[merge] paired contigs built = " << pctg_id << std::endl;
+	std::cout << "[merge] Paired contigs built = " << pctg_id << std::endl;
 	
 	// TODO: sistemare codice commentato qui sotto
 	// output assemblies made exclusively by contigs involved in merging
@@ -391,7 +387,7 @@ void Merge::execute()
 	for( size_t i=0; i < slaveRef.size(); i++ ) delete slaveRef[i].Sequence;
 	slaveNBC_BF.clear(); slaveNBC_AF.clear();
 
-	// get master contigs that have not been included in any pctg
+	// get merged master contigs
 	std::vector< bool > usedMasterCtgs( masterRef.size(), false );
 	for( std::list< PairedContig >::iterator pctg = result->begin(); pctg != result->end(); pctg++ )
 	{
@@ -402,19 +398,19 @@ void Merge::execute()
 	std::list<int32_t> ctgIds;
 	for(int32_t i=0; i < usedMasterCtgs.size(); i++) if( !usedMasterCtgs[i] ) ctgIds.push_back(i);
 
-	// add unused contigs in paired contigs pool
+	// build a paired contigs for each unmerged master contig
 	uint64_t old_pctg_id = pctg_id;
 	generateSingleCtgPctgs( *result, ctgIds, masterRef, pctg_id);
 
-	// save paired contig pool to disk
-	std::cout << "[merge] writing paired contigs on file \"" << ( g_options.outputFilePrefix + ".gam.fasta" ) << "\"" << std::endl;
+	// write paired contigs to file
+	std::cout << "[merge] Writing paired contigs on file: " << ( g_options.outputFilePrefix + ".gam.fasta" ) << std::endl;
 
 	std::ofstream outFasta((g_options.outputFilePrefix + ".gam.fasta").c_str(),std::ios::out);
 	for( std::list< PairedContig >::const_iterator pctg = result->begin(); pctg != result->end(); pctg++ ) outFasta << *pctg << std::endl;
 	outFasta.close();
 
 	// save paired contigs descriptors to file
-	std::cout << "[merge] writing paired contigs descriptors on file \"" << ( g_options.outputFilePrefix + ".pctgs" ) << "\"" << std::endl;
+	std::cout << "[merge] Writing paired contigs descriptors on file: " << ( g_options.outputFilePrefix + ".pctgs" ) << std::endl;
 	std::fstream pctgDescFile( (g_options.outputFilePrefix + ".pctgs").c_str(), std::fstream::out );
 	writePctgDescriptors( pctgDescFile, *result, masterRef, slaveRef, old_pctg_id );
 	pctgDescFile.close();
@@ -433,7 +429,7 @@ void Merge::execute()
 	for( int i=1; i <= max_frame_num; i++ ){ ofs_fpi << ext_fpi_2[i] << "\t"; } ofs_fpi << std::endl;
 	ofs_fpi.close();*/
 
-	std::cout << "[merge] total execution time = " << formatTime( time(NULL)-tStart ) << std::endl;
+	std::cout << "[merge] Total execution time = " << formatTime( time(NULL)-tStart ) << std::endl;
 
 	g_badAlignStream.close();
 }

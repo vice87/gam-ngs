@@ -113,7 +113,7 @@ void MultiBamReader::setMinMaxInsertSizes( const std::vector<int32_t> &minInsert
 {
 	if( minInsert.size() != maxInsert.size() || minInsert.size() != _bam_readers.size() )
 	{
-		std::cerr << "[bam] min/max insert size has not been provided for all bam files" << std::endl;
+		std::cerr << "[bam] Min/Max insert size has not been provided for all bam files" << std::endl;
 		exit(1);
 	}
 
@@ -263,7 +263,7 @@ bool MultiBamReader::SetRegion ( const uint32_t &leftRefID, const uint32_t &left
 
 const RefVector& MultiBamReader::GetReferenceData() const
 {
-	if( _bam_readers.size() == 0 ) throw MultiBamReaderException( "MultiBamReader::GetReferenceData called on empty MultiBamReader object" );
+	if( _bam_readers.size() == 0 ) throw MultiBamReaderException( "MultiBamReader::GetReferenceData called on empty object" );
 	return _bam_readers[0]->GetReferenceData();
 }
 

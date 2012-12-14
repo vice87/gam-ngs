@@ -31,7 +31,7 @@ extern MultiBamReader masterMpBam;
 extern MultiBamReader slaveBam;
 extern MultiBamReader slaveMpBam;
 
-std::list< std::vector<Block> >
+std::list< CompactAssemblyGraph* >
 partitionBlocks( const std::list<Block> &blocks )
 {
     typedef AssemblyGraph::vertex_iterator VertexIterator;
@@ -39,12 +39,12 @@ partitionBlocks( const std::list<Block> &blocks )
     typedef AssemblyGraph::adjacency_iterator AdjacencyIterator;
     typedef AssemblyGraph::inv_adjacency_iterator InvAdjacencyIterator;
 
-    std::list< std::vector<Block> > blocksList;
+    std::list< CompactAssemblyGraph* > outList;
 
-    // group blocks between contigs which may be merged together through weaving
+	// group blocks between contigs which may be merged together through weaving
     std::vector< std::list<Block> > pairedContigsBlocks = partitionBlocksByPairedContigs( blocks );
 
-    int z = 1; // assembly graph counter
+    uint64_t agId = 1; // assembly graph counter
 
     uint32_t ag_forks = 0, ag_linears = 0, ag_cycles = 0, ag_bubbles = 0; // counters for the different types of assemblies's graphs.
 
@@ -53,147 +53,76 @@ partitionBlocks( const std::list<Block> &blocks )
     for( pcb = pairedContigsBlocks.begin(); pcb != pairedContigsBlocks.end(); ++pcb )
     {
         // create an assembly graph
-        AssemblyGraph ag( *pcb );
-		//ag.computeEdgeWeights( masterBam, masterMpBam, slaveBam, slaveMpBam );
+        AssemblyGraph ag( *pcb, agId );
+		// collapse paths which shares the same master/slave contigs
+		CompactAssemblyGraph *cg = new CompactAssemblyGraph(ag);
+		cg->computeEdgeWeights( masterBam, masterMpBam, slaveBam, slaveMpBam );
 		
-		//std::cerr << "AG " << z << std::endl;
-		bool is_linear = false;
+		std::stringstream ff1,ff2;
 		
-		while( !is_linear )
+		try
 		{
-			try
+			// check if graph contains cycles
+			std::vector< size_t > ts;
+			boost::topological_sort( ag, std::back_inserter(ts) );
+			
+			// at this point, ag does not contain cycles
+			
+			outList.push_back(cg);
+
+			bool has_bubbles = ag.hasBubbles();
+			bool has_forks = ag.hasForks();
+			
+			ff1 << "./gam_graphs/AssemblyGraph_" << agId;
+			ff2 << "./gam_graphs/CompactGraph_" << agId;
+
+			if( has_bubbles )
 			{
-				// check if graph still contains cycles (without forks).
-				std::vector< size_t > ts;
-				boost::topological_sort( ag, std::back_inserter(ts) );
-				
-				bool has_bubbles = ag.hasBubbles();
-				
-				std::vector<Vertex> v_forks;
-				
-				if( has_bubbles )
-				{
-					ag_bubbles++;
-					
-					std::stringstream ff1;
-					ff1 << "./gam_graphs/AssemblyGraph_" << z << "_bubbles.dot";
-					
-					boost::filesystem::path p(ff1.str().c_str());
-					if( not boost::filesystem::exists(p) )
-					{
-						std::ofstream ss1( ff1.str().c_str() );
-						ag.writeGraphviz(ss1);
-						ss1.close();
-					}
-				}
+				ag_bubbles++;
+				ff1 << "_bubbles.dot";
+				ff2 << "_bubbles.dot";
+			}
+			else if( has_forks )
+			{
+				ag_forks++;
+				ff1 << "_forks.dot";
+				ff2 << "_forks.dot";
+			}
+			else
+			{
+				ag_linears++;
+				ff1 << "_linear.dot";
+				ff2 << "_linear.dot";
+			}
+		}
+		catch( boost::not_a_dag ) // if the graph is cyclic.
+		{
+			ag_cycles++;
+			
+			ff1 << "./gam_graphs/AssemblyGraph_" << agId << "_cyclic.dot";
+			ff2 << "./gam_graphs/CompactGraph_" << agId << "_cyclic.dot";
+		}
+		
+		if( g_options.outputGraphs )
+		{
+			boost::filesystem::path p1(ff1.str().c_str());
+			if( not boost::filesystem::exists(p1) )
+			{
+				std::ofstream ss( ff1.str().c_str() );
+				ag.writeGraphviz(ss);
+				ss.close();
+			}
 
-                ag.getForks( v_forks ); //if( !has_bubbles ) ag.getForks( v_forks );
+			boost::filesystem::path p2(ff2.str().c_str());
+			if( not boost::filesystem::exists(p2) )
+			{
+				std::ofstream ss( ff2.str().c_str() );
+				cg->writeGraphviz(ss);
+				ss.close();
+			}
+		}
 
-                if( v_forks.size() == 0 ) is_linear = true;
-
-                // Assembly graph with forks
-                if( !has_bubbles && v_forks.size() >= 1 )
-                {
-                    ag_forks++;
-
-                    std::stringstream ff1;
-                    ff1 << "./gam_graphs/AssemblyGraph_" << z;
-                    if( v_forks.size() > 1 ) ff1 << "_forks.dot"; else ff1 << "_fork.dot";
-
-                    boost::filesystem::path p(ff1.str().c_str());
-                    if( not boost::filesystem::exists(p) )
-                    {
-                        std::ofstream ss1( ff1.str().c_str() );
-                        ag.writeGraphviz(ss1);
-                        ss1.close();
-                    }
-
-                    std::stringstream ff2;
-                    ff2 << "./gam_graphs/CompactGraph_" << z;
-                    if( v_forks.size() > 1 ) ff2 << "_forks.dot"; else ff2 << "_fork.dot";
-
-                    boost::filesystem::path p2(ff2.str().c_str());
-                    if( not boost::filesystem::exists(p2) )
-                    {
-                        std::ofstream ss2( ff2.str().c_str() );
-                        CompactAssemblyGraph cg(ag);
-						//cg.computeEdgeWeights( masterBam, masterMpBam, slaveBam, slaveMpBam );
-                        cg.writeGraphviz(ss2);
-                        ss2.close();
-                    }
-                }
-
-				// FINE GESTIONE MIS-ASSEMBLY/REPEATS
-
-                if( !has_bubbles && v_forks.size() == 0 && boost::num_vertices(ag) > 0 )
-                {
-                    ag_linears++;
-
-                    std::stringstream ff2;
-                    ff2 << "./gam_graphs/AssemblyGraph_" << z << "_linear.dot";
-
-                    boost::filesystem::path p(ff2.str().c_str());
-                    if( not boost::filesystem::exists(p) )
-                    {
-                        std::ofstream ss2( ff2.str().c_str() );
-                        ag.writeGraphviz(ss2);
-                        ss2.close();
-                    }
-
-                    std::stringstream ff3;
-                    ff3 << "./gam_graphs/CompactGraph_" << z << "_linear.dot";
-
-                    boost::filesystem::path p2(ff3.str().c_str());
-                    if( not boost::filesystem::exists(p2) )
-                    {
-                        std::ofstream ss3( ff3.str().c_str() );
-                        CompactAssemblyGraph cg(ag);
-						//cg.computeEdgeWeights( masterBam, masterMpBam, slaveBam, slaveMpBam );
-                        cg.writeGraphviz(ss3);
-                        ss3.close();
-                    }
-
-                    blocksList.push_back(ag.getBlocksVector());
-                }
-                else if( !has_bubbles && v_forks.size() >= 1 && boost::num_vertices(ag) > 0 )
-                {
-                    blocksList.push_back(ag.getBlocksVector());
-                    break;
-                }
-                else
-                {
-					// grafi con bubbles sono eventualmente scartati dopo
-					blocksList.push_back(ag.getBlocksVector());
-					
-                    break; //WARNING => temporaneo: solo per fare uscire dal while senza risolvere bubbles
-                    ag.removeForks();
-                }
-            }
-            catch( boost::not_a_dag ) // if the graph is not a DAG, remove cycles.
-            {
-                ag_cycles++;
-
-                /* DEBUG - Assembly graph with cycles */
-                std::stringstream ff1;
-                ff1 << "./gam_graphs/AssemblyGraph_" << z << "_cyclic.dot";
-
-                boost::filesystem::path p(ff1.str().c_str());
-                if( not boost::filesystem::exists(p) )
-                {
-                    std::ofstream ss1( ff1.str().c_str() );
-                    ag.writeGraphviz(ss1);
-                    ss1.close();
-                }
-                /* END DEBUG*/
-
-                break; //WARNING => temporaneo: solo per fare uscire dal while senza risolvere i cicli
-
-                ag.removeCycles();
-                //cyclesRemoved = true;
-            }
-        } // end of while( !is_linear )
-
-        z++; // increase assembly graph counter
+        agId++; // increase assembly graph counter
     }
 
     _g_statsFile << "[graphs stats]\n"
@@ -203,7 +132,7 @@ partitionBlocks( const std::list<Block> &blocks )
 		<< "Cyclics = " << ag_cycles << "\n"
 		<< std::endl;
 
-    return blocksList;
+    return outList;
 }
 
 

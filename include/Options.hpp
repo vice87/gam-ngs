@@ -50,19 +50,14 @@ public:
 
 	// input options
 	std::string masterBamFile;
-	std::string slaveBamFile;
-
 	std::string masterISizeFile;
+	std::string slaveBamFile;
 	std::string slaveISizeFile;
-
-        std::string masterMpBamFile;
-        std::string slaveMpBamFile;
-
-		std::string masterMpISizeFile;
-		std::string slaveMpISizeFile;
-
-	std::string masterNameSortedBamFile;
-	std::string slaveNameSortedBamFile;
+	
+	std::string masterMpBamFile;
+	std::string masterMpISizeFile;
+	std::string slaveMpBamFile;
+	std::string slaveMpISizeFile;
 
 	std::string blocksFile;
 
@@ -72,8 +67,13 @@ public:
 	int minBlockSize;
 	int threadsNum;
 	double coverageThreshold;
-
+	
+	bool outputGraphs;
+	
+	// unused input options
 	std::string readsPrefix;
+	std::string masterNameSortedBamFile;
+	std::string slaveNameSortedBamFile;
 
 	// output options
 	std::string outputFilePrefix;

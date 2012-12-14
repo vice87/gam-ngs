@@ -36,6 +36,7 @@ void Options::set_defaults()
 
 	// output options
 	outputFilePrefix = "out";
+	outputGraphs = false;
 }
 
 } // end of namespace options

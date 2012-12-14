@@ -21,6 +21,7 @@
 
 CompactAssemblyGraph::CompactAssemblyGraph( const AssemblyGraph &ag )
 {
+	this->_cgId = ag.getId();
     this->initGraph(ag);
 }
 
@@ -30,6 +31,7 @@ CompactAssemblyGraph::operator =(const CompactAssemblyGraph& orig)
 {
     *((Graph *)this) = *((Graph *)&orig);
     this->_blockVector = orig._blockVector;
+	this->_cgId = orig._cgId;
 
     return *this;
 }

@@ -47,7 +47,8 @@ public:
     typedef std::map< int32_t, StrandProbability > StrandProbMap;
 
 private:
-    std::vector<Block> _blockVector; //!< vector of the blocks used as nodes in the graph
+    uint64_t _agId;						//!< assemblies' graph id
+	std::vector<Block> _blockVector;	//!< vector of the blocks used as nodes in the graph
 
     //! Initialize the graph from a vector of blocks.
     /*!
@@ -126,14 +127,16 @@ public:
     /*!
      * Creates an empty graph.
      */
-    AssemblyGraph();
+    AssemblyGraph( uint64_t id = 0 );
 
     //! A constructor.
     /*!
      * Creates a graph of assemblies, given a list of blocks.
      * \param blocks a list of blocks.
      */
-	AssemblyGraph( const std::list< Block > &blocks );
+	AssemblyGraph( const std::list< Block > &blocks, uint64_t id = 0 );
+	
+	inline uint64_t getId() const { return this->_agId; }
 
     //! Gets the block vector of the graph.
     /*!
@@ -169,7 +172,7 @@ public:
     static void agTopologicalSort( const AssemblyGraph &g, std::list<Vertex> &tsList );
     static void agTopologicalSort( const AssemblyGraph &g, Vertex v, std::vector<char> &colors, std::list<Vertex> &tsList );
 
-	void getForks( std::vector<Vertex> &v_forks );
+	bool hasForks();
 	bool hasBubbles();
 
 	void computeEdgeWeights( MultiBamReader &masterBamReader, MultiBamReader &masterMpBamReader, MultiBamReader &slaveBamReader, MultiBamReader &slaveMpBamReader );

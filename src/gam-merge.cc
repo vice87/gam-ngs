@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 	}
 
 	std::cout << setiosflags(std::ios::fixed) << std::setprecision(2)
-	          << "[gam-merge] MAX Memory used: " << maxrss << " " << maxrss_suff << std::endl;
+	          << "[main] MAX Memory used: " << maxrss << " " << maxrss_suff << std::endl;
 
     return 0;
 }

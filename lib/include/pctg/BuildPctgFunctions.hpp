@@ -29,7 +29,7 @@
 
 
 std::list< PairedContig >& buildPctg(
-        AssemblyGraph &ag,
+        CompactAssemblyGraph &ag,
         PctgBuilder &builder,
         std::list< PairedContig > &pctgList
 );
@@ -37,7 +37,7 @@ std::list< PairedContig >& buildPctg(
 
 std::list< PairedContig >& buildPctg(
 		ThreadedBuildPctg *tbp,
-        AssemblyGraph &ag,
+        CompactAssemblyGraph &ag,
         const RefSequence &masterRef,
 		const RefSequence &slaveRef,
         std::list< PairedContig > &pctgList

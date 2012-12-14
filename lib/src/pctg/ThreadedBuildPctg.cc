@@ -24,31 +24,30 @@ extern MultiBamReader slaveBam;
 extern MultiBamReader slaveMpBam;
 
 
-std::list<Block> *
+CompactAssemblyGraph*
 ThreadedBuildPctg::extractNextPctg()
 {
-	std::list<Block> *output;
+	CompactAssemblyGraph *output = NULL;
 
-    pthread_mutex_lock(&(this->_mutex));
+    pthread_mutex_lock(&(this->_mutex));	
 
-	while( _nextPctg < _blocksVect.size() )
+	while( _nextPctg < _graphs.size() )
 	{
-		if( _blocksVect[_nextPctg]->size() == 0 )
+		if( boost::num_vertices(*(_graphs[_nextPctg])) == 0 )
 		{
 			_nextPctg++;
 			continue;
 		}
 		else
 		{
-			output = _blocksVect[_nextPctg];
+			output = _graphs[_nextPctg];
 			_nextPctg++;
-			pthread_mutex_unlock(&(this->_mutex));
-			return output;
+			break;
 		}
 	}
 
 	pthread_mutex_unlock(&(this->_mutex));
-	return NULL;
+	return output;
 }
 
 IdType
@@ -90,21 +89,23 @@ void ThreadedBuildPctg::incProcBlocks( uint64_t num, uint64_t tid )
 }
 
 
-ThreadedBuildPctg::ThreadedBuildPctg( const std::list< std::vector<Block> > &blocksList, const RefSequence &masterRef, const RefSequence &slaveRef ):
+ThreadedBuildPctg::ThreadedBuildPctg( 
+	const std::list< CompactAssemblyGraph* > &graphsList, 
+	const RefSequence &masterRef, 
+	const RefSequence &slaveRef ) 
+:
 	_masterRef(masterRef), _slaveRef(slaveRef),
 	_pctgNum(0), _nextPctg(0), _procBlocks(0), _totBlocks(0)
 {
-    (this->_blocksVect).resize( blocksList.size() );
+	(this->_graphs).resize( graphsList.size() );
 
     uint64_t b = 0;
-    for( std::list< std::vector<Block> >::const_iterator it = blocksList.begin(); it != blocksList.end(); it++ )
+    for( std::list< CompactAssemblyGraph* >::const_iterator it = graphsList.begin(); it != graphsList.end(); it++ )
     {
-            this->_totBlocks += it->size();
-
-            this->_blocksVect[b] = new std::list< Block >();
-            for( size_t i=0; i < it->size(); i++ ) this->_blocksVect[b]->push_back( it->at(i) );
-
-            b++;
+		this->_totBlocks += boost::num_vertices(**it);
+		this->_graphs[b] = *it;
+		
+		b++;
     }
 
     pthread_mutex_init( &(this->_mutex), NULL );
@@ -141,7 +142,7 @@ ThreadedBuildPctg::run()
 		threads_argv[i]->output = new std::list< PairedContig >;
 
 		pthread_create( &threads[i], &attr, buildPctgThread, (void*)threads_argv[i] );
-		std::cerr << "[build pctg] thread " << i << " created." << std::endl;
+		std::cerr << "[build pctg] Thread " << i << " created." << std::endl;
 	}
 
     pthread_attr_destroy(&attr);
@@ -152,16 +153,19 @@ ThreadedBuildPctg::run()
 
 	std::list< PairedContig > *outPctgList = new std::list< PairedContig >;
 
+	// join PairedContig lists produced by each thread
 	for( size_t i=0; i < threadsNum; i++ )
 		outPctgList->splice( outPctgList->end(), *(threads_argv[i]->output) );
 
-	// free dynamically allocated memory
+	// free dynamically allocated graphs
+	for( size_t i=0; i < _graphs.size(); i++ ) 
+	{
+		if(_graphs[i] != NULL) delete _graphs[i];
+	}
 
-	for( size_t i=0; i < _blocksVect.size(); i++ ) delete _blocksVect[i];
-
+	// free dynamically allocated threads' arguments
 	for( size_t i=0; i < threadsNum; i++ )
 	{
-		//delete threads_argv[i]->data;
 		delete threads_argv[i]->output;
 		delete threads_argv[i];
 	}
@@ -278,34 +282,34 @@ double ThreadedBuildPctg::computeZScore( MultiBamReader &multiBamReader, int32_t
 void*
 buildPctgThread(void* argv)
 {
+	// retrieve arguments of current thread
+	
 	typedef ThreadedBuildPctg::thread_arg_t thread_arg_t;
 
 	thread_arg_t* thread_argv = (thread_arg_t*)argv;
     ThreadedBuildPctg *tbp = thread_argv->tbp;
 	uint64_t tid = thread_argv->tid;
 
-	//std::vector< std::vector<Block> > *data = thread_argv->data;
 	std::list< PairedContig > *pctgList = thread_argv->output;
-	std::list<Block> *bl = tbp->extractNextPctg();
+	CompactAssemblyGraph* cg = tbp->extractNextPctg();
 
-	while( bl != NULL ) //for( size_t i=0; i < data->size(); i++ )
+	// process graphs
+	while( cg != NULL )
 	{
-		AssemblyGraph graph( *bl );
-		//graph.computeEdgeWeights( masterBam, masterMpBam, slaveBam, slaveMpBam );
-
-        try
+		try
         {
-            buildPctg( tbp, graph, tbp->_masterRef, tbp->_slaveRef, *pctgList );
+            buildPctg( tbp, *cg, tbp->_masterRef, tbp->_slaveRef, *pctgList );
         }
-        catch(...) // this shouldn't happen!
+        catch(...) // this should not happen!
         {
-            std::cerr << "I cannot build a pctg from a cycle graph." << std::endl;
+            std::cerr << "Something unexpected happened processing graph " << cg->getId() << std::endl;
         }
-
-		tbp->incProcBlocks( bl->size(), tid );
-		graph.clear();
-
-		bl = tbp->extractNextPctg();
+		
+		uint64_t cg_size = boost::num_vertices(*cg);
+		tbp->incProcBlocks( cg_size, tid );
+		
+		cg->clear();
+		cg = tbp->extractNextPctg();
 	}
 
     pthread_exit((void *)0);

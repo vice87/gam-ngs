@@ -16,7 +16,7 @@ extern MultiBamReader slaveBam;
 extern MultiBamReader slaveMpBam;
 
 std::list< PairedContig >& buildPctg(
-		AssemblyGraph& AG,
+		CompactAssemblyGraph& graph,
 		PctgBuilder& builder,
 		std::list< PairedContig > &pctgList )
 {
@@ -28,11 +28,6 @@ std::list< PairedContig >& buildPctg(
 	PairedContig pctg;
 	VertexIterator vbegin,vend;
 	MergeBlockLists mergeLists;
-
-	if( boost::num_vertices(AG) == 0 ) return pctgList;
-
-	CompactAssemblyGraph graph(AG);
-	graph.computeEdgeWeights( masterBam, masterMpBam, slaveBam, slaveMpBam );
 	
 	// handle forks
 	std::vector< MergeBlock > mbv( boost::num_vertices(graph) );
@@ -79,7 +74,7 @@ std::list< PairedContig >& buildPctg(
 
 std::list< PairedContig >& buildPctg(
 		ThreadedBuildPctg *tbp,
-        AssemblyGraph &ag,
+        CompactAssemblyGraph &ag,
         const RefSequence &masterRef,
         const RefSequence &slaveRef,
         std::list< PairedContig > &pctgList )

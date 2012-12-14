@@ -8,8 +8,11 @@
 #define	PARTITIONFUNCTIONS_HPP
 
 #include <list>
-#include "assembly/Block.hpp"
+
 #include "Options.hpp"
+#include "assembly/Block.hpp"
+#include "graphs/AssemblyGraph.hpp"
+#include "graphs/CompactAssemblyGraph.hpp"
 
 using namespace options;
 
@@ -22,7 +25,7 @@ using namespace options;
  * \param options options of the application.
  * \return a list of block vectors.
  */
-std::list< std::vector< Block > >
+std::list< CompactAssemblyGraph* >
 partitionBlocks( const std::list<Block> &blocks );
 
 

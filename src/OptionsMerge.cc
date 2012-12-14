@@ -60,6 +60,8 @@ bool OptionsMerge::process(int argc, char *argv[])
 		("min-block-size", po::value<int>(), "minimum number of reads of blocks to be loaded (optional) [default=5]")
 		("threads", po::value<int>(), "number of threads (optional) [default=1]")
 		("coverage-filter", po::value<double>(), "coverage filter threshold (optional) [default=0.75]")
+		
+		("output-graphs", "output graphs in gam_graphs sub-folder (debug)")
 
 		// output
 		("output", po::value< std::string >(), "output-files' prefix (optional) [default=out]")
@@ -92,6 +94,7 @@ bool OptionsMerge::process(int argc, char *argv[])
 	if( not( vm.count("master-bam") and vm.count("slave-bam") ) )
 	{
 		std::cerr << "Both --master-bam and --slave-bam parameters are mandatory." << std::endl;
+		std::cerr << "Try \"--help\" for help" << std::endl;
 		exit(1);
 	}
 	else
@@ -123,6 +126,7 @@ bool OptionsMerge::process(int argc, char *argv[])
 		if( not( vm.count("master-mp-bam") and vm.count("slave-mp-bam") ) )
 		{
 			std::cerr << "Both --master-mp-bam and --slave-mp-bam have to be specified, or none of them." << std::endl;
+			std::cerr << "Try \"--help\" for help" << std::endl;
 			exit(1);
 		}
 		
@@ -151,6 +155,7 @@ bool OptionsMerge::process(int argc, char *argv[])
 	if( not( vm.count("blocks-file") ) )
 	{
 		std::cerr << "--blocks-file parameter is mandatory." << std::endl;
+		std::cerr << "Try \"--help\" for help" << std::endl;
 		exit(1);
 	}
 	else
@@ -169,6 +174,7 @@ bool OptionsMerge::process(int argc, char *argv[])
 	if( not( vm.count("master-fasta") and vm.count("slave-fasta") ) )
 	{
 		std::cerr << "Both --master-fasta and --slave-fasta parameters are mandatory." << std::endl;
+		std::cerr << "Try \"--help\" for help" << std::endl;
 		exit(1);
 	}
 	else
@@ -213,6 +219,12 @@ bool OptionsMerge::process(int argc, char *argv[])
 	if( vm.count("coverage-filter") )
 	{
 		if( coverageThreshold >= 0 ) coverageThreshold = vm["coverage-filter"].as<double>();
+	}
+	
+	
+	if( vm.count("output-graphs") )
+	{
+		outputGraphs = true;
 	}
 	
 	
