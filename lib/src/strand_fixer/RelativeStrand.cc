@@ -1,7 +1,7 @@
 #include <vector>
 
 #include "strand_fixer/RelativeStrand.hpp"
-#include "boost/graph/graphviz.hpp"
+//#include "boost/graph/graphviz.hpp"
 
 RelativeStrandEvidencesGraph::RelativeStrandEvidencesGraph(const std::list<Block>& blocks) :
         PairedContigGraph<VertexPropType,RelativeStrandEvidences>( blocks )
