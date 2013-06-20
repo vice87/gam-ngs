@@ -58,7 +58,6 @@ bool MultiBamReader::Open( const std::vector< std::string > &filenames )
 		if( not _bam_readers[i]->Open(filenames[i]) )
 		{
 			opened = false;
-			delete _bam_readers[i];
 			std::cerr << "[bam] ERROR: unable to open BAM file:\n" << filenames[i] << std::endl;
 		}
 		else // if bam file opened successfully
@@ -68,7 +67,6 @@ bool MultiBamReader::Open( const std::vector< std::string > &filenames )
 			if( not _bam_readers[i]->OpenIndex( index_filename ) )
 			{
 				opened = false;
-				delete _bam_readers[i];
 				std::cerr << "[bam] ERROR: unable to open BAM index file:\n" << index_filename << std::endl;
 			}
 		}
@@ -76,7 +74,7 @@ bool MultiBamReader::Open( const std::vector< std::string > &filenames )
 		pthread_mutex_init( &(this->_bam_mutex[i]), NULL );
 	}
 	
-	if(!opened) exit(EXIT_FAILURE); else _is_open = true;
+	if(!opened) exit(1); else _is_open = true;
 
 	// initialization of min/max inserts sizes
 	for( size_t i=0; i < bams; i++ ) _minInsert[i] = MIN_ISIZE;
@@ -103,15 +101,10 @@ bool MultiBamReader::Open( const std::string &filename )
 
 void MultiBamReader::Close()
 {
-	if( _is_open )
-	{
-		for( size_t i=0; i < _bam_readers.size(); i++ )
-		{ 
-			_bam_readers[i]->Close(); 
-			delete _bam_readers[i]; 
-		}
-		
-		_is_open = false;
+	for( size_t i=0; i < _bam_readers.size(); i++ )
+	{ 
+		_bam_readers[i]->Close(); 
+		delete _bam_readers[i]; 
 	}
 }
 
@@ -317,10 +310,10 @@ bool MultiBamReader::GetNextAlignment( BamAlignment &align, bool update_stats )
 		{
 			_reads_len[libId] += (align.GetEndPosition() - align.Position);
 		}
-		
+
 		// if needed, update statistics only if the read extracted has good quality and its mate is mapped on the same contig
 		if( update_stats && align.IsMapped() && !align.IsDuplicate() && align.IsPrimaryAlignment() && !align.IsFailedQC() &&
-			align.IsPaired() && align.IsFirstMate() && align.IsMateMapped() && align.RefID == align.MateRefID )
+			align.IsFirstMate() && align.IsMateMapped() && align.RefID == align.MateRefID )
 		{
 			int32_t alignmentLength = align.GetEndPosition() - align.Position;
 			int32_t startRead = align.Position;

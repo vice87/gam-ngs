@@ -9,7 +9,7 @@
 #include "alignment/ablast.hpp"
 #include "alignment/banded_smith_waterman.hpp"
 
-//std::ofstream g_badAlignStream;
+std::ofstream g_badAlignStream;
 //std::ofstream ext_ba_desc_stream;
 //uint64_t ext_ba_count;
 
@@ -33,6 +33,23 @@ PctgBuilder::PctgBuilder(
 		_maxPctgGap(DEFAULT_MAX_GAPS),
 		_maxCtgGap(DEFAULT_MAX_GAPS)
 {}
+
+
+const Contig& PctgBuilder::loadMasterContig(const int32_t ctgId) const
+{
+    return *(this->_masterRef->at(ctgId)).Sequence;
+
+	//std::string refName = this->_masterRefVector->at(ctgId.second).RefName;
+    //return (this->_masterPool)->get( ctgId.first, refName );
+}
+
+const Contig& PctgBuilder::loadSlaveContig(const int32_t ctgId) const
+{
+    return *(this->_slaveRef->at(ctgId)).Sequence;
+
+	//std::string refName = (this->_slaveRefVector->at(ctgId.first)).at(ctgId.second).RefName;
+    //return (this->_slavePool)->get( ctgId.first, refName );
+}
 
 
 PairedContig& PctgBuilder::addFirstContigTo(PairedContig& pctg, const int32_t ctgId) const
@@ -1252,68 +1269,65 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 	return true;
 }
 
-bool PctgBuilder::getMergePaths(const CompactAssemblyGraph &graph, CompactAssemblyGraph::Vertex &v, std::vector<MergeBlock> &mbv, MergeBlockLists &merge_paths) const {
-    typedef CompactAssemblyGraph::Vertex Vertex;
-    typedef CompactAssemblyGraph::VertexIterator VertexIterator;
-    typedef CompactAssemblyGraph::OutEdgeIterator OutEdgeIterator;
 
-    uint64_t out_degree = boost::out_degree(v, graph);
-    uint64_t in_degree = boost::in_degree(v, graph);
-
-    if (out_degree >= 2) {
-        std::cerr << "[error] Found vertex with output degree >= 2 in fork-solved graph (this should NOT happen!) ==> (" << mbv[v].m_id << "," << mbv[v].s_id << ")" << std::endl;
-        return false;
-    }
-
-    if (in_degree >= 2) {
-        std::cerr << "[error] Found vertex with input degree >= 2 in fork-solved graph (this should NOT happen!) ==> (" << mbv[v].m_id << "," << mbv[v].s_id << ")" << std::endl;
-        return false;
-    }
-
-    if (mbv[v].valid) merge_paths.front().push_back(mbv[v]);
-
-    if (out_degree == 0) return true;
-
-    if (out_degree == 1) {
-        OutEdgeIterator ebegin, eend;
-        boost::tie(ebegin, eend) = boost::out_edges(v, graph);
-
-        Vertex v_cur = boost::source(*ebegin, graph);
-        Vertex v_nxt = boost::target(*ebegin, graph);
-
-        EdgeProperty edge_prop = boost::get(boost::edge_kind_t(), graph, *ebegin);
-        double weight = edge_prop.weight;
-        bool has_min_cov = edge_prop.min_cov;
-        bool safe_edge = (weight >= 0 && weight < 0.3) || (weight < 0 && has_min_cov);
-
-        //TODO: take care also of master edges, and edges with negative weight (i.e. not enough evidences)
-        if (mbv[v_nxt].valid && edge_prop.kind == SLAVE_EDGE && safe_edge) {
-            const std::list<Block> &cur_blocks = graph.getBlocks(v_cur);
-            const std::list<Block> &nxt_blocks = graph.getBlocks(v_nxt);
-
-            int32_t curSlaveStart = std::min(cur_blocks.front().getSlaveFrame().getBegin(), cur_blocks.back().getSlaveFrame().getBegin());
-            int32_t nxtSlaveStart = std::min(nxt_blocks.front().getSlaveFrame().getBegin(), nxt_blocks.back().getSlaveFrame().getBegin());
-
-            bool curFirstInSlave = curSlaveStart <= nxtSlaveStart;
-
-            std::cerr << "[debug] Found (linear) SLAVE mis-assembly in ctg " << mbv[v_cur].s_id << std::endl;
-
-            if (curFirstInSlave) {
-                mbv[v_cur].s_rtail = false;
-                mbv[v_nxt].s_ltail = false;
-            } else {
-                mbv[v_cur].s_ltail = false;
-                mbv[v_nxt].s_rtail = false;
-            }
-
-            merge_paths.push_front(std::list<MergeBlock>());
-            return this->getMergePaths(graph, v_nxt, mbv, merge_paths);
-        }
-
-        return this->getMergePaths(graph, v_nxt, mbv, merge_paths);
-    }
-    
-    return false;
+bool PctgBuilder::getMergePaths( const CompactAssemblyGraph &graph, CompactAssemblyGraph::Vertex &v, std::vector<MergeBlock> &mbv, MergeBlockLists &merge_paths ) const
+{
+	typedef CompactAssemblyGraph::Vertex Vertex;
+	typedef CompactAssemblyGraph::VertexIterator VertexIterator;
+	typedef CompactAssemblyGraph::OutEdgeIterator OutEdgeIterator;
+	
+	uint64_t out_degree = boost::out_degree(v,graph);
+	uint64_t in_degree = boost::in_degree(v,graph);
+	
+	if( out_degree >= 2 )
+	{
+		std::cerr << "[error] Found vertex with output degree >= 2 in fork-solved graph (this should NOT happen!) ==> (" << mbv[v].m_id << "," << mbv[v].s_id << ")" << std::endl;
+		return false;
+	}
+	
+	if( in_degree >= 2 )
+	{
+		std::cerr << "[error] Found vertex with input degree >= 2 in fork-solved graph (this should NOT happen!) ==> (" << mbv[v].m_id << "," << mbv[v].s_id << ")" << std::endl;
+		return false;
+	}
+	
+	if( mbv[v].valid ) merge_paths.front().push_back( mbv[v] );
+	
+	if( out_degree == 0 ) return true;
+	
+	if( out_degree == 1 )
+	{
+		OutEdgeIterator ebegin,eend;
+		boost::tie(ebegin,eend) = boost::out_edges(v,graph);
+		
+		Vertex v_cur = boost::source(*ebegin,graph);
+		Vertex v_nxt = boost::target(*ebegin,graph);
+		
+		EdgeProperty edge_prop = boost::get(boost::edge_kind_t(), graph, *ebegin);
+		double weight = edge_prop.weight;
+		
+		//TODO: take care also of master edges, and edges with negative weight (i.e. not enough evidences)
+		if( mbv[v_nxt].valid && edge_prop.kind == SLAVE_EDGE && weight >= 0 && weight < 0.3 )
+		{
+			const std::list<Block> &cur_blocks = graph.getBlocks(v_cur);
+			const std::list<Block> &nxt_blocks = graph.getBlocks(v_nxt);
+			
+			int32_t curSlaveStart = std::min( cur_blocks.front().getSlaveFrame().getBegin(), cur_blocks.back().getSlaveFrame().getBegin() );
+			int32_t nxtSlaveStart = std::min( nxt_blocks.front().getSlaveFrame().getBegin(), nxt_blocks.back().getSlaveFrame().getBegin() );
+			
+			bool curFirstInSlave = curSlaveStart <= nxtSlaveStart;
+			
+			std::cerr << "[debug] Found (linear) SLAVE mis-assembly in ctg " << mbv[v_cur].s_id << std::endl;
+			
+			if( curFirstInSlave ){ mbv[v_cur].s_rtail = false; mbv[v_nxt].s_ltail = false; }
+			else { mbv[v_cur].s_ltail = false; mbv[v_nxt].s_rtail = false; }
+			
+			merge_paths.push_front( std::list<MergeBlock>() );
+			return this->getMergePaths( graph, v_nxt, mbv, merge_paths );
+		}
+		
+		return this->getMergePaths( graph, v_nxt, mbv, merge_paths );
+	}
 }
 
 

@@ -83,20 +83,14 @@ public:
      * \param ctgId pair consisting in master sequence's assembly and contig identifiers.
      * \return reference to the master contig with ID \c ctgId.
      */
-    inline const Contig& loadMasterContig(const int32_t ctgId) const
-	{
-		return *(this->_masterRef->at(ctgId)).Sequence;
-	}
+    const Contig& loadMasterContig(const int32_t ctgId) const;
 
     //! Gets a slave contig, given its ID.
     /*!
      * \param ctgId pair consisting in slave sequence's assembly and contig identifiers.
      * \return reference to the slave contig with ID \c ctgId.
      */
-    inline const Contig& loadSlaveContig(const int32_t ctgId) const
-	{
-		return *(this->_slaveRef->at(ctgId)).Sequence;
-	}
+    const Contig& loadSlaveContig(const int32_t ctgId) const;
 	
 	//! Adds the first contig to a paired contig.
     /*!

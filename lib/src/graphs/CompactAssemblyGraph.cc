@@ -7,6 +7,18 @@
 
 #include "graphs/CompactAssemblyGraph.hpp"
 
+#include <vector>
+#include <iostream>
+#include <iomanip>
+
+#include <boost/graph/strong_components.hpp>
+#include <boost/graph/topological_sort.hpp>
+#include <boost/graph/graphviz.hpp>
+
+#include "strand_fixer/RelativeStrand.hpp"
+#include "OrderingFunctions.hpp"
+
+
 CompactAssemblyGraph::CompactAssemblyGraph( const AssemblyGraph &ag )
 {
 	this->_cgId = ag.getId();
@@ -127,32 +139,32 @@ CompactAssemblyGraph::computeEdgeWeights( MultiBamReader &masterBamReader, Multi
 	
 	for( EdgeIterator e = ebegin; e != eend; e++ )
 	{
+		//EdgeKindType kind = boost::get(boost::edge_kind_t(), *this, *e);
 		EdgeProperty edge_prop = boost::get(boost::edge_kind_t(), *this, *e);
 		EdgeKindType kind = edge_prop.kind;
 		
 		std::list<Block>& b1 = _blockVector.at( boost::source(*e,*this) );
 		std::list<Block>& b2 = _blockVector.at( boost::target(*e,*this) );
 		
+		std::pair<double,int32_t> edge_lab;
+		
 		switch(kind)
 		{
 			case MASTER_EDGE:
-				this->getRegionScore( 
-					masterBamReader, masterMpBamReader, MASTER_EDGE, b1, b2,
-					edge_prop.weight, edge_prop.rnum, edge_prop.min_cov
-				);
+				edge_lab = this->getRegionScore( masterBamReader, masterMpBamReader, MASTER_EDGE, b1, b2 );
+				edge_prop.weight = edge_lab.first;
+				edge_prop.rnum = edge_lab.second;
 				break;
 				
 			case SLAVE_EDGE:
-				this->getRegionScore( 
-					slaveBamReader, slaveMpBamReader, SLAVE_EDGE, b1, b2,
-					edge_prop.weight, edge_prop.rnum, edge_prop.min_cov
-				);
+				edge_lab = this->getRegionScore( slaveBamReader, slaveMpBamReader, SLAVE_EDGE, b1, b2 );
+				edge_prop.weight = edge_lab.first;
+				edge_prop.rnum = edge_lab.second;
 				break;
 				
 			default:
 				edge_prop.weight = 0.0;
 				edge_prop.rnum = 0;
-				edge_prop.min_cov = false;
 				break;
 		}
 		
@@ -162,97 +174,100 @@ CompactAssemblyGraph::computeEdgeWeights( MultiBamReader &masterBamReader, Multi
 }
 
 
-void CompactAssemblyGraph::getRegionScore( MultiBamReader &peBamReader, MultiBamReader &mpBamReader, EdgeKindType kind, 
-										   std::list<Block>& b1, std::list<Block>& b2, 
-										   double &weight, int32_t &rnum, bool &min_cov )
-{	
-	std::vector< std::pair<double,int32_t> > mpStats, peStats;
+std::pair<double,int32_t>
+CompactAssemblyGraph::getRegionScore( MultiBamReader &peBamReader, MultiBamReader &mpBamReader, EdgeKindType kind, 
+									  std::list<Block>& b1, std::list<Block>& b2 )
+{
+	//std::cerr << "PE" << std::endl;
+	//std::vector<double> peScore = getLibRegionScore( peBamReader, kind, b1, b2 );
+	//std::cerr << "MP" << std::endl;
+	//std::vector<double> mpScore;
+	std::pair< std::vector<double>, std::vector<int32_t> > mpStats, peStats;
+	if(mpBamReader.size() > 0) mpStats = getLibRegionScore2( mpBamReader, kind, b1, b2 );
+	if(peBamReader.size() > 0) peStats = getLibRegionScore2( peBamReader, kind, b1, b2 );
 	
-	double mp_weight, pe_weight;
-	int32_t mp_rnum, pe_rnum;
-	bool mp_min_cov, pe_min_cov;
+	std::pair<double,int32_t> mp_edge_weight = std::make_pair(-10.0,0);
+	std::pair<double,int32_t> pe_edge_weight = std::make_pair(-10.0,0);
 	
-	if(peBamReader.size() > 0) getLibRegionScore( peBamReader, kind, b1, b2, pe_weight, pe_rnum, pe_min_cov );
-	if(mpBamReader.size() > 0) getLibRegionScore( mpBamReader, kind, b1, b2, mp_weight, mp_rnum, mp_min_cov );
+	std::vector<double>  &mpWeights = mpStats.first;
+	std::vector<int32_t> &mpNReads = mpStats.second;
 	
-	min_cov = (pe_min_cov || mp_min_cov);
+	std::vector<double>  &peWeights = peStats.first;
+	std::vector<int32_t> &peNReads = peStats.second;
 	
-	// min number of evidences only for PE library
-	if( pe_rnum >= 10 && mp_rnum < 10 ){ weight = pe_weight; rnum = pe_rnum; return; }
-	// min number of evidences only for MP library
-	if( mp_rnum >= 10 && pe_rnum < 10 ){ weight = mp_weight; rnum = mp_rnum; return; }
-	// not enough evidences for both PE/MP libraries
-	if( pe_rnum < 10 && mp_rnum < 10 ){ weight = -5.0; rnum = 0; return; }
+	for( size_t i=0; i < mpWeights.size(); i++ )
+	{
+		if( mpNReads[i] > mp_edge_weight.second ) mp_edge_weight = std::make_pair(mpWeights[i],mpNReads[i]);
+	}
 	
-	// enough evidences for both PE/MP libraries
+	for( size_t i=0; i < peWeights.size(); i++ )
+	{
+		if( peNReads[i] > pe_edge_weight.second ) pe_edge_weight = std::make_pair(peWeights[i],peNReads[i]);
+	}
 	
-	if( pe_weight >= 0 && mp_weight < 0 ){ weight = pe_weight; rnum = pe_rnum; return; }
-	if( mp_weight >= 0 && pe_weight < 0 ){ weight = mp_weight; rnum = mp_rnum; return; }
-	if( pe_weight < 0 && mp_weight < 0 ){ weight = -10.0; rnum = 0; return; }
+	if( mp_edge_weight.second > 0 && pe_edge_weight.second == 0 ) return mp_edge_weight;
+	if( pe_edge_weight.second > 0 && mp_edge_weight.second == 0 ) return pe_edge_weight;
 	
-	weight = pe_weight > mp_weight ? pe_weight : mp_weight;
-	rnum = pe_weight > mp_weight ? pe_rnum : mp_rnum;
+	return (mp_edge_weight.first < pe_edge_weight.first) ? mp_edge_weight : pe_edge_weight;
 	
-	return;
+	//return (mpStats.first.size() > 0) ? std::make_pair(mpStats.first.at(0),mpStats.second.at(0)) : std::make_pair(-10.0,0);
+	
+	//double maxScore = 0.0;
+	//for( size_t i=0; i < peScore.size(); i++ ) if( peScore[i] > maxScore ) maxScore = peScore[i];
+	//for( size_t i=0; i < mpScore.size(); i++ ) if( mpScore[i] > maxScore ) maxScore = mpScore[i];
+	
+	//return maxScore;
 }
 
 
-void CompactAssemblyGraph::getLibRegionScore( MultiBamReader &bamReader, EdgeKindType kind, std::list<Block>& b1, std::list<Block>& b2,
-											  double &weight, int32_t &rnum, bool &min_cov )
+std::pair< std::vector<double>, std::vector<int32_t> >
+CompactAssemblyGraph::getLibRegionScore2( MultiBamReader &bamReader, EdgeKindType kind, 
+										  std::list<Block>& b1, std::list<Block>& b2 )
 {
-	weight = -4;
-	rnum = 0;
-	min_cov = false;
-	
-	int32_t id, seq_len, start, end, region, s1, s2, t;
+	int32_t id, seq_len, start, end, gap, region, s1, s2, t;
 	uint64_t good_reads, exp_reads, num_reads;
 	
 	std::vector<double> score( bamReader.size(), -4 );
-	std::vector<int32_t> r_num( bamReader.size(), 0 );
-	std::vector<bool> cov( bamReader.size(), false );
+	std::vector<int32_t> rnum( bamReader.size(), 0 );
 	const RefVector& ref = bamReader.GetReferenceData();
 	
 	// this shouldn't happen
-	if( kind != MASTER_EDGE && kind != SLAVE_EDGE ) return;
-	if( b1.size() == 0 || b2.size() == 0 ) return;
-	
-	Frame& f1 = (kind == MASTER_EDGE) ? b1.front().getMasterFrame() : b1.front().getSlaveFrame();
-	Frame& f2 = (kind == MASTER_EDGE) ? b2.front().getMasterFrame() : b2.front().getSlaveFrame();
-	Frame& l1 = (kind == MASTER_EDGE) ? b1.back().getMasterFrame() : b1.back().getSlaveFrame();
-	Frame& l2 = (kind == MASTER_EDGE) ? b2.back().getMasterFrame() : b2.back().getSlaveFrame();
-	
-	int32_t r1_beg = std::min( f1.getBegin(), l1.getBegin() );
-	int32_t r1_end = std::max( f1.getEnd(), l1.getEnd() );
-	int32_t r2_beg = std::min( f2.getBegin(), l2.getBegin() );
-	int32_t r2_end = std::max( f2.getEnd(), l2.getEnd() );
-	
-	// skip included frames
-	if( (r1_beg <= r2_beg && r1_end >= r2_end) || 
-		(r2_beg <= r1_beg && r2_end >= r1_end) )
-	{
-		weight = -1;
-		rnum = 0;
-		min_cov = false;
-		
-		return;
-	}
-	
-	int32_t gap = (r1_beg <= r2_beg) ? (r2_beg - r1_end + 1) : (r1_beg - r2_end + 1);
+	if( kind != MASTER_EDGE && kind != SLAVE_EDGE ) return std::make_pair(score,rnum);
+	if( b1.size() == 0 || b2.size() == 0 ) return std::make_pair(score,rnum);
 	
 	// COMPUTE STATISTICS FOR EACH LIBRARY
 	for( int lib=0; lib < bamReader.size(); lib++ )
 	{
 		int32_t isizeLibMean = bamReader.getISizeMean(lib);
 		int32_t isizeLibStd = bamReader.getISizeStd(lib);
-		int32_t coverageLib = bamReader.getCoverage(lib);
 		
 		int32_t minInsert = isizeLibMean - 3*isizeLibStd;
 		int32_t maxInsert = isizeLibMean + 3*isizeLibStd;
 		
 		if(minInsert < 0) minInsert = 0;
 		
+		Frame& f1 = (kind == MASTER_EDGE) ? b1.front().getMasterFrame() : b1.front().getSlaveFrame();
+		Frame& f2 = (kind == MASTER_EDGE) ? b2.front().getMasterFrame() : b2.front().getSlaveFrame();
+		Frame& l1 = (kind == MASTER_EDGE) ? b1.back().getMasterFrame() : b1.back().getSlaveFrame();
+		Frame& l2 = (kind == MASTER_EDGE) ? b2.back().getMasterFrame() : b2.back().getSlaveFrame();
+		
 		id = f1.getContigId();
 		seq_len = ref[id].RefLength;
+		
+		int32_t r1_beg = std::min( f1.getBegin(), l1.getBegin() );
+		int32_t r1_end = std::max( f1.getEnd(), l1.getEnd() );
+		int32_t r2_beg = std::min( f2.getBegin(), l2.getBegin() );
+		int32_t r2_end = std::max( f2.getEnd(), l2.getEnd() );
+		
+		// skip included frames
+		if( (r1_beg <= r2_beg && r1_end >= r2_end) || 
+			(r2_beg <= r1_beg && r2_end >= r1_end) )
+		{
+			score[lib] = -1;
+			continue;
+		}
+		
+		gap = (r1_beg <= r2_beg) ? (r2_beg - r1_end + 1) : (r1_beg - r2_end + 1);
 		
 		t = (r1_beg <= r2_beg) ? (gap >= 0 ? r2_beg : r1_end) : (gap >= 0 ? r1_beg : r2_end);
 		s1 = std::max( t - maxInsert, 0 );
@@ -260,18 +275,23 @@ void CompactAssemblyGraph::getLibRegionScore( MultiBamReader &bamReader, EdgeKin
 		
 		if( seq_len - s1 < maxInsert )
 		{
-			weight = -2;
+			score[lib] = -2;
 			continue;
 		}
 		
-		if( gap >= maxInsert || s2 < s1 )
+		if( gap >= maxInsert )
 		{
-			weight = -3;
+			score[lib] = -3;
 			continue;
 		}
 		
-		int32_t region = s2 - s1 + 1;
-		std::vector<uint32_t> coverage( region, 0 );
+		//start = (f1_beg <= f2_beg) ? std::max( f1_end - maxInsert, 0 ) : std::max( f2_end - maxInsert, 0 ); //std::min( f1.getBegin(), f2.getBegin() );
+		//end = std::max( f1_end, f2_end );
+		//region = end - start + 1;
+		
+		//s1 = start; //(f1.getBegin() <= f2.getBegin()) ? std::max( f1.getEnd() - maxInsert, 0 ) : std::max( f2.getEnd() - maxInsert, 0 );
+		//s2 = (f1_beg <= f2_beg) ? f1_end : f2_end;
+		//t = (f1_beg <= f2_beg) ? f2_beg : f1_beg;
 		
 		// retrieve BAM readers for current library
 		bamReader.lockBamReader(lib);
@@ -285,27 +305,22 @@ void CompactAssemblyGraph::getLibRegionScore( MultiBamReader &bamReader, EdgeKin
 		num_reads = 0;
 		
 		BamAlignment align;
-		while( reader->GetNextAlignment(align) )
+		while( reader->GetNextAlignmentCore(align) )
 		{
 			// discard bad quality reads
-			if( !align.IsMapped() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
+			if( !align.IsMapped() || !align.IsPaired() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
 			//if( !align.IsMateMapped() || align.RefID != align.MateRefID || align.MatePosition < t ) continue;
 			
-			int32_t readLength = align.GetEndPosition() - align.Position;
-			int32_t startRead = align.Position;
-			int32_t endRead = startRead + readLength - 1;
-			
-			for( int32_t i=startRead; i <= endRead; i++ ) if( i >= s1 && i <= s2 ) coverage[i-s1]++;
-			
-			if( !align.IsPaired() ) continue;
-			
-			//align.BuildCharData(); // fill string fields
+			align.BuildCharData(); // fill string fields
 			
 			// if not defined, I assume read's multiplicity is 1
 			if( !align.GetTag(std::string("NH"),nh) ) nh = 1;	// standard field
 			if( !align.GetTag(std::string("XT"),xt) ) xt = 'U';	// bwa field
 			if( nh != 1 || xt != 'U' ) continue; // discard reads with multiplicity greater than 1
 			
+			int32_t readLength = align.GetEndPosition() - align.Position;
+			int32_t startRead = align.Position;
+			int32_t endRead = startRead + readLength - 1;
 			int32_t startMate = align.MatePosition;
 			int32_t endMate = startMate + readLength - 1;
 			
@@ -317,6 +332,10 @@ void CompactAssemblyGraph::getLibRegionScore( MultiBamReader &bamReader, EdgeKin
 				int32_t minInsertPos = startRead + minInsert;
 				int32_t maxInsertPos = startRead + maxInsert;
 				int32_t readOverlap = endRead > s2 ? s2-startRead+1 : readLength;
+				
+				/*if( !align.IsMateMapped() ){ reads++; continue; }
+				if( align.RefID != align.MateRefID ){ if(endPos2 < seq_len) reads++; continue; }
+				if( align.IsMateReverseStrand() && startMate >= t ){ good_reads++; reads++; }*/
 				
 				// unmapped mate
 				if( !align.IsMateMapped() ){ exp_reads += readOverlap; num_reads++; continue; }
@@ -331,39 +350,19 @@ void CompactAssemblyGraph::getLibRegionScore( MultiBamReader &bamReader, EdgeKin
 		
 		bamReader.unlockBamReader(lib);
 		
-		// check coverage in the region
-		for( size_t i=0; i < coverage.size(); i++ )
-		{
-			if( coverage[i] * 3 < coverageLib ) cov[lib] = false;
-		}
-		
 		if( num_reads < 10 || exp_reads == 0 )
 		{ 
 			score[lib] = -5; 
-			r_num[lib] = 0;
+			rnum[lib] = 0;
 		}
 		else
 		{
 			score[lib] = good_reads / ((double)exp_reads);
-			r_num[lib] = num_reads;
+			rnum[lib] = num_reads;
 		}
 	}
 	
-	// output statistics gained with the library with most evidences
-	for( size_t i=0; i < score.size(); i++ )
-	{
-		if( i==0 )
-		{
-			weight = score[i];
-			rnum = r_num[i];
-			min_cov = cov[i];
-		}
-		else
-		{
-			if( r_num[i] > rnum ){ weight = score[i]; rnum = r_num[i]; }
-			min_cov = min_cov || cov[i];
-		}
-	}
+	return std::make_pair(score,rnum);
 }
 
 
@@ -389,7 +388,7 @@ bool CompactAssemblyGraph::hasBubbles()
 	return found;
 }
 
-void CompactAssemblyGraph::bubbleDFS( Vertex v, std::vector<char> &colors, bool &found )
+bool CompactAssemblyGraph::bubbleDFS( Vertex v, std::vector<char> &colors, bool &found )
 {
 	colors[v] = 1;
 	

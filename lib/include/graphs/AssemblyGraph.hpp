@@ -7,18 +7,9 @@
 #ifndef ASSEMBLYGRAPH_HPP
 #define	ASSEMBLYGRAPH_HPP
 
-#include <vector>
-#include <iostream>
-#include <iomanip>
-
 #include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/strong_components.hpp>
-#include <boost/graph/topological_sort.hpp>
-//#include <boost/graph/graphviz.hpp>
 
 #include "assembly/Block.hpp"
-#include "OrderingFunctions.hpp"
-#include "strand_fixer/RelativeStrand.hpp"
 #include "strand_fixer/StrandProbability.hpp"
 
 namespace boost
@@ -34,7 +25,6 @@ struct EdgeProperty
 	EdgeKindType kind;
 	double weight;
 	int32_t rnum;
-	bool min_cov;
 };
 
 //! Class implementing the graph of assemblies
@@ -114,7 +104,22 @@ private:
      */
     bool addSlaveSingleEdge( const UIntType& s, const UIntType& t );
 
-    void bubbleDFS( Vertex v, std::vector<char> &colors, bool &found );
+	bool bubbleDFS( Vertex v, std::vector<char> &colors, bool &found );
+
+	double getRegionScore( MultiBamReader &peBamReader, MultiBamReader &mpBamReader, EdgeKindType kind, Block& b1, Block& b2 );
+
+	std::vector<double> getLibRegionScore( MultiBamReader &bamReader, EdgeKindType kind, Block& b1, Block& b2 );
+	std::vector<double> getLibRegionScore2( MultiBamReader &bamReader, EdgeKindType kind, Block& b1, Block& b2 );
+
+	void updateLeftRegionCoverage(
+		BamReader *bamReader, int32_t id, int32_t start, int32_t end,
+		double isizeLibMean, double isizeLibStd,
+		std::vector<uint64_t> &allCoverage, std::vector<uint64_t> &suspCoverage );
+	
+	void updateRightRegionCoverage(
+		BamReader *bamReader, int32_t id, int32_t start, int32_t end,
+		double isizeLibMean, double isizeLibStd,
+		std::vector<uint64_t> &allCoverage, std::vector<uint64_t> &suspCoverage );
 
 public:
 
@@ -169,6 +174,8 @@ public:
 
 	bool hasForks();
 	bool hasBubbles();
+
+	void computeEdgeWeights( MultiBamReader &masterBamReader, MultiBamReader &masterMpBamReader, MultiBamReader &slaveBamReader, MultiBamReader &slaveMpBamReader );
 };
 
 #endif	/* ASSEMBLYGRAPH_HPP */

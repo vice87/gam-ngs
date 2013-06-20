@@ -7,6 +7,18 @@
 
 #include "graphs/AssemblyGraph.hpp"
 
+#include <vector>
+#include <iostream>
+#include <iomanip>
+
+#include <boost/graph/strong_components.hpp>
+#include <boost/graph/topological_sort.hpp>
+#include <boost/graph/graphviz.hpp>
+
+#include "strand_fixer/RelativeStrand.hpp"
+#include "OrderingFunctions.hpp"
+
+
 AssemblyGraph::AssemblyGraph( uint64_t id ) : _agId(id)
 {	
     std::list< Block > blocks;
@@ -146,6 +158,490 @@ AssemblyGraph::initGraph( const std::list<Block> &blocks )
     // for each block, connect his vertex to the successive blocks' vertices
     for( UIntType i=0; i < blocks.size(); i++ ) this->addMasterEdges( i, masterStrandMap, indexMaster, backIndexMaster );
     for( UIntType i=0; i < blocks.size(); i++ ) this->addSlaveEdges( i, slaveStrandMap, indexSlave, backIndexSlave );
+}
+
+
+void
+AssemblyGraph::computeEdgeWeights( MultiBamReader &masterBamReader, MultiBamReader &masterMpBamReader, MultiBamReader &slaveBamReader, MultiBamReader &slaveMpBamReader )
+{
+	EdgeIterator ebegin,eend;
+	boost::tie(ebegin,eend) = boost::edges(*this);
+
+	for( EdgeIterator e = ebegin; e != eend; e++ )
+	{
+		//EdgeKindType kind = boost::get(boost::edge_kind_t(), *this, *e);
+		EdgeProperty edge_prop = boost::get(boost::edge_kind_t(), *this, *e);
+		EdgeKindType kind = edge_prop.kind;
+
+		Block& b1 = _blockVector.at( boost::source(*e,*this) );
+		Block& b2 = _blockVector.at( boost::target(*e,*this) );
+
+		switch(kind)
+		{
+			case MASTER_EDGE:
+				edge_prop.weight = this->getRegionScore( masterBamReader, masterMpBamReader, MASTER_EDGE, b1, b2 );
+				break;
+
+			case SLAVE_EDGE:
+				edge_prop.weight = this->getRegionScore( slaveBamReader, slaveMpBamReader, SLAVE_EDGE, b1, b2 );
+				break;
+
+			case BOTH_EDGE:
+				edge_prop.weight = 0.0;
+				break;
+		}
+
+		// put edge weight
+		boost::put( boost::edge_kind_t(), *this, *e, edge_prop );
+	}
+}
+
+
+double AssemblyGraph::getRegionScore( MultiBamReader &peBamReader, MultiBamReader &mpBamReader, EdgeKindType kind, Block& b1, Block& b2 )
+{
+	//std::cerr << "PE" << std::endl;
+	//std::vector<double> peScore = getLibRegionScore( peBamReader, kind, b1, b2 );
+	//std::cerr << "MP" << std::endl;
+	std::vector<double> mpScore = getLibRegionScore2( mpBamReader, kind, b1, b2 );
+	
+	return mpScore[0];
+
+	//double maxScore = 0.0;
+	//for( size_t i=0; i < peScore.size(); i++ ) if( peScore[i] > maxScore ) maxScore = peScore[i];
+	//for( size_t i=0; i < mpScore.size(); i++ ) if( mpScore[i] > maxScore ) maxScore = mpScore[i];
+
+	//return maxScore;
+}
+
+
+std::vector<double> AssemblyGraph::getLibRegionScore2( MultiBamReader &bamReader, EdgeKindType kind, Block& b1, Block& b2 )
+{
+	int32_t id, start, end, gap, region, s1, s2, t;
+	uint64_t mates;
+	
+	std::vector<double> score( bamReader.size(), -4 );
+	const RefVector& ref = bamReader.GetReferenceData();
+	
+	// this shouldn't happen
+	if( kind != MASTER_EDGE && kind != SLAVE_EDGE ) return score;
+	
+	// COMPUTE STATISTICS FOR EACH LIBRARY
+	for( int lib=0; lib < bamReader.size(); lib++ )
+	{
+		int32_t isizeLibMean = bamReader.getISizeMean(lib);
+		int32_t isizeLibStd = bamReader.getISizeStd(lib);
+		
+		int32_t minInsert = isizeLibMean - 3*isizeLibStd;
+		int32_t maxInsert = isizeLibMean + 3*isizeLibStd;
+		
+		if(minInsert < 0) minInsert = 0;
+		
+		Frame& f1 = (kind == MASTER_EDGE) ? b1.getMasterFrame() : b1.getSlaveFrame();
+		Frame& f2 = (kind == MASTER_EDGE) ? b2.getMasterFrame() : b2.getSlaveFrame();
+		
+		id = f1.getContigId();
+		
+		start = (f1.getBegin() <= f2.getBegin()) ? std::max( f1.getEnd() - maxInsert, 0 ) : std::max( f2.getEnd() - maxInsert, 0 ); //std::min( f1.getBegin(), f2.getBegin() );
+		end = std::max( f1.getEnd(), f2.getEnd() );
+		region = end - start + 1;
+		
+		// skip overlapping frames
+		if( (f1.getBegin() <= f2.getBegin() && f1.getEnd() >= f2.getBegin()) || 
+			(f2.getBegin() <= f1.getBegin() && f2.getEnd() >= f1.getBegin()) )
+		{
+			score[lib] = -1;
+			continue;
+		}
+		
+		gap = (f1.getBegin() <= f2.getBegin()) ? (f2.getBegin() - f1.getEnd() + 1) : (f1.getBegin() - f2.getEnd() + 1);
+		
+		if( region < maxInsert )
+		{
+			score[lib] = -2;
+			continue;
+		}
+		
+		if( gap >= maxInsert )
+		{
+			score[lib] = -3;
+			continue;
+		}
+		
+		s1 = start; //(f1.getBegin() <= f2.getBegin()) ? std::max( f1.getEnd() - maxInsert, 0 ) : std::max( f2.getEnd() - maxInsert, 0 );
+		s2 = (f1.getBegin() <= f2.getBegin()) ? f1.getEnd() : f2.getEnd();
+		t = (f1.getBegin() <= f2.getBegin()) ? f2.getBegin() : f1.getBegin();
+		
+		// retrieve BAM readers for current library
+		bamReader.lockBamReader(lib);
+		
+		BamReader *reader = bamReader.getBamReader(lib);
+		reader->SetRegion( id, s1, id, s2+1 );
+		
+		int32_t nh, xt;
+		mates = 0;
+		
+		BamAlignment align;
+		while( reader->GetNextAlignmentCore(align) )
+		{
+			// discard bad quality reads
+			if( !align.IsMapped() || !align.IsPaired() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
+			if( !align.IsMateMapped() || align.RefID != align.MateRefID || align.MatePosition < t ) continue;
+			
+			align.BuildCharData(); // fill string fields
+			
+			// if not defined, I assume read's multiplicity is 1
+			if( !align.GetTag(std::string("NH"),nh) ) nh = 1;	// standard field
+			if( !align.GetTag(std::string("XT"),xt) ) xt = 'U';	// bwa field
+			if( nh != 1 || xt != 'U' ) continue; // discard reads with multiplicity greater than 1
+			
+			int32_t readLength = align.GetEndPosition() - align.Position;
+			int32_t startRead = align.Position;
+			int32_t endRead = startRead + readLength - 1;
+			int32_t startMate = align.MatePosition;
+			
+			// don't count reads not completely included in the region
+			if( startRead < s1 || endRead > s2 ) continue;
+			
+			if( align.IsMateMapped() && align.RefID == align.MateRefID && startMate >= t ) mates++;
+		} // end while
+		
+		bamReader.unlockBamReader(lib);
+		
+		score[lib] = mates;
+	}
+	
+	return score;
+}
+
+
+std::vector<double> AssemblyGraph::getLibRegionScore( MultiBamReader &bamReader, EdgeKindType kind, Block& b1, Block& b2 )
+{
+	int32_t id, start, end, seq_len, ltail, rtail;
+
+	std::vector<double> score( bamReader.size(), -4 );
+	const RefVector& ref = bamReader.GetReferenceData();
+	
+	if( kind != MASTER_EDGE && kind != SLAVE_EDGE ) return score;
+
+	// COMPUTE STATISTICS FOR EACH LIBRARY
+	for( int lib=0; lib < bamReader.size(); lib++ )
+	{
+		int32_t isizeLibMean = bamReader.getISizeMean(lib);
+		int32_t isizeLibStd = bamReader.getISizeStd(lib);
+
+		int32_t minInsert = isizeLibMean - 3*isizeLibStd;
+		int32_t maxInsert = isizeLibMean + 3*isizeLibStd;
+		
+		Frame& f1 = (kind == MASTER_EDGE) ? b1.getMasterFrame() : b1.getSlaveFrame();
+		Frame& f2 = (kind == MASTER_EDGE) ? b2.getMasterFrame() : b2.getSlaveFrame();
+
+		// one frame included into the other one
+		if( (f1.getBegin() <= f2.getBegin() && f2.getBegin() <= f1.getEnd()) || (f2.getBegin() <= f1.getBegin() && f1.getBegin() <= f2.getEnd()) )
+		{
+			score[lib] = -1;
+			continue;
+		}
+		
+		id = f1.getContigId();
+		seq_len = ref[id].RefLength;
+		
+		if( f1.getBegin() <= f2.getBegin() )
+		{
+			rtail = seq_len - f2.getBegin();
+			ltail = f1.getEnd() + 1;
+			
+			start = (rtail >= ltail) ? std::max( f1.getBegin(), f1.getEnd() - isizeLibMean ) : f1.getEnd();
+			end = (rtail >= ltail) ? f2.getBegin() : std::min( f2.getEnd(), f2.getBegin() + isizeLibMean );
+		}
+		else
+		{
+			rtail = seq_len - f1.getBegin();
+			ltail = f2.getEnd() + 1;
+			
+			start = (rtail >= ltail) ? std::max( f2.getBegin(), f2.getEnd() - isizeLibMean ) : f2.getEnd();
+			end = (rtail >= ltail) ? f1.getBegin() : std::min( f1.getEnd(), f1.getBegin() + isizeLibMean );
+		}
+
+		int32_t region = end - start + 1;
+		if( region < 100 ){ score[lib] = -2; continue; } //if( isizeLibMean + 3*isizeLibStd > region ) continue;
+
+		std::vector<uint64_t> allCoverage( region, 0 );
+		std::vector<uint64_t> suspCoverage( region, 0 );
+
+		// retrieve BAM readers for current library
+		BamReader *reader = bamReader.getBamReader(lib);
+
+		bamReader.lockBamReader(lib);
+		
+		if( rtail >= ltail ) this->updateRightRegionCoverage( bamReader.getBamReader(lib), id, start, end, isizeLibMean, isizeLibStd, allCoverage, suspCoverage );
+			else this->updateLeftRegionCoverage( bamReader.getBamReader(lib), id, start, end, isizeLibMean, isizeLibStd, allCoverage, suspCoverage );
+		
+		bamReader.unlockBamReader(lib);
+
+		// find putative suspicious zone
+		uint64_t totAllCoverage = 0;
+		uint64_t totSuspCoverage = 0;
+
+		double meanAllCoverage;
+		double meanSuspCoverage;
+
+		double maxScore;
+
+		uint32_t windowSize = isizeLibMean;
+		uint32_t windowStep = 100;
+
+		if(region < windowSize) // if region shorter than window size, only one window
+		{
+			for( size_t i=0; i < region; i++ )
+			{
+				totAllCoverage += allCoverage[i];
+				totSuspCoverage += suspCoverage[i];
+			}
+
+			meanAllCoverage = totAllCoverage / (double)region; // this is the "window" total coverage
+			meanSuspCoverage = totSuspCoverage/ (double)region; // this is the "window" suspicious coverage
+
+			maxScore = ( meanAllCoverage != 0 ) ? meanSuspCoverage / meanAllCoverage : 0.0;
+			//maxScore = ( meanSuspCoverage >= 0 && meanAllCoverage > 0 ) ? meanSuspCoverage / meanAllCoverage : 0.0;
+		}
+		else //otherwise compute score on sliding window of 200 bp
+		{
+			unsigned int startWindow = 0;
+			unsigned int endWindow = windowSize;
+			unsigned int winSize   = windowSize;
+			bool last = false;
+
+			// first window
+			for(size_t i = startWindow; i < endWindow; i++ )
+			{
+				totAllCoverage += allCoverage[i];
+				totSuspCoverage += suspCoverage[i];
+			}
+
+			meanAllCoverage = totAllCoverage/(double)winSize;
+			meanSuspCoverage = totSuspCoverage/(double)winSize;
+
+			maxScore = ( meanAllCoverage != 0 ) ? meanSuspCoverage / meanAllCoverage : 0.0;
+			//maxScore = ( meanSuspCoverage >= 0 && meanAllCoverage > 0 ) ? meanSuspCoverage / meanAllCoverage : 0.0;
+
+			//now update
+			startWindow += windowStep;
+			endWindow += windowStep;
+
+			if( endWindow > region ) endWindow = region;
+
+			// inner windows
+			while( endWindow < region )
+			{
+				totAllCoverage = 0;
+				totSuspCoverage = 0;
+
+				for(size_t i = startWindow; i < endWindow; i++ )
+				{
+					totAllCoverage += allCoverage[i];
+					totSuspCoverage += suspCoverage[i];
+				}
+
+				meanAllCoverage = totAllCoverage/(double)(endWindow - startWindow);
+				meanSuspCoverage = totSuspCoverage/(double)(endWindow - startWindow);
+
+				maxScore = ( meanAllCoverage != 0 ) ? meanSuspCoverage / meanAllCoverage : 0.0;
+				//maxScore = std::max( maxScore, (meanSuspCoverage >= 0 && meanAllCoverage > 0) ? meanSuspCoverage / meanAllCoverage : 0.0 );
+
+				startWindow += windowStep;
+				endWindow += windowStep;
+				if( endWindow > region ) endWindow = region;
+			}
+
+			// last window
+			totAllCoverage = 0;
+			totSuspCoverage = 0;
+
+			for(size_t i = startWindow; i < endWindow; i++ )
+			{
+				totAllCoverage += allCoverage[i];
+				totSuspCoverage += suspCoverage[i];
+			}
+
+			meanAllCoverage = totAllCoverage/(double)(endWindow - startWindow);
+			meanSuspCoverage = totSuspCoverage/(double)(endWindow - startWindow);
+
+			maxScore = ( meanAllCoverage != 0 ) ? meanSuspCoverage / meanAllCoverage : 0.0;
+			//maxScore = std::max( maxScore, (meanSuspCoverage >= 0 && meanAllCoverage > 0) ? meanSuspCoverage / meanAllCoverage : 0.0 );
+		}
+
+		score[lib] = maxScore;
+	}
+
+	return score;
+}
+
+
+void AssemblyGraph::updateRightRegionCoverage( BamReader *bamReader, int32_t id, int32_t start, int32_t end,
+										  double isizeLibMean, double isizeLibStd,
+										  std::vector<uint64_t> &allCoverage, std::vector<uint64_t> &suspCoverage )
+{
+	bamReader->SetRegion( id, start, id, end+1 );
+
+	int32_t nh, xt;
+	int32_t ctgLen = (bamReader->GetReferenceData()).at(id).RefLength;
+
+	BamAlignment align;
+	while( bamReader->GetNextAlignmentCore(align) )
+	{
+		// discard bad quality reads
+		if( !align.IsMapped() || !align.IsPaired() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
+
+		align.BuildCharData(); // fill string fields
+
+		// if not defined, I assume read's multiplicity is 1
+		if( !align.GetTag(std::string("NH"),nh) ) nh = 1;	// standard field
+		if( !align.GetTag(std::string("XT"),xt) ) xt = 'U';	// bwa field
+		if( nh != 1 || xt != 'U' ) continue; // discard reads with multiplicity greater than 1
+
+		int32_t readLength = align.GetEndPosition() - align.Position;
+		int32_t startRead = align.Position;
+		int32_t endRead = startRead + readLength - 1;
+		int32_t startMate = align.MatePosition;
+		int32_t endMate = startMate + readLength - 1;
+
+		int32_t maxInsert = isizeLibMean + 3*isizeLibStd;
+		int32_t minInsert = isizeLibMean - 3*isizeLibStd;
+		
+		if(minInsert < 0) minInsert = 0;
+
+		// don't count reads not completely included in the region
+		if( startRead < start || endRead > end ) continue;
+
+		// reads with mate mapped in the same sequence
+		if( align.IsMateMapped() && align.RefID == align.MateRefID )
+		{
+			//if( (align.IsFirstMate() && !align.IsReverseStrand()) || (align.IsSecondMate() && align.IsReverseStrand()) )
+			if( !align.IsReverseStrand() )
+			{
+				//int32_t endPos = startRead + minInsert;
+				//int32_t endPos2 = startRead + maxInsert;
+				
+				if( align.IsMateReverseStrand() ) // correct orientation of the pair
+				{
+					for( int32_t i=startRead; i <= endRead; i++ ) allCoverage[i-start]++;
+				}
+				else
+				{
+					for( int32_t i=startRead; i <= endRead; i++ )
+					{
+						suspCoverage[i-start]++;
+						allCoverage[i-start]++;
+					}
+				}
+			}
+		}
+
+		// mate/pair unmapped or mapped to different sequence
+		if( !align.IsMateMapped() || (align.IsMateMapped() && align.RefID != align.MateRefID) )
+		{
+			//if( (align.IsFirstMate() && !align.IsReverseStrand()) || (align.IsSecondMate() && align.IsReverseStrand()) )
+			if( !align.IsReverseStrand() )
+			{
+				int32_t endPos = startRead + minInsert;
+				int32_t endPos2 = startRead + maxInsert;
+
+				if( (endPos < ctgLen && endPos2 < ctgLen) || !align.IsMateMapped() )
+				{
+					for( int32_t i=startRead; i <= endRead; i++ )
+					{
+						suspCoverage[i-start]++;
+						allCoverage[i-start]++;
+					}
+				}
+			}
+		}
+	} // end while
+}
+
+
+void AssemblyGraph::updateLeftRegionCoverage( BamReader *bamReader, int32_t id, int32_t start, int32_t end,
+										  double isizeLibMean, double isizeLibStd,
+										  std::vector<uint64_t> &allCoverage, std::vector<uint64_t> &suspCoverage )
+{
+	bamReader->SetRegion( id, start, id, end+1 );
+	
+	int32_t nh, xt;
+	int32_t ctgLen = (bamReader->GetReferenceData()).at(id).RefLength;
+	
+	BamAlignment align;
+	while( bamReader->GetNextAlignmentCore(align) )
+	{
+		// discard bad quality reads
+		if( !align.IsMapped() || !align.IsPaired() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
+		
+		align.BuildCharData(); // fill string fields
+		
+		// if not defined, I assume read's multiplicity is 1
+		if( !align.GetTag(std::string("NH"),nh) ) nh = 1;	// standard field
+		if( !align.GetTag(std::string("XT"),xt) ) xt = 'U';	// bwa field
+		if( nh != 1 || xt != 'U' ) continue; // discard reads with multiplicity greater than 1
+		
+		int32_t readLength = align.GetEndPosition() - align.Position;
+		int32_t startRead = align.Position;
+		int32_t endRead = startRead + readLength - 1;
+		int32_t startMate = align.MatePosition;
+		int32_t endMate = startMate + readLength - 1;
+		
+		int32_t maxInsert = isizeLibMean + 3*isizeLibStd;
+		int32_t minInsert = isizeLibMean - 3*isizeLibStd;
+		
+		if(minInsert < 0) minInsert = 0;
+		
+		// don't count reads not completely included in the region
+		if( startRead < start || endRead > end ) continue;
+		
+		// reads with mate mapped in the same sequence
+		if( align.IsMateMapped() && align.RefID == align.MateRefID )
+		{
+			//if( (align.IsFirstMate() && !align.IsReverseStrand()) || (align.IsSecondMate() && align.IsReverseStrand()) )
+			if( align.IsReverseStrand() )
+			{
+				//int32_t startPos = endRead - minInsert;
+				//int32_t startPos2 = endRead - maxInsert;
+				
+				if( !align.IsMateReverseStrand() ) // correct orientation of the pair
+				{
+					for( int32_t i=startRead; i <= endRead; i++ )
+						allCoverage[i-start]++;
+				}
+				else
+				{
+					for( int32_t i=startRead; i <= endRead; i++ )
+					{
+						allCoverage[i-start]++;
+						suspCoverage[i-start]++;
+					}
+				}
+				
+			}
+		}
+		
+		// mate/pair unmapped or mapped to different sequence
+		if( !align.IsMateMapped() || (align.IsMateMapped() && align.RefID != align.MateRefID) )
+		{
+			//if( (align.IsFirstMate() && !align.IsReverseStrand()) || (align.IsSecondMate() && align.IsReverseStrand()) )
+			if( align.IsReverseStrand() )
+			{
+				int32_t startPos = endRead - minInsert;
+				int32_t startPos2 = endRead - maxInsert;
+				
+				if( (startPos >= 0 && startPos2 >= 0) || !align.IsMateMapped() )
+				{
+					for( int32_t i=startRead; i <= endRead; i++ )
+					{
+						suspCoverage[i-start]++;
+						allCoverage[i-start]++;
+					}
+				}
+			}
+		}
+	} // end while
 }
 
 
@@ -450,7 +946,7 @@ bool AssemblyGraph::hasBubbles()
 	return found;
 }
 
-void AssemblyGraph::bubbleDFS( Vertex v, std::vector<char> &colors, bool &found )
+bool AssemblyGraph::bubbleDFS( Vertex v, std::vector<char> &colors, bool &found )
 {
 	colors[v] = 1;
 

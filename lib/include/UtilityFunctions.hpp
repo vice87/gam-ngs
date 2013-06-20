@@ -28,10 +28,6 @@ std::string formatTime( time_t seconds );
 
 int getMaxRSS(int64_t *maxrsskb);
 
-void mem_usage( double& vm_usage, double& resident_set );
-
-void print_mem_usage();
-
 void loadBamFileNames(
 	const std::string &input_file,
 	std::vector< std::string > &names,
