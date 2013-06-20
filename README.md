@@ -1,49 +1,41 @@
-########################
-#  BUILD INSTRUCTIONS  #
-########################
+###Build instructions
 
-Packages Required:
+##Packages Required
 
 - cmake
 - zlib
 - boost libraries (at least version 1.44)
 - google-sparse-hash
 
-How to build the application:
+##How to build the application
 
-$ cd gam-ngs
-$ mkdir build
-$ cd build
-$ cmake ..
-$ make
+  $ cd gam-ngs
+  $ mkdir build
+  $ cd build
+  $ cmake ..
+  $ make
 
 GAM-NGS's executables are put in the "bin" sub-folder.
 
-########################
-#        USAGE         #
-########################
+###Usage
 
-------------------------
-PREREQUISITES
-------------------------
+##Prerequisites
+
 GAM-NGS needs in input, for each assembly and for each read library, a file that lists BAM files of aligned libraries.
 This file must be formatted as shown in the following example:
 
-$ cat assembly.PE.bams.txt
-/path/to/bam/file/master-pe-lib1.bam
-<min-insert-size> <max-insert-size>
-/path/to/bam/file/master-pe-lib2.bam
-<min-insert-size> <max-insert-size>
+  $ cat assembly.PE.bams.txt
+  /path/to/bam/file/master-pe-lib1.bam
+  <min-insert-size> <max-insert-size>
+  /path/to/bam/file/master-pe-lib2.bam
+  <min-insert-size> <max-insert-size>
 
 where each bam's path is followed by a line that specifies the minimum and maximum insert size that should be used by GAM-NGS to compute insert size mean and standard deviation.
 Moreover, all provided BAM files have to be coordinate-sorted (command samtools sort <in.bam> <out.prefix>), along with the corresponding index file (command: samtools index <in.sorted.bam>).
 
-------------------------
-BLOCKS' CONSTRUCTION
-------------------------
+##Blocks' construction
 
-Example:
-$ gam-create --master-bam <master.PE.bams.txt> --slave-bam <slave.PE.bams.txt> --min-block-size <min-reads> --output <output.prefix>
+  $ gam-create --master-bam <master.PE.bams.txt> --slave-bam <slave.PE.bams.txt> --min-block-size <min-reads> --output <output.prefix>
 
 where <min-reads> is the number of reads required to build a block (region with the same reads aligned in master/slave assemblies).
 
@@ -52,12 +44,9 @@ The previous command will create the following files:
 - <master.PE.bams.txt>.isize    libraries' statistics (insert size mean, standard deviation, read coverage)
 - <slave.PE.bams.txt>.isize     libraries' statistics (insert size mean, standard deviation, read coverage)
 
-------------------------
-MERGING
-------------------------
+##Merging
 
-Example:
-$gam-merge --master-bam <master.PE.bams.txt> --slave-bam <slave.PE.bams.txt> --blocks-file <blocks-file> --master-fasta <master.fasta> --slave-fasta <slave.fasta> --min-block-size <min-block-size> --threads <threads> --output <output.prefix> 2> merge.err
+  $gam-merge --master-bam <master.PE.bams.txt> --slave-bam <slave.PE.bams.txt> --blocks-file <blocks-file> --master-fasta <master.fasta> --slave-fasta <slave.fasta> --min-block-size <min-block-size> --threads <threads> --output <output.prefix> 2> merge.err
 
 where:
 - <blocks-file> is the blocks descriptor file created with gam-create command.
