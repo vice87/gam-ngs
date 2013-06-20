@@ -88,6 +88,7 @@ void loadFileNames( const std::string &input_file, std::vector< std::string > &n
 	ifs.close();
 }
 
+
 int getMaxRSS(int64_t *maxrsskb)
 {
 	int len = 0;
@@ -138,3 +139,58 @@ int getMaxRSS(int64_t *maxrsskb)
 
 	return 0;
 }
+
+
+void mem_usage( double& vm_usage, double& resident_set )
+{
+	vm_usage     = 0.0;
+	resident_set = 0.0;
+	
+	std::ifstream stat_stream( "/proc/self/stat", std::ios_base::in );
+	
+	// dummy vars for leading entries in stat that we don't care about
+	std::string pid, comm, state, ppid, pgrp, session, tty_nr;
+	std::string tpgid, flags, minflt, cminflt, majflt, cmajflt;
+	std::string utime, stime, cutime, cstime, priority, nice;
+	std::string O, itrealvalue, starttime;
+	
+	// the two needed fields
+	unsigned long vsize;
+	long rss;
+	
+	stat_stream >> pid >> comm >> state >> ppid >> pgrp >> session >> tty_nr
+	>> tpgid >> flags >> minflt >> cminflt >> majflt >> cmajflt
+	>> utime >> stime >> cutime >> cstime >> priority >> nice
+	>> O >> itrealvalue >> starttime >> vsize >> rss; // don't care about the rest
+	
+	long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024; // in case x86-64 is configured to use 2MB pages
+	vm_usage     = vsize / 1024.0;
+	resident_set = rss * page_size_kb;
+}
+
+
+void print_mem_usage()
+{
+	double vm_usage, rss_usage;
+	mem_usage(vm_usage, rss_usage);
+	
+	std::string vm_suff = "KB", rss_suff = "KB";
+	
+	if( vm_usage > 1024 ) // possibly compute memory usage in MB or GB
+	{
+		vm_usage = vm_usage / 1024;
+		if( vm_usage <= 1024 ) vm_suff = "MB";
+		if( vm_usage > 1024 ){ vm_usage = vm_usage / 1024; vm_suff = "GB"; }
+	}
+	
+	if( rss_usage > 1024 ) // possibly compute memory usage in MB or GB
+	{
+		rss_usage = rss_usage / 1024;
+		if( rss_usage <= 1024 ) rss_suff = "MB";
+		if( rss_usage > 1024 ){ rss_usage = rss_usage / 1024; rss_suff = "GB"; }
+	}
+	
+	std::cerr << "[print_mem_usage] vm = " << vm_usage << vm_suff << "; rss = " << rss_usage << rss_suff << std::endl;
+}
+
+

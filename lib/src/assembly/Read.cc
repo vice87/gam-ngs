@@ -70,7 +70,9 @@ void Read::loadReadsMap(
 
     int32_t nh, xt;
     BamAlignment align;
-
+	
+	bamReader.Rewind();
+	
     while( bamReader.GetNextAlignment(align,true) )
     {
         // discard unmapped reads and reads that have a bad quality

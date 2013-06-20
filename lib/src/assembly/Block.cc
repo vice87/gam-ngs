@@ -792,11 +792,11 @@ void getNoBlocksContigs(
 		slave_ctgWithBlock.at( b->getSlaveId() ) = true;
 	}
 
-	for( size_t i=0; i < master_ctgWithBlock.size(); i++ )
-		if( !master_ctgWithBlock.at(i) ) masterNBC.insert(i);
+	for( int32_t i=0; i < master_ctgWithBlock.size(); i++ )
+		if( not master_ctgWithBlock.at(i) ) masterNBC.insert(i);
 
-	for( size_t i=0; i < slave_ctgWithBlock.size(); i++ )
-		if( !slave_ctgWithBlock.at(i) ) slaveNBC.insert(i);
+	for( int32_t i=0; i < slave_ctgWithBlock.size(); i++ )
+		if( not slave_ctgWithBlock.at(i) ) slaveNBC.insert(i);
 }
 
 
@@ -824,9 +824,9 @@ void getNoBlocksAfterFilterContigs(
 	for( std::set< int32_t >::const_iterator it = slaveNBC.begin(); it != slaveNBC.end(); it++ )
 		slave_ctgWithBlockAF.at(*it) = true;
 
-	for( size_t i=0; i < master_ctgWithBlockAF.size(); i++ )
-		if( !master_ctgWithBlockAF.at(i) ) masterNBC_AF.insert(i);
+	for( int32_t i=0; i < master_ctgWithBlockAF.size(); i++ )
+		if( not master_ctgWithBlockAF.at(i) ) masterNBC_AF.insert(i);
 
-	for( size_t i=0; i < slave_ctgWithBlockAF.size(); i++ )
-		if( !slave_ctgWithBlockAF.at(i) ) slaveNBC_AF.insert(i);
+	for( int32_t i=0; i < slave_ctgWithBlockAF.size(); i++ )
+		if( not slave_ctgWithBlockAF.at(i) ) slaveNBC_AF.insert(i);
 }

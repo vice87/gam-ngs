@@ -55,6 +55,8 @@ int main(int argc, char *argv[])
 
 	std::cout << setiosflags(std::ios::fixed) << std::setprecision(2)
 	          << "[main] MAX Memory used: " << maxrss << " " << maxrss_suff << std::endl;
+	
+	//print_mem_usage();
 
     return 0;
 }
