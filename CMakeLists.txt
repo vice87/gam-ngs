@@ -1,11 +1,14 @@
 cmake_minimum_required (VERSION 2.6)
 project(GamNgs)
 
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH})
+
 add_definitions( -Wno-deprecated )
 
 find_package(Boost COMPONENTS graph program_options system filesystem REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
+find_package(Sparsehash REQUIRED)
 
 # set our library and executable destination dirs
 set( EXECUTABLE_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/bin" )
@@ -19,6 +22,7 @@ include_directories("${PROJECT_SOURCE_DIR}/lib/include")
 include_directories("${PROJECT_SOURCE_DIR}/lib/bamtools-2.0.5/src")
 include_directories("${PROJECT_SOURCE_DIR}/lib/murmur3")
 include_directories( ${Boost_INCLUDE_DIRS} )
+include_directories( ${SPARSEHASH_INCLUDE_DIR} )
 
 # sorgenti da compilare
 file(GLOB GAMNGSLIB_SRC_FILES
