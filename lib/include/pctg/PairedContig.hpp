@@ -93,24 +93,28 @@ public:
      * \return a reference of the master contigs map.
      */
     ContigInfoMap& getMasterCtgMap();
+    std::set< int32_t >& getMasterIds() { return _masterCtgs; }
 
     //! Gets the slave contigs map.
     /*!
      * \return a reference of the slave contigs map.
      */
     ContigInfoMap& getSlaveCtgMap();
+    std::set< int32_t >& getSlaveIds() { return _slaveCtgs; }
 
     //! Gets the master contig map.
     /*!
      * \return a constant reference of the master contigs map.
      */
     const ContigInfoMap& getMasterCtgMap() const;
+    const std::set< int32_t >& getMasterIds() const { return _masterCtgs; }
 
     //! Gets the master contig map.
     /*!
      * \return a constant reference of the slave contigs map.
      */
     const ContigInfoMap& getSlaveCtgMap() const;
+    const std::set< int32_t >& getSlaveIds() const { return _slaveCtgs; }
 
 	std::list< CtgInPctgInfo >& getMergeList();
 	const std::list< CtgInPctgInfo >& getMergeList() const;

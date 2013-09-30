@@ -388,7 +388,7 @@ bool MultiBamReader::GetNextAlignment( BamAlignment &align, bool update_stats )
 			for( size_t i=0; i < _isize_std.size(); i++ )
 			{
 				_isize_std[i] = sqrt( _isize_std[i] / double(_isize_count[i]) );
-				_coverage[libId] = (_asm_size != 0) ? _reads_len[libId] / ((double)_asm_size) : 0.0;
+				_coverage[i] = (_asm_size != 0) ? _reads_len[i] / ((double)_asm_size) : 0.0;
 			}
 		}
 	}

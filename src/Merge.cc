@@ -361,11 +361,10 @@ namespace modules {
 
         for( std::list< PairedContig >::const_iterator pctg = result->begin(); pctg != result->end(); pctg++ )
         {
-            typedef std::map< int32_t, ContigInPctgInfo > ContigInfoMap;
-            const ContigInfoMap& slaveCtgs = pctg->getSlaveCtgMap();
+            const std::set< int32_t >& slaveCtgs = pctg->getSlaveIds();
 
-            for( ContigInfoMap::const_iterator ctg = slaveCtgs.begin(); ctg != slaveCtgs.end(); ctg++ )
-                usedCtgs[ctg->first] = true;
+            for( std::set< int32_t >::const_iterator ctg = slaveCtgs.begin(); ctg != slaveCtgs.end(); ctg++ )
+                usedCtgs.at(*ctg) = true;
         }
 
         for( std::set<int32_t>::const_iterator it = slaveNBC_BF.begin(); it != slaveNBC_BF.end(); it++ )
