@@ -2,10 +2,13 @@
 
 ###Packages Required
 
+* gcc >= 4.4
 * cmake
 * zlib
-* boost libraries (at least version 1.44)
+* boost libraries >= 1.44
 * google-sparse-hash
+
+Note: it is advised to have installed the latest version of the previous packages.
 
 ###How to build the application
 
