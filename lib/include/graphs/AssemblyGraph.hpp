@@ -47,13 +47,13 @@ class AssemblyGraph : public boost::adjacency_list< boost::setS, boost::vecS, bo
 boost::no_property, boost::property<boost::edge_kind_t,EdgeProperty> >
 {
 public:
-    typedef boost::adjacency_list< boost::setS, boost::vecS, boost::bidirectionalS,
-		boost::no_property, boost::property<boost::edge_kind_t,EdgeProperty> > Graph;
-    typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
-    typedef boost::graph_traits<Graph>::vertex_iterator VertexIterator;
-    typedef boost::graph_traits<Graph>::adjacency_iterator AdjacencyIterator;
-    typedef boost::graph_traits<Graph>::edge_descriptor Edge;
-    typedef boost::graph_traits<Graph>::edge_iterator EdgeIterator;
+    //typedef boost::adjacency_list< boost::setS, boost::vecS, boost::bidirectionalS,
+	//	boost::no_property, boost::property<boost::edge_kind_t,EdgeProperty> > Graph;
+    typedef boost::graph_traits<AssemblyGraph>::vertex_descriptor Vertex;
+    typedef boost::graph_traits<AssemblyGraph>::vertex_iterator VertexIterator;
+    typedef boost::graph_traits<AssemblyGraph>::adjacency_iterator AdjacencyIterator;
+    typedef boost::graph_traits<AssemblyGraph>::edge_descriptor Edge;
+    typedef boost::graph_traits<AssemblyGraph>::edge_iterator EdgeIterator;
     typedef std::map< int32_t, StrandProbability > StrandProbMap;
 
 private:

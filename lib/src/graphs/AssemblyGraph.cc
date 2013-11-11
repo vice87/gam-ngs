@@ -23,7 +23,7 @@ AssemblyGraph::AssemblyGraph( const std::list< Block > &blocks, uint64_t id ) : 
 const AssemblyGraph&
 AssemblyGraph::operator =(const AssemblyGraph& orig)
 {
-    *((Graph *)this) = *((Graph *)&orig);
+    *((AssemblyGraph *)this) = *((AssemblyGraph *)&orig);
     this->_blockVector = orig._blockVector;
 	this->_agId = orig._agId;
 
@@ -155,7 +155,7 @@ AssemblyGraph::addVertices()
     std::vector<Block>::const_iterator block;
     for( block = this->_blockVector.begin(); block != this->_blockVector.end(); block++ )
     {
-        Vertex v = boost::add_vertex(*this);
+        boost::add_vertex(*this); //Vertex v = boost::add_vertex(*this);
         // boost::put( boost::vertex_kind_t(), *this, v, both_vertex );
     }
 
@@ -280,8 +280,8 @@ AssemblyGraph::addSlaveSingleEdge(const UIntType& s, const UIntType& t)
 std::ostream&
 AssemblyGraph::writeGraphviz(std::ostream& os)
 {
-    typedef boost::graph_traits<Graph>::vertex_iterator VertexIterator;
-    typedef boost::graph_traits<AssemblyGraph>::edge_iterator EdgeIterator;
+    //typedef boost::graph_traits<AssemblyGraph>::vertex_iterator VertexIterator;
+    //typedef boost::graph_traits<AssemblyGraph>::edge_iterator EdgeIterator;
 
     os << "digraph AssemblyGraph {" << std::endl;
     os << "   rankdir=LR;" << std::endl;
@@ -410,8 +410,8 @@ void AssemblyGraph::agTopologicalSort( const AssemblyGraph &g, std::list<Vertex>
 
 bool AssemblyGraph::hasForks()
 {
-	typedef boost::graph_traits<Graph>::vertex_iterator VertexIterator;
-	typedef boost::graph_traits<AssemblyGraph>::edge_iterator EdgeIterator;
+	//typedef boost::graph_traits<Graph>::vertex_iterator VertexIterator;
+	//typedef boost::graph_traits<AssemblyGraph>::edge_iterator EdgeIterator;
 
 	VertexIterator vbegin,vend;
 	boost::tie(vbegin,vend) = boost::vertices(*this);

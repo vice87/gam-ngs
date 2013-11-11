@@ -16,6 +16,7 @@
 #include <boost/graph/strong_components.hpp>
 #include <boost/graph/topological_sort.hpp>
 //#include <boost/graph/graphviz.hpp>
+#include <boost/dynamic_bitset.hpp>
 
 #include "OrderingFunctions.hpp"
 #include "assembly/Block.hpp"
@@ -33,15 +34,15 @@ class CompactAssemblyGraph : public boost::adjacency_list< boost::setS, boost::v
 	boost::bidirectionalS, boost::no_property, boost::property<boost::edge_kind_t,EdgeProperty> >
 {
 public:
-    typedef boost::adjacency_list< boost::setS, boost::vecS, boost::bidirectionalS,
-		boost::no_property, boost::property<boost::edge_kind_t,EdgeProperty> > Graph;
-    typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
-    typedef boost::graph_traits<Graph>::vertex_iterator VertexIterator;
-    typedef boost::graph_traits<Graph>::adjacency_iterator AdjacencyIterator;
-    typedef boost::graph_traits<Graph>::edge_descriptor Edge;
-    typedef boost::graph_traits<Graph>::edge_iterator EdgeIterator;
-    typedef boost::graph_traits<Graph>::out_edge_iterator OutEdgeIterator;
-    typedef boost::graph_traits<Graph>::in_edge_iterator InEdgeIterator;
+//    typedef boost::adjacency_list< boost::setS, boost::vecS, boost::bidirectionalS, 
+//		boost::no_property, boost::property<boost::edge_kind_t,EdgeProperty> > Graph;
+    typedef boost::graph_traits<CompactAssemblyGraph>::vertex_descriptor Vertex;
+    typedef boost::graph_traits<CompactAssemblyGraph>::vertex_iterator VertexIterator;
+    typedef boost::graph_traits<CompactAssemblyGraph>::adjacency_iterator AdjacencyIterator;
+    typedef boost::graph_traits<CompactAssemblyGraph>::edge_descriptor Edge;
+    typedef boost::graph_traits<CompactAssemblyGraph>::edge_iterator EdgeIterator;
+    typedef boost::graph_traits<CompactAssemblyGraph>::out_edge_iterator OutEdgeIterator;
+    typedef boost::graph_traits<CompactAssemblyGraph>::in_edge_iterator InEdgeIterator;
 
 private:
     uint64_t _cgId;
@@ -55,9 +56,24 @@ private:
      *
      * \param blocks a vector of block
      */
+	void initGraph2( const AssemblyGraph &ag );
+	
+	void initGraphDFS_NR(
+		const AssemblyGraph &ag, 
+		const AssemblyGraph::Vertex &root,
+		boost::dynamic_bitset<> *visited, 
+		std::vector<Vertex> *ag2cg 
+	);
+	
     void initGraph( const AssemblyGraph &ag );
 
-    void initGraphDFS( const AssemblyGraph &ag, Vertex v, std::vector<char> &colors, std::vector<Vertex> &ag2cg, Vertex u );
+    void initGraphDFS( 
+        const AssemblyGraph &ag, 
+        const AssemblyGraph::Vertex &v,
+		const AssemblyGraph::Vertex &u,
+        boost::dynamic_bitset<> *colors,
+        std::vector<Vertex> *ag2cg
+	);
 	
     void bubbleDFS( Vertex v, std::vector<char> &colors, bool &found );
 	

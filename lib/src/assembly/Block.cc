@@ -472,7 +472,7 @@ void Block::findBlocks(
     while( bamReader.GetNextAlignment(align,true) )
     {
 		// skip unmapped or bad-quality reads
-		if( !align.IsMapped() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
+		if( !align.IsMapped() || align.Position < 0 || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
 
         // load read's moltiplicity (if the field is missing, assume it as uniquely mapped)
         if( !align.GetTag(std::string("NH"),nh) ) nh = 1;	// standard SAM format field
@@ -582,7 +582,7 @@ void Block::findBlocks(
 
 void Block::updateCoverages(
         std::vector<Block> &blocks,
-        std::vector< std::vector<uint32_t> > &masterCoverage,
+        const std::vector< std::vector<uint32_t> > &masterCoverage,
         std::vector< std::vector<uint32_t> > &slaveCoverage )
 {
     int32_t ctgId, begin, end;
@@ -601,7 +601,7 @@ void Block::updateCoverages(
         begin = masterFrame.getBegin();
         end = masterFrame.getEnd();
 
-        for( size_t pos = begin; pos <= end; pos++ ) masterReadsLen += masterCoverage[ctgId][pos];
+        for( size_t pos = begin; pos <= end; pos++ ) masterReadsLen += masterCoverage.at(ctgId).at(pos);
 
         // update slave coverage
 

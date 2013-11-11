@@ -418,7 +418,7 @@ bool MultiBamReader::computeStatistics()
 		while( _bam_readers[libId]->GetNextAlignmentCore(align) )
 		{
 			// skip unmapped or bad-quality reads
-			if( !align.IsMapped() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
+			if( !align.IsMapped() || align.Position < 0 || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
 			
 			int32_t alignmentLength = align.GetEndPosition() - align.Position;
 			int32_t startRead = align.Position;

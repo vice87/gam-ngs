@@ -7,19 +7,22 @@
 
 #include "graphs/CompactAssemblyGraph.hpp"
 
+#include <stack>
+
 CompactAssemblyGraph::CompactAssemblyGraph( const AssemblyGraph &ag )
 {
 	this->_cgId = ag.getId();
-    this->initGraph(ag);
+    this->initGraph2(ag);
 }
 
 
 const CompactAssemblyGraph&
 CompactAssemblyGraph::operator =(const CompactAssemblyGraph& orig)
 {
-    *((Graph *)this) = *((Graph *)&orig);
+    *((CompactAssemblyGraph *)this) = *((CompactAssemblyGraph *)&orig);
     this->_blockVector = orig._blockVector;
 	this->_cgId = orig._cgId;
+    this->_num_vertices = orig._num_vertices;
 
     return *this;
 }
@@ -40,49 +43,168 @@ CompactAssemblyGraph::getBlocks( const Vertex &pos ) const
 
 
 void
-CompactAssemblyGraph::initGraphDFS( const AssemblyGraph &ag, Vertex v, std::vector<char> &colors, std::vector<Vertex> &ag2cg, Vertex u )
+CompactAssemblyGraph::initGraphDFS_NR( 
+	const AssemblyGraph &ag, 
+	const AssemblyGraph::Vertex &root,
+	boost::dynamic_bitset<> *visited, 
+	std::vector<Vertex> *ag2cg )
 {
-    if( colors[v] == 1 ) // if node already visited, add edge and return
+	AssemblyGraph::Edge e_ag;
+	AssemblyGraph::AdjacencyIterator begin, end;
+	Edge e; bool exists; Vertex new_v;
+	
+	std::stack<AssemblyGraph::Vertex> *cur_stack = new std::stack<AssemblyGraph::Vertex>();
+	std::stack<AssemblyGraph::Vertex> *pre_stack = new std::stack<AssemblyGraph::Vertex>();
+	
+	new_v = boost::add_vertex(*this);
+	std::list<Block> new_list = std::list<Block>(1,ag.getBlock(root));
+	_blockVector.push_back( new_list );
+	
+	visited->set(root);
+	ag2cg->at(root) = new_v;
+	this->_num_vertices++;
+	
+	boost::tie(begin,end) = boost::adjacent_vertices(root,ag);
+	for( AssemblyGraph::AdjacencyIterator z = begin; z != end; z++ )
+	{
+		cur_stack->push(*z);
+		pre_stack->push(root);
+	}
+	
+	while( not cur_stack->empty() )
+	{
+		AssemblyGraph::Vertex curr = cur_stack->top(); cur_stack->pop();
+		AssemblyGraph::Vertex prev = pre_stack->top(); pre_stack->pop();
+		
+		if( visited->test(curr) ) // if node already visited, add edge and continue
+		{
+			boost::tie(e_ag,exists) = boost::edge(prev,curr,ag);
+			EdgeProperty edge_prop = boost::get( boost::edge_kind_t(), ag, e_ag );
+
+			boost::tie(e,exists) = boost::add_edge( ag2cg->at(prev), ag2cg->at(curr), *this );
+			boost::put( boost::edge_kind_t(), *this, e, edge_prop );
+
+			continue;
+		}
+		
+		// if curr has not been visited yet
+		visited->set(curr); // mark current node as visited
+
+		boost::tie(e_ag,exists) = boost::edge( prev, curr, ag );
+		EdgeProperty edge_prop = boost::get( boost::edge_kind_t(), ag, e_ag );
+
+		if( edge_prop.kind == BOTH_EDGE ) // if previous vertex is connected to the current one with a BOTH_EDGE (master+slave edge)
+		{
+			_blockVector.at( ag2cg->at(prev) ).push_back( ag.getBlock(curr) );
+			ag2cg->at(curr) = ag2cg->at(prev);
+		}
+		else // else add a new vertex to the compact graph
+		{
+			Vertex new_v = boost::add_vertex(*this);
+			ag2cg->at(curr) = new_v;
+			_blockVector.push_back( std::list<Block>(1,ag.getBlock(curr)) );
+
+			this->_num_vertices++;
+			
+			//std::cerr << "debug: vertices=" << this->_num_vertices << "\n";
+			//std::cerr << "debug: curr=" << curr << " ag2cg(curr)=" << ag2cg->at(curr) << "\n";
+			//std::cerr << "debug: prev=" << prev << " ag2cg(prev)=" << ag2cg->at(prev) << std::endl;
+
+			boost::tie(e,exists) = boost::add_edge( ag2cg->at(prev), ag2cg->at(curr), *this );
+			boost::put( boost::edge_kind_t(), *this, e, edge_prop );
+		}
+
+		boost::tie(begin,end) = boost::adjacent_vertices(curr,ag);
+		for( AssemblyGraph::AdjacencyIterator z = begin; z != end; z++ )
+		{
+			cur_stack->push(*z);
+			pre_stack->push(curr);
+		}
+	}
+	
+	delete cur_stack;
+	delete pre_stack;
+}
+
+void
+CompactAssemblyGraph::initGraph2( const AssemblyGraph &ag )
+{
+	this->clear();
+	this->_num_vertices = 0;
+	
+	size_t ag_vertices = boost::num_vertices(ag);
+	
+	boost::dynamic_bitset<> *visited = new boost::dynamic_bitset<>(ag_vertices);
+	std::vector<Vertex> *ag2cg = new std::vector<Vertex>(ag_vertices,0);
+	
+	AssemblyGraph::VertexIterator vbegin,vend;
+	boost::tie(vbegin,vend) = boost::vertices(ag);
+
+	for( AssemblyGraph::VertexIterator r = vbegin; r != vend; r++ )
+	{
+        if( boost::in_degree(*r,ag) == 0 && !visited->test(*r) ) // for each unvisited root
+        {
+            this->initGraphDFS_NR( ag, *r, visited, ag2cg );
+        }
+	}
+	
+	delete visited;
+	delete ag2cg;
+}
+
+
+void
+CompactAssemblyGraph::initGraphDFS( 
+	const AssemblyGraph &ag, 
+	const AssemblyGraph::Vertex &v, 
+	const AssemblyGraph::Vertex &u, 
+	boost::dynamic_bitset<> *colors, 
+	std::vector<Vertex> *ag2cg )
+{
+	Edge e; bool exists;
+	
+    if( colors->test(v) ) // if node already visited, add edge and return
     {
-        Edge e;
-        bool exists;
         boost::tie(e,exists) = boost::edge(u,v,ag);
 		EdgeProperty edge_prop = boost::get( boost::edge_kind_t(), ag, e ); //EdgeKindType edge_type = boost::get( boost::edge_kind_t(), ag, e );
 
-        e = boost::add_edge( ag2cg[u], ag2cg[v], *this ).first;
+        e = boost::add_edge( ag2cg->at(u), ag2cg->at(v), *this ).first;
 		boost::put( boost::edge_kind_t(), *this, e, edge_prop );
 
         return;
     }
 
-	colors[v] = 1; // mark current node as visited
+	colors->set(v); // mark current node as visited
 
-	Edge e;
-	bool exists;
 	boost::tie(e,exists) = boost::edge(u,v,ag);
-
 	EdgeProperty edge_prop = boost::get( boost::edge_kind_t(), ag, e ); //EdgeKindType edge_type = boost::get( boost::edge_kind_t(), ag, e );
 
 	if( edge_prop.kind == BOTH_EDGE ) // if previous vertex is connected to the current one with a BOTH_EDGE (master+slave edge)
 	{
-		_blockVector.at( ag2cg[u] ).push_back( ag.getBlock(v) );
-		ag2cg[v] = ag2cg[u];
+		_blockVector.at( ag2cg->at(u) ).push_back( ag.getBlock(v) );
+		ag2cg->at(v) = ag2cg->at(u);
 	}
 	else // else add a new vertex to the compact graph
 	{
-		boost::add_vertex(*this);
-		ag2cg[v] = _num_vertices;
+		Vertex new_v = boost::add_vertex(*this);
+		ag2cg->at(v) = new_v;
 		_blockVector.push_back( std::list<Block>(1,ag.getBlock(v)) );
-
-		e = boost::add_edge( ag2cg[u], ag2cg[v], *this ).first;
-		boost::put( boost::edge_kind_t(), *this, e, edge_prop );
-
+		
 		_num_vertices++;
+		
+		std::cerr << "warning: u vertex-desc=" << ag2cg->at(u) << " num-vertices=" << _num_vertices << std::endl;
+		std::cerr << "warning: v vertex-desc=" << ag2cg->at(v) << " num-vertices=" << _num_vertices << std::endl;
+		
+		boost::tie(e,exists) = boost::add_edge( ag2cg->at(u), ag2cg->at(v), *this );
+		boost::put( boost::edge_kind_t(), *this, e, edge_prop );
 	}
 
-	AdjacencyIterator begin, end;
+	AssemblyGraph::AdjacencyIterator begin, end;
 	boost::tie(begin,end) = boost::adjacent_vertices(v,ag);
-	for( AdjacencyIterator z = begin; z != end; z++ ) this->initGraphDFS(ag, *z, colors, ag2cg, v);
+	for( AssemblyGraph::AdjacencyIterator z = begin; z != end; z++ )
+	{
+		this->initGraphDFS(ag, *z, v, colors, ag2cg);
+	}
 }
 
 
@@ -94,27 +216,39 @@ CompactAssemblyGraph::initGraph( const AssemblyGraph &ag )
 
 	size_t ag_vertices = boost::num_vertices(ag);
 
-	std::vector<char> colors( ag_vertices, 0 );
-	std::vector<Vertex> ag2cg( ag_vertices, 0 ); // associate each vertex of ag to a vertex of this CompactAssemblyGraph
+    //boost::dynamic_bitset<> colors( ag_vertices ); //std::vector<bool> colors( ag_vertices, 0 );
+	//std::vector<Vertex> ag2cg( ag_vertices, 0 ); // associate each vertex of ag to a vertex of this CompactAssemblyGraph
+	
+	boost::dynamic_bitset<> *colors = new boost::dynamic_bitset<>(ag_vertices);
+	std::vector<Vertex> *ag2cg = new std::vector<Vertex>(ag_vertices,0);
 
-	VertexIterator vbegin,vend;
+	AssemblyGraph::VertexIterator vbegin,vend;
 	boost::tie(vbegin,vend) = boost::vertices(ag);
 
-	for( VertexIterator v = vbegin; v != vend; v++ )
+	for( AssemblyGraph::VertexIterator v = vbegin; v != vend; v++ )
 	{
-		if( boost::in_degree(*v,ag) == 0 )
+        if( boost::in_degree(*v,ag) == 0 && !colors->test(*v) )
         {
-            boost::add_vertex(*this);
-            colors[*v] = 1;
-            ag2cg[*v] = _num_vertices;
-            _blockVector.push_back( std::list<Block>(1,ag.getBlock(*v)) );
-            _num_vertices++;
+            Vertex new_v = boost::add_vertex(*this);
+            std::list<Block> new_list = std::list<Block>(1,ag.getBlock(*v));
+            _blockVector.push_back( new_list );
+			
+			colors->set(*v);
+            ag2cg->at(*v) = new_v;
+			
+			_num_vertices++;
 
-            AdjacencyIterator begin, end;
+            AssemblyGraph::AdjacencyIterator begin, end;
             boost::tie(begin,end) = boost::adjacent_vertices(*v,ag);
-            for( AdjacencyIterator z = begin; z != end; z++ ) this->initGraphDFS(ag, *z, colors, ag2cg, *v);
+            for( AssemblyGraph::AdjacencyIterator z = begin; z != end; z++ )
+			{
+				this->initGraphDFS( ag, *z, *v, colors, ag2cg );
+			}
         }
 	}
+	
+	delete colors;
+	delete ag2cg;
 }
 
 
@@ -288,7 +422,7 @@ void CompactAssemblyGraph::getLibRegionScore( MultiBamReader &bamReader, EdgeKin
 		while( reader->GetNextAlignment(align) )
 		{
 			// discard bad quality reads
-			if( !align.IsMapped() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
+			if( !align.IsMapped() || align.Position < 0 || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
 			//if( !align.IsMateMapped() || align.RefID != align.MateRefID || align.MatePosition < t ) continue;
 			
 			int32_t readLength = align.GetEndPosition() - align.Position;

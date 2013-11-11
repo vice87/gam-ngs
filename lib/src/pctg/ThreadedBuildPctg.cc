@@ -229,7 +229,7 @@ double ThreadedBuildPctg::computeZScore( MultiBamReader &multiBamReader, int32_t
 
 	while( bamReader->GetNextAlignmentCore(align) ) // for each read in the region
 	{
-		if( !align.IsMapped() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ||
+		if( !align.IsMapped() || align.Position < 0 || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ||
 			!align.IsMateMapped() || align.RefID != align.MateRefID ) continue;
 
 		int32_t read_start = align.Position;

@@ -52,26 +52,29 @@ partitionBlocks( const std::list<Block> &blocks )
     std::vector< std::list<Block> >::iterator pcb;
     for( pcb = pairedContigsBlocks.begin(); pcb != pairedContigsBlocks.end(); ++pcb )
     {
-        // create an assembly graph
-        AssemblyGraph ag( *pcb, agId );
-		// collapse paths which shares the same master/slave contigs
-		CompactAssemblyGraph *cg = new CompactAssemblyGraph(ag);
-		cg->computeEdgeWeights( masterBam, masterMpBam, slaveBam, slaveMpBam );
+		std::stringstream ff1,ff2,ff3;
 		
-		std::stringstream ff1,ff2;
+        // create an assembly graph
+        AssemblyGraph *ag = new AssemblyGraph( *pcb, agId );
+		
+		// collapse paths which shares the same master/slave contigs
+		CompactAssemblyGraph *cg = new CompactAssemblyGraph(*ag);
+		std::cerr << "CompactAssemblyGraph_" << agId << " created." << std::endl;
+		cg->computeEdgeWeights( masterBam, masterMpBam, slaveBam, slaveMpBam );
+		std::cerr << "CompactAssemblyGraph_" << agId << " weights computed." << std::endl;
 		
 		try
 		{
 			// check if graph contains cycles
 			std::vector< size_t > ts;
-			boost::topological_sort( ag, std::back_inserter(ts) );
+			boost::topological_sort( *ag, std::back_inserter(ts) );
 			
 			// at this point, ag does not contain cycles
 			
 			outList.push_back(cg);
 
-			bool has_bubbles = ag.hasBubbles();
-			bool has_forks = ag.hasForks();
+			bool has_bubbles = ag->hasBubbles();
+			bool has_forks = ag->hasForks();
 			
 			ff1 << "./gam_graphs/AssemblyGraph_" << agId;
 			ff2 << "./gam_graphs/CompactGraph_" << agId;
@@ -109,7 +112,7 @@ partitionBlocks( const std::list<Block> &blocks )
 			if( not boost::filesystem::exists(p1) )
 			{
 				std::ofstream ss( ff1.str().c_str() );
-				ag.writeGraphviz(ss);
+				ag->writeGraphviz(ss);
 				ss.close();
 			}
 
@@ -123,6 +126,7 @@ partitionBlocks( const std::list<Block> &blocks )
 		}
 
         agId++; // increase assembly graph counter
+		delete ag; // free AssemblyGraph
     }
 
     _g_statsFile << "[graphs stats]\n"
@@ -171,7 +175,7 @@ std::vector<double> computeZScore( MultiBamReader &multiBamReader, const uint64_
 		bamReader->SetRegion( refID, start, refID, end+1 );
 		while( bamReader->GetNextAlignmentCore(align) ) // for each read in the region
 		{
-			if( !align.IsMapped() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ||
+			if( !align.IsMapped() || align.Position < 0 || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ||
 				!align.IsMateMapped() || align.RefID != align.MateRefID ) continue;
 
 			int32_t read_start = align.Position;

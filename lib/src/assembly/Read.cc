@@ -66,7 +66,7 @@ void Read::loadReadsMap(
     // initialize coverage vector
     const RefVector& refVect = bamReader.GetReferenceData();
     coverage.resize( refVect.size() );
-    for( uint32_t i=0; i < refVect.size(); i++ ) coverage[i].resize( refVect[i].RefLength, 0 );
+    for( uint32_t i=0; i < refVect.size(); i++ ) coverage.at(i).resize( refVect.at(i).RefLength, 0 );
 
     int32_t nh, xt;
     BamAlignment align;
@@ -76,7 +76,7 @@ void Read::loadReadsMap(
     while( bamReader.GetNextAlignment(align,true) )
     {
         // discard unmapped reads and reads that have a bad quality
-        if( !align.IsMapped() || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
+        if( !align.IsMapped() || align.Position < 0 || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
 
         // load string fileds from bam
         // if( !align.BuildCharData() ) continue;
@@ -95,7 +95,7 @@ void Read::loadReadsMap(
 
 		// update vector coverage
 		uint32_t read_len = align.GetEndPosition() - align.Position;
-		for( int i=0; i < read_len; i++ ) coverage[align.RefID][align.Position+i] += 1;
+		for( int i=0; i < read_len; i++ ) coverage.at(align.RefID).at(align.Position+i) += 1;
     }
 }
 

@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 		if( maxrss > 1024 ){ maxrss = maxrss / 1024; maxrss_suff = "GB"; }
 	}
 
-	std::cout << setiosflags(std::ios::fixed) << std::setprecision(2)
+	std::cout << std::setiosflags(std::ios::fixed) << std::setprecision(2)
 	          << "[gam-create] MAX Memory used: " << maxrss << " " << maxrss_suff << std::endl;
 	
 	//print_mem_usage();

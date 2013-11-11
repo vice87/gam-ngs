@@ -181,7 +181,7 @@ public:
 
     static void updateCoverages(
         std::vector<Block> &blocks,
-        std::vector< std::vector<uint32_t> > &masterCoverage,
+        const std::vector< std::vector<uint32_t> > &masterCoverage,
         std::vector< std::vector<uint32_t> > &slaveCoverage );
 
     //! Returns whether two block share the master contig.
