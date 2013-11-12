@@ -108,28 +108,30 @@ This would help me a lot in finding the source of the problem.
 
 The steps are the following ones:
 
- 1. Edit CMakeLists.txt file at line 17, replacing "Release" with "Debug" so that the line is:
+1. Edit CMakeLists.txt file at line 17, replacing "Release" with "Debug" so that the line becomes:
 
-	set(CMAKE_BUILD_TYPE Debug)
+        set(CMAKE_BUILD_TYPE Debug)
 
- 2. Re-compile the tool with the usual commands (removing any previous file/folder in the build directory)
+2. Re-compile the tool with the usual commands (removing any previous file/folder in the build directory)
 	
-	$ cmake ..
-	$ make
+        $ cmake ..
+        $ make
 
- 3. Run gdb with the executable (gam-create or gam-merge) in which the problem is present:
+3. Run gdb with the executable (gam-create or gam-merge) in which the problem is present:
 
-	$ gdb /path/to/gam-create-or-merge
+        $ gdb /path/to/gam-create-or-merge
 
- 4. Run the executable specifying the arguments that caused the problem (possibly using a single thread):
+4. Run the executable specifying the arguments that caused the problem (possibly using a single thread):
 
-	(gdb) set logging on
-	(gdb) run --master-bam <master-pe-list.txt> --slave-bam <slave-pe-list.txt> ...
+        (gdb) set logging on
+        (gdb) run --master-bam <master-pe-list.txt> --slave-bam <slave-pe-list.txt> ...
 
- 5. After the problem has occurred, please run the following command and exit gdb:
+5. After the problem has occurred, please run the following command and exit gdb:
 
-	(gdb) backtrace
-	(gdb) quit
+        (gdb) backtrace
+        (gdb) quit
 
- 6. A file named gdb.txt should have been created in the current directory. 
- Attach that file to help me solve the problem (possibly along with standard output and standard error).
+6. A file named gdb.txt should have been created in the current directory. 
+   Provide that file to me (possibly along with standard output and standard error).
+
+Thank you!
