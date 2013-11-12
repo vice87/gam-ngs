@@ -98,3 +98,38 @@ From the example directory execute the following commands (after downloading the
 
 These will create alignment files (BAM) in ./Alignments sub-folder.
 Then the merging with GAM-NGS of Allpaths-LG and MSR-CA assemblies will be performed in ./gam-ngs_merge sub-folder.
+
+
+##Bug reporting
+
+If gdb package is available in your system and you found a bug in GAM-NGS (e.g., segmentation fault),
+I will appreciate if you could run the tool in "debug mode" and send me the log file.
+This would help me a lot in finding the source of the problem.
+
+The steps are the following ones:
+
+ 1. Edit CMakeLists.txt file at line 17, replacing "Release" with "Debug" so that the line is:
+
+	set(CMAKE_BUILD_TYPE Debug)
+
+ 2. Re-compile the tool with the usual commands (removing any previous file/folder in the build directory)
+	
+	$ cmake ..
+	$ make
+
+ 3. Run gdb with the executable (gam-create or gam-merge) in which the problem is present:
+
+	$ gdb /path/to/gam-create-or-merge
+
+ 4. Run the executable specifying the arguments that caused the problem (possibly using a single thread):
+
+	(gdb) set logging on
+	(gdb) run --master-bam <master-pe-list.txt> --slave-bam <slave-pe-list.txt> ...
+
+ 5. After the problem has occurred, please run the following command and exit gdb:
+
+	(gdb) backtrace
+	(gdb) quit
+
+ 6. A file named gdb.txt should have been created in the current directory. 
+ Attach that file to help me solve the problem (possibly along with standard output and standard error).

@@ -78,9 +78,6 @@ void Read::loadReadsMap(
         // discard unmapped reads and reads that have a bad quality
         if( !align.IsMapped() || align.Position < 0 || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
 
-        // load string fileds from bam
-        // if( !align.BuildCharData() ) continue;
-
         // se la molteplicità non è stata definita, assumo che sia pari ad 1
         if( !align.GetTag(std::string("NH"),nh) ) nh = 1;
         if( !align.GetTag(std::string("XT"),xt) ) xt = 'U';
