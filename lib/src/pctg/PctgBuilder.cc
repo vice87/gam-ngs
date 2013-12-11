@@ -1,3 +1,33 @@
+/*
+ *  This file is part of GAM-NGS.
+ *  Copyright (c) 2011 by Riccardo Vicedomini <rvicedomini@appliedgenomics.org>,
+ *  Francesco Vezzi <vezzi@appliedgenomics.org>,
+ *  Simone Scalabrin <scalabrin@appliedgenomics.org>,
+ *  Lars Arverstad <lars.arvestad@scilifelab.se>,
+ *  Alberto Policriti <policriti@appliedgenomics.org>,
+ *  Alberto Casagrande <casagrande@appliedgenomics.org>
+ *
+ *  GAM-NGS is an evolution of a previous work (GAM) done by Alberto Casagrande,
+ *  Cristian Del Fabbro, Simone Scalabrin, and Alberto Policriti.
+ *  In particular, GAM-NGS has been adapted to work on NGS data sets and it has
+ *  been written using GAM's software as starting point. Thus, it shares part of
+ *  GAM's source code.
+ *
+ *  GAM-NGS is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  GAM-NGS is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with GAM-NGS.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 #include <iostream>
 #include <exception>
 #include <boost/detail/container_fwd.hpp>
@@ -791,7 +821,7 @@ void PctgBuilder::alignMergeBlock( const CompactAssemblyGraph &graph, MergeBlock
 	}
 	else // bad alignment between blocks
 	{
-		mb.align_ok = false;		
+		mb.align_ok = false;
 		return;
 	}
 
@@ -815,16 +845,16 @@ void PctgBuilder::getNextContigs( const CompactAssemblyGraph &graph, CompactAsse
 {
     typedef CompactAssemblyGraph::Vertex Vertex;
     typedef CompactAssemblyGraph::OutEdgeIterator OutEdgeIterator;
-    
+
     OutEdgeIterator ebegin,eend;
     boost::tie(ebegin,eend) = boost::out_edges(v,graph);
-    
+
     int32_t mid = graph.getBlocks(v).front().getMasterId();
     int32_t sid = graph.getBlocks(v).front().getSlaveId();
-    
+
     masterCtgs.insert(mid);
     slaveCtgs.insert(sid);
-        
+
     for( OutEdgeIterator e = ebegin; e != eend; e++ )
     {
         Vertex v_next = boost::target(*e,graph);
@@ -836,16 +866,16 @@ void PctgBuilder::getPrevContigs( const CompactAssemblyGraph &graph, CompactAsse
 {
     typedef CompactAssemblyGraph::Vertex Vertex;
     typedef CompactAssemblyGraph::InEdgeIterator InEdgeIterator;
-    
+
     InEdgeIterator ebegin,eend;
     boost::tie(ebegin,eend) = boost::in_edges(v,graph);
-    
+
     int32_t mid = graph.getBlocks(v).front().getMasterId();
     int32_t sid = graph.getBlocks(v).front().getSlaveId();
-    
+
     masterCtgs.insert(mid);
     slaveCtgs.insert(sid);
-        
+
     for( InEdgeIterator e = ebegin; e != eend; e++ )
     {
         Vertex v_next = boost::source(*e,graph);
@@ -863,58 +893,58 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 	typedef CompactAssemblyGraph::EdgeIterator EdgeIterator;
 	typedef CompactAssemblyGraph::OutEdgeIterator OutEdgeIterator;
 	typedef CompactAssemblyGraph::InEdgeIterator InEdgeIterator;
-	
+
 	VertexIterator vbegin,vend;
 	EdgeIterator ebegin,eend;
-	
+
 	// merge-blocks initialization
 	boost::tie(vbegin,vend) = boost::vertices(graph);
 	for( VertexIterator v = vbegin; v != vend; v++ )
 	{
 		const std::list<Block> &blocks_list = graph.getBlocks(*v);
-		
+
 		mbv[*v].valid = true;
-		
+
 		mbv[*v].vertex = *v;
 		mbv[*v].m_id = blocks_list.front().getMasterId();
 		mbv[*v].s_id = blocks_list.front().getSlaveId();
-				
+
 		mbv[*v].ext_slave_next = true;
 		mbv[*v].ext_slave_prev = true;
-		
+
 		mbv[*v].m_ltail = true;
 		mbv[*v].m_rtail = true;
 		mbv[*v].s_ltail = true;
 		mbv[*v].s_rtail = true;
 	}
-	
+
 	// handle putative repeats (nodes with io degree >= 2)
 	boost::tie(vbegin,vend) = boost::vertices(graph);
-	for( VertexIterator v = vbegin; v != vend; v++ ) 
+	for( VertexIterator v = vbegin; v != vend; v++ )
 	{
 		int32_t in_deg = boost::in_degree(*v,graph);
 		int32_t out_deg = boost::out_degree(*v,graph);
-		
+
 		if( in_deg >= 2 && out_deg >= 2 )
 		{
 			mbv[*v].valid = false;
-			
+
 			Vertex mv1, mv2, sv1, sv2;
 			EdgeProperty edge_prop;
-			
+
 			double mw = 1.0;
 			double sw = 1.0;
-			
+
 			InEdgeIterator ie_begin,ie_end;
 			boost::tie(ie_begin,ie_end) = boost::in_edges(*v,graph);
-			
+
 			while( ie_begin != ie_end ) // remove input edges
 			{
 				edge_prop = boost::get(boost::edge_kind_t(), graph, *ie_begin);
-				
+
 				if( edge_prop.kind == MASTER_EDGE )
 				{
-					mv1 = boost::source(*ie_begin,graph); 
+					mv1 = boost::source(*ie_begin,graph);
 					mw = std::min(edge_prop.weight,mw);
 				}
 				else
@@ -922,44 +952,44 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 					sv1 = boost::source(*ie_begin,graph);
 					sw = std::min(edge_prop.weight,sw);
 				}
-				
+
 				boost::remove_edge( boost::source(*ie_begin,graph), *v, graph );
 				boost::tie(ie_begin,ie_end) = boost::in_edges(*v,graph);
 			}
-			
+
 			OutEdgeIterator oe_begin,oe_end;
 			boost::tie(oe_begin,oe_end) = boost::out_edges(*v,graph);
-			
+
 			while( oe_begin != oe_end ) // remove output edges
 			{
 				EdgeProperty edge_prop = boost::get(boost::edge_kind_t(), graph, *oe_begin);
 				if( edge_prop.kind == MASTER_EDGE )
 				{
-					mv2 = boost::target(*oe_begin,graph); 
+					mv2 = boost::target(*oe_begin,graph);
 					mw = std::min(edge_prop.weight,mw);
 				}
-				else 
+				else
 				{
 					sv2 = boost::target(*oe_begin,graph);
 					sw = std::min(edge_prop.weight,sw);
 				}
-				
+
 				boost::remove_edge( *v, boost::target(*oe_begin,graph), graph );
 				boost::tie(oe_begin,oe_end) = boost::out_edges(*v,graph);
 			}
-			
+
 			Edge e;
-			
+
 			edge_prop.kind = MASTER_EDGE; edge_prop.weight = mw;
 			e = boost::add_edge( mv1, mv2, graph ).first;
 			boost::put( boost::edge_kind_t(), graph, e, edge_prop );
-			
+
 			edge_prop.kind = SLAVE_EDGE; edge_prop.weight = sw;
 			e = boost::add_edge( sv1, sv2, graph ).first;
 			boost::put( boost::edge_kind_t(), graph, e, edge_prop );
 		}
 	}
-	
+
 	// handle bifurcations (putative mis-assemblies)
 	boost::tie(vbegin,vend) = boost::vertices(graph);
 	for( VertexIterator v = vbegin; v != vend; v++ )
@@ -967,29 +997,29 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 		const std::list<Block> &blocks_list = graph.getBlocks(*v);
 		int32_t masterStart = std::min( blocks_list.front().getMasterFrame().getBegin(), blocks_list.back().getMasterFrame().getBegin() );
 		int32_t slaveStart = std::min( blocks_list.front().getSlaveFrame().getBegin(), blocks_list.back().getSlaveFrame().getBegin() );
-		
+
 		int32_t in_deg = boost::in_degree(*v,graph);
 		int32_t out_deg = boost::out_degree(*v,graph);
-		
+
 		if( in_deg < 2 && out_deg < 2 ) continue;
-		
+
 		Vertex mv, sv, ov; // master/slave linked vertices
-		
+
 		if( in_deg == 2 )
 		{
 			InEdgeIterator ebegin,eend, me, se;
 			boost::tie(ebegin,eend) = boost::in_edges(*v,graph);
-			
+
 			double mw,sw;
 
 			for( InEdgeIterator e = ebegin; e != eend; e++ )
 			{
 				EdgeProperty edge_prop = boost::get(boost::edge_kind_t(), graph, *e);
-				
+
 				if( edge_prop.kind == MASTER_EDGE )
 				{
 					me = e;
-					mv = boost::source(*e,graph); 
+					mv = boost::source(*e,graph);
 					mw = edge_prop.weight;
 				}
 				else
@@ -999,14 +1029,14 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 					sw = edge_prop.weight;
 				}
 			}
-			
+
 			if( mw < 0 || sw < 0 ) continue;
-			
+
 			double w_diff = mw >= sw ? mw-sw : sw-mw;
 			ForkType fork_type = w_diff >= 0.8 ? (mw >= sw ? MIS_SLAVE : MIS_MASTER) : UNKNOWN;
-			
+
 			if( fork_type == UNKNOWN ) continue;
-			
+
 			const std::list<Block> &masterNextBlocks = graph.getBlocks(mv);
 			const std::list<Block> &slaveNextBlocks = graph.getBlocks(sv);
 
@@ -1037,18 +1067,18 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 				boost::remove_edge( *se, graph );
 			}
 		}
-		
+
 		if( out_deg == 2 )
 		{
 			OutEdgeIterator ebegin,eend, me, se;
 			boost::tie(ebegin,eend) = boost::out_edges(*v,graph);
-			
+
 			double mw,sw;
 
 			for( OutEdgeIterator e = ebegin; e != eend; e++ )
 			{
 				EdgeProperty edge_prop = boost::get(boost::edge_kind_t(), graph, *e); //EdgeKindType kind = boost::get(boost::edge_kind_t(), graph, *e);
-				
+
 				if( edge_prop.kind == MASTER_EDGE )
 				{
 					me = e;
@@ -1062,14 +1092,14 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 					sw = edge_prop.weight;
 				}
 			}
-			
+
 			if( mw < 0 || sw < 0 ) continue;
-			
+
 			double w_diff = mw >= sw ? mw-sw : sw-mw;
 			ForkType fork_type = w_diff >= 0.8 ? (mw >= sw ? MIS_SLAVE : MIS_MASTER) : UNKNOWN;
-			
+
 			if( fork_type == UNKNOWN ) continue;
-			
+
 			const std::list<Block> &masterNextBlocks = graph.getBlocks(mv);
 			const std::list<Block> &slaveNextBlocks = graph.getBlocks(sv);
 
@@ -1101,44 +1131,44 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 			}
 		}
 	}
-	
+
 	// discard graphs with bubbles
 	if( graph.hasBubbles() ) return false;
-	
+
 	// handle unsolvable bifurcations
 	boost::tie(vbegin,vend) = boost::vertices(graph);
-	for( VertexIterator v = vbegin; v != vend; v++ ) 
+	for( VertexIterator v = vbegin; v != vend; v++ )
 	{
 		const std::list<Block> &blocks_list = graph.getBlocks(*v);
 		const Block &firstBlock = blocks_list.front();
-		
+
 		int32_t masterStart = std::min( blocks_list.front().getMasterFrame().getBegin(), blocks_list.back().getMasterFrame().getBegin() );
 		int32_t slaveStart = std::min( blocks_list.front().getSlaveFrame().getBegin(), blocks_list.back().getSlaveFrame().getBegin() );
-		
+
 		int32_t in_deg = boost::in_degree(*v,graph);
 		int32_t out_deg = boost::out_degree(*v,graph);
-		
+
 		if( in_deg < 2 && out_deg < 2 ) continue;
-		
+
 		Vertex mv, sv, ov; // master/slave linked vertices
-		
+
 		if( in_deg == 2 )
 		{
 			OutEdgeIterator oe_begin, oe_end;
 			boost::tie(oe_begin,oe_end) = boost::out_edges(*v,graph);
 			if( oe_begin != oe_end ) ov = boost::target(*oe_begin,graph);
-			
+
 			InEdgeIterator ebegin,eend, me, se;
 			boost::tie(ebegin,eend) = boost::in_edges(*v,graph);
-			
+
 			for( InEdgeIterator e = ebegin; e != eend; e++ )
 			{
 				EdgeProperty edge_prop = boost::get(boost::edge_kind_t(), graph, *e); //EdgeKindType kind = boost::get(boost::edge_kind_t(), graph, *e);
-		
+
 				if( edge_prop.kind == MASTER_EDGE )
 				{
 					me = e;
-					mv = boost::source(*e,graph); 
+					mv = boost::source(*e,graph);
 				}
 				else
 				{
@@ -1146,20 +1176,20 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 					sv = boost::source(*e,graph);
 				}
 			}
-			
+
 			const std::list<Block> &masterNextBlocks = graph.getBlocks(mv);
 			const std::list<Block> &slaveNextBlocks = graph.getBlocks(sv);
-			
+
 			int32_t nextMasterStart = std::min( masterNextBlocks.front().getMasterFrame().getBegin(), masterNextBlocks.back().getMasterFrame().getBegin() );
 			int32_t nextSlaveStart = std::min( slaveNextBlocks.front().getSlaveFrame().getBegin(), slaveNextBlocks.back().getSlaveFrame().getBegin() );
-			
+
 			bool sharedFirstInMaster = masterStart <= nextMasterStart;
 			bool sharedFirstInSlave = slaveStart <= nextSlaveStart;
-			
+
 			if( oe_begin != oe_end )
 			{
 				EdgeProperty edge_prop = boost::get(boost::edge_kind_t(), graph, *oe_begin);
-				
+
 				if( edge_prop.kind == MASTER_EDGE )
 				{
 					mbv[*v].valid = false;
@@ -1169,13 +1199,13 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 				else // SLAVE_EDGE
 				{
 					mbv[*v].valid = false;
-					
-					if( sharedFirstInSlave ){ mbv[sv].s_ltail = false; mbv[ov].s_rtail = false; } 
+
+					if( sharedFirstInSlave ){ mbv[sv].s_ltail = false; mbv[ov].s_rtail = false; }
 					else{ mbv[sv].s_rtail = false; mbv[ov].s_ltail = false; }
-					
+
 					boost::remove_edge( mv, *v, graph );
 					boost::remove_edge( sv, *v, graph );
-				}   
+				}
 			}
 			else
 			{
@@ -1184,24 +1214,24 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 				boost::remove_edge( *se, graph );
 			}
 		}
-		
+
 		if( out_deg == 2 )
 		{
 			InEdgeIterator ie_begin, ie_end;
 			boost::tie(ie_begin,ie_end) = boost::in_edges(*v,graph);
 			if( ie_begin != ie_end ) ov = boost::source(*ie_begin,graph);
-			
+
 			OutEdgeIterator ebegin,eend, me, se;
 			boost::tie(ebegin,eend) = boost::out_edges(*v,graph);
-			
+
 			for( OutEdgeIterator e = ebegin; e != eend; e++ )
 			{
 				EdgeProperty edge_prop = boost::get(boost::edge_kind_t(), graph, *e);
-		
+
 				if( edge_prop.kind == MASTER_EDGE )
 				{
 					me = e;
-					mv = boost::target(*e,graph); 
+					mv = boost::target(*e,graph);
 				}
 				else
 				{
@@ -1209,20 +1239,20 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 					sv = boost::target(*e,graph);
 				}
 			}
-			
+
 			const std::list<Block> &masterNextBlocks = graph.getBlocks(mv);
 			const std::list<Block> &slaveNextBlocks = graph.getBlocks(sv);
-			
+
 			int32_t nextMasterStart = std::min( masterNextBlocks.front().getMasterFrame().getBegin(), masterNextBlocks.back().getMasterFrame().getBegin() );
 			int32_t nextSlaveStart = std::min( slaveNextBlocks.front().getSlaveFrame().getBegin(), slaveNextBlocks.back().getSlaveFrame().getBegin() );
-			
+
 			bool sharedFirstInMaster = masterStart <= nextMasterStart;
 			bool sharedFirstInSlave = slaveStart <= nextSlaveStart;
-			
+
 			if( ie_begin != ie_end )
 			{
 				EdgeProperty edge_prop = boost::get(boost::edge_kind_t(), graph, *ie_begin);
-				
+
 				if( edge_prop.kind == MASTER_EDGE )
 				{
 					mbv[*v].valid = false;
@@ -1232,13 +1262,13 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 				else // SLAVE_EDGE
 				{
 					mbv[*v].valid = false;
-					
-					if( sharedFirstInSlave ){ mbv[sv].s_ltail = false; mbv[ov].s_rtail = false; } 
+
+					if( sharedFirstInSlave ){ mbv[sv].s_ltail = false; mbv[ov].s_rtail = false; }
 					else{ mbv[sv].s_rtail = false; mbv[ov].s_ltail = false; }
-					
+
 					boost::remove_edge( *v, mv, graph );
 					boost::remove_edge( *v, sv, graph );
-				}   
+				}
 			}
 			else
 			{
@@ -1248,7 +1278,7 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 			}
 		}
 	}
-	
+
 	return true;
 }
 
@@ -1312,7 +1342,7 @@ bool PctgBuilder::getMergePaths(const CompactAssemblyGraph &graph, CompactAssemb
 
         return this->getMergePaths(graph, v_nxt, mbv, merge_paths);
     }
-    
+
     return false;
 }
 
@@ -1380,7 +1410,7 @@ void PctgBuilder::findBestAlignment(
 	{
 		// align each block
 		this->alignBlocks( masterCtg, masterStart, slaveCtg, slaveStart, blocks_list, aligns );
-		
+
 		// DEBUG
 		/*for( size_t i=0; i < aligns.size(); i++ )
 		{
@@ -1430,7 +1460,7 @@ void PctgBuilder::findBestAlignment(
 
 		// new alignments (one for each block)
 		this->alignBlocks( masterCtg, masterStart, slaveCtg, slaveStart, blocks_list, aligns );
-		
+
 		// DEBUG
 		/*for( size_t i=0; i < aligns.size(); i++ )
 		{

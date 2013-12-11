@@ -1,3 +1,33 @@
+/*
+ *  This file is part of GAM-NGS.
+ *  Copyright (c) 2011 by Riccardo Vicedomini <rvicedomini@appliedgenomics.org>,
+ *  Francesco Vezzi <vezzi@appliedgenomics.org>,
+ *  Simone Scalabrin <scalabrin@appliedgenomics.org>,
+ *  Lars Arverstad <lars.arvestad@scilifelab.se>,
+ *  Alberto Policriti <policriti@appliedgenomics.org>,
+ *  Alberto Casagrande <casagrande@appliedgenomics.org>
+ *
+ *  GAM-NGS is an evolution of a previous work (GAM) done by Alberto Casagrande,
+ *  Cristian Del Fabbro, Simone Scalabrin, and Alberto Policriti.
+ *  In particular, GAM-NGS has been adapted to work on NGS data sets and it has
+ *  been written using GAM's software as starting point. Thus, it shares part of
+ *  GAM's source code.
+ *
+ *  GAM-NGS is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  GAM-NGS is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with GAM-NGS.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 #include "UtilityFunctions.hpp"
 
 char * getPathBaseName( char *path )
@@ -145,24 +175,24 @@ void mem_usage( double& vm_usage, double& resident_set )
 {
 	vm_usage     = 0.0;
 	resident_set = 0.0;
-	
+
 	std::ifstream stat_stream( "/proc/self/stat", std::ios_base::in );
-	
+
 	// dummy vars for leading entries in stat that we don't care about
 	std::string pid, comm, state, ppid, pgrp, session, tty_nr;
 	std::string tpgid, flags, minflt, cminflt, majflt, cmajflt;
 	std::string utime, stime, cutime, cstime, priority, nice;
 	std::string O, itrealvalue, starttime;
-	
+
 	// the two needed fields
 	unsigned long vsize;
 	long rss;
-	
+
 	stat_stream >> pid >> comm >> state >> ppid >> pgrp >> session >> tty_nr
 	>> tpgid >> flags >> minflt >> cminflt >> majflt >> cmajflt
 	>> utime >> stime >> cutime >> cstime >> priority >> nice
 	>> O >> itrealvalue >> starttime >> vsize >> rss; // don't care about the rest
-	
+
 	long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024; // in case x86-64 is configured to use 2MB pages
 	vm_usage     = vsize / 1024.0;
 	resident_set = rss * page_size_kb;
@@ -173,23 +203,23 @@ void print_mem_usage()
 {
 	double vm_usage, rss_usage;
 	mem_usage(vm_usage, rss_usage);
-	
+
 	std::string vm_suff = "KB", rss_suff = "KB";
-	
+
 	if( vm_usage > 1024 ) // possibly compute memory usage in MB or GB
 	{
 		vm_usage = vm_usage / 1024;
 		if( vm_usage <= 1024 ) vm_suff = "MB";
 		if( vm_usage > 1024 ){ vm_usage = vm_usage / 1024; vm_suff = "GB"; }
 	}
-	
+
 	if( rss_usage > 1024 ) // possibly compute memory usage in MB or GB
 	{
 		rss_usage = rss_usage / 1024;
 		if( rss_usage <= 1024 ) rss_suff = "MB";
 		if( rss_usage > 1024 ){ rss_usage = rss_usage / 1024; rss_suff = "GB"; }
 	}
-	
+
 	std::cerr << "[print_mem_usage] vm = " << vm_usage << vm_suff << "; rss = " << rss_usage << rss_suff << std::endl;
 }
 

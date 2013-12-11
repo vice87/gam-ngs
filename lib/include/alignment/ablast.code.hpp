@@ -1,3 +1,33 @@
+/*
+ *  This file is part of GAM-NGS.
+ *  Copyright (c) 2011 by Riccardo Vicedomini <rvicedomini@appliedgenomics.org>,
+ *  Francesco Vezzi <vezzi@appliedgenomics.org>,
+ *  Simone Scalabrin <scalabrin@appliedgenomics.org>,
+ *  Lars Arverstad <lars.arvestad@scilifelab.se>,
+ *  Alberto Policriti <policriti@appliedgenomics.org>,
+ *  Alberto Casagrande <casagrande@appliedgenomics.org>
+ *
+ *  GAM-NGS is an evolution of a previous work (GAM) done by Alberto Casagrande,
+ *  Cristian Del Fabbro, Simone Scalabrin, and Alberto Policriti.
+ *  In particular, GAM-NGS has been adapted to work on NGS data sets and it has
+ *  been written using GAM's software as starting point. Thus, it shares part of
+ *  GAM's source code.
+ *
+ *  GAM-NGS is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  GAM-NGS is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with GAM-NGS.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 #ifndef _ABLAST_CODE_
 #define _ABLAST_CODE_
 
@@ -8,7 +38,7 @@
 #include "alignment/ablast.hpp"
 #include "alignment/smith_waterman.hpp"
 
-typedef std::map<ABlast::size_type, 
+typedef std::map<ABlast::size_type,
                  std::list<ABlast::size_type> > HashType;
 
 typedef std::vector< std::pair<ABlast::size_type,
@@ -21,31 +51,31 @@ ABlast::ABlast(const ABlast::size_type& max_a_gaps,
                   Aligner(max_a_gaps,max_b_gaps),
                   _word_size(DEFAULT_WORD_SIZE) {}
 
-ABlast::ABlast(const ScoreType& gap_score,    
+ABlast::ABlast(const ScoreType& gap_score,
                const ABlast::size_type& max_a_gaps,
                const ABlast::size_type& max_b_gaps):
                      Aligner(gap_score,max_a_gaps,max_b_gaps),
                      _word_size(DEFAULT_WORD_SIZE) {}
 
-ABlast::ABlast(const ABlast::size_type& max_alignment): 
+ABlast::ABlast(const ABlast::size_type& max_alignment):
                   Aligner(max_alignment),
                   _word_size(DEFAULT_WORD_SIZE) {}
 
-ABlast::ABlast(const ABlast::size_type& max_alignment, 
+ABlast::ABlast(const ABlast::size_type& max_alignment,
        const ABlast::size_type& max_a_gaps,
        const ABlast::size_type& max_b_gaps):
                   Aligner(max_alignment,max_a_gaps,max_b_gaps),
                   _word_size(DEFAULT_WORD_SIZE) {}
 
-ABlast::ABlast(const ABlast::size_type& max_alignment, 
-       const ScoreType& gap_score,    
+ABlast::ABlast(const ABlast::size_type& max_alignment,
+       const ScoreType& gap_score,
        const ABlast::size_type& max_a_gaps,
        const ABlast::size_type& max_b_gaps):
                   Aligner(max_alignment,gap_score,max_a_gaps,max_b_gaps),
                   _word_size(DEFAULT_WORD_SIZE) {}
 
 const ABlast::size_type&
-ABlast::word_size() const 
+ABlast::word_size() const
 {
   return _word_size;
 }
@@ -67,12 +97,12 @@ extended_word_size(const ABlast::size_type& word_size)
 
 inline
 ABlast::size_type
-sequence_code(const Contig& a, 
+sequence_code(const Contig& a,
               const ABlast::size_type& begin_pos,
               const ABlast::size_type& word_size)
 {
   ABlast::size_type code=0;
-  
+
   for (ABlast::size_type i=begin_pos; i<begin_pos+word_size; i++) {
     code=((LAST_BASE-1)*code)+(a.at(i)).base();
   }
@@ -82,7 +112,7 @@ sequence_code(const Contig& a,
 
 inline
 HashType
-build_hash(const Contig& a, const ABlast::size_type& word_size) 
+build_hash(const Contig& a, const ABlast::size_type& word_size)
 {
   HashType a_hash;
 
@@ -95,10 +125,10 @@ build_hash(const Contig& a, const ABlast::size_type& word_size)
 
 inline
 const FoundVectorType&
-mark_found(FoundVectorType& f_vector, 
-           ABlast::size_type idx_a, const ABlast::size_type& idx_b, 
-                       const ABlast::size_type& size_b, 
-                       const ABlast::size_type& word_size) 
+mark_found(FoundVectorType& f_vector,
+           ABlast::size_type idx_a, const ABlast::size_type& idx_b,
+                       const ABlast::size_type& size_b,
+                       const ABlast::size_type& word_size)
 {
 
   ABlast::size_type min=idx_a-idx_b+size_b;
@@ -115,15 +145,15 @@ mark_found(FoundVectorType& f_vector,
 
 inline
 const FoundVectorType&
-mark_found(FoundVectorType& f_vector, 
+mark_found(FoundVectorType& f_vector,
            const std::list<ABlast::size_type>& idx_a_list,
            const ABlast::size_type& idx_b,
-           const ABlast::size_type& size_b, 
-           const ABlast::size_type& word_size) 
+           const ABlast::size_type& size_b,
+           const ABlast::size_type& word_size)
 {
-  for (std::list<ABlast::size_type>::const_iterator 
+  for (std::list<ABlast::size_type>::const_iterator
                                  it=idx_a_list.begin();
-                                 it!=idx_a_list.end(); 
+                                 it!=idx_a_list.end();
                                                 it++) {
     mark_found(f_vector,*it,idx_b,size_b,word_size);
   }
@@ -134,7 +164,7 @@ mark_found(FoundVectorType& f_vector,
 inline
 FoundVectorType
 build_corrispondences_vector(
-                  const Contig& a, const Contig& b, 
+                  const Contig& a, const Contig& b,
                    const ABlast::size_type& word_size)
 {
   HashType a_hash=build_hash(a,word_size);
@@ -155,7 +185,7 @@ build_corrispondences_vector(
 }
 
 Alignment
-ABlast::apply(const Contig& a, const Contig& b, 
+ABlast::apply(const Contig& a, const Contig& b,
                                const bool& b_rev) const
 {
   std::vector< std::pair<size_type,size_type> >f_vector=
@@ -173,7 +203,7 @@ ABlast::apply(const Contig& a, const Contig& b,
   size_type begin_a=std::max((long unsigned int)0,max_begin+begin_b-b.size());
 
   SmithWaterman sw(_gap_score,extended_word_size(_word_size),
-                           extended_word_size(_word_size)); 
+                           extended_word_size(_word_size));
 
   return sw.apply(a, begin_a+1, b, begin_b+1, b_rev);
 }
@@ -181,7 +211,7 @@ ABlast::apply(const Contig& a, const Contig& b,
 Alignment
 ABlast::apply(const Contig& a, const Contig& b) const
 {
-  Alignment align(apply(a,b,false)), 
+  Alignment align(apply(a,b,false)),
             align_r(apply(a,reverse_complement(b),true));
 
   if (align.score()>align_r.score()) {
@@ -192,10 +222,10 @@ ABlast::apply(const Contig& a, const Contig& b) const
 }
 
 Alignment
-ABlast::find_alignment(const Contig& a, const size_type& begin_a, 
+ABlast::find_alignment(const Contig& a, const size_type& begin_a,
                     const Contig& b, const size_type& begin_b) const
 {
-  return apply(a, b,false); 
+  return apply(a, b,false);
 }
 
-#endif // _ABLAST_CODE_   
+#endif // _ABLAST_CODE_

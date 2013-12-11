@@ -1,22 +1,30 @@
 /*
- *  This file is part of rNA.
- *  Copyright (c) 2011 by Cristian Del Fabbro <delfabbro@appliedgenomics.org>,
+ *  This file is part of GAM-NGS.
+ *  Copyright (c) 2011 by Riccardo Vicedomini <rvicedomini@appliedgenomics.org>,
  *  Francesco Vezzi <vezzi@appliedgenomics.org>,
- *  Alexandru Tomescu <alexandru.tomescu@uniud.it>, and
- *  Alberto Policriti <policriti@uniud.it>
+ *  Simone Scalabrin <scalabrin@appliedgenomics.org>,
+ *  Lars Arverstad <lars.arvestad@scilifelab.se>,
+ *  Alberto Policriti <policriti@appliedgenomics.org>,
+ *  Alberto Casagrande <casagrande@appliedgenomics.org>
  *
- *   rNA is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
-
- *   rNA is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
-
- *   You should have received a copy of the GNU General Public License
- *   along with rNA.  If not, see <http://www.gnu.org/licenses/>.
+ *  GAM-NGS is an evolution of a previous work (GAM) done by Alberto Casagrande,
+ *  Cristian Del Fabbro, Simone Scalabrin, and Alberto Policriti.
+ *  In particular, GAM-NGS has been adapted to work on NGS data sets and it has
+ *  been written using GAM's software as starting point. Thus, it shares part of
+ *  GAM's source code.
+ *
+ *  GAM-NGS is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  GAM-NGS is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with GAM-NGS.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -41,7 +49,7 @@ bool OptionsMerge::process(int argc, char *argv[])
 		// commands
 		("help", "produce this help message\n")
 		//("version", "print version and exit")
-		
+
 		// input
 		("master-bam", po::value< std::string >(), "coordinate-sorted PE alignments of the master assembly")
 		("slave-bam", po::value< std::string >(), "coordinate-sorted PE alignments of the slave assembly")
@@ -60,7 +68,7 @@ bool OptionsMerge::process(int argc, char *argv[])
 		("min-block-size", po::value<int>(), "minimum number of reads of blocks to be loaded (optional) [default=5]")
 		("threads", po::value<int>(), "number of threads (optional) [default=1]")
 		("coverage-filter", po::value<double>(), "coverage filter threshold (optional) [default=0.75]")
-		
+
 		("output-graphs", "output graphs in gam_graphs sub-folder (debug)")
 
 		// output
@@ -77,7 +85,7 @@ bool OptionsMerge::process(int argc, char *argv[])
 		exit(2);
 	}
 
-	if (vm.count("help")) 
+	if (vm.count("help"))
 	{
 		std::cout << desc << std::endl;
 		std::cout << "Updated sources and documentation can be found at http://github.com/vice87/gam-ngs\n" << std::endl;
@@ -101,17 +109,17 @@ bool OptionsMerge::process(int argc, char *argv[])
 	{
 		masterBamFile = vm["master-bam"].as< std::string >();
 		slaveBamFile = vm["slave-bam"].as< std::string >();
-		
+
 		masterISizeFile = masterBamFile + ".isize";
 		slaveISizeFile = slaveBamFile + ".isize";
-		
+
 		// Check for master bam file existence */
 		if( stat(masterBamFile.c_str(),&st) != 0 )
 		{
 			std::cerr << "Master's PE-alignments file " << masterBamFile << " does not exist." << std::endl;
 			exit(1);
 		}
-		
+
 		// Check for slave bam files existence */
 		if( stat(slaveBamFile.c_str(),&st) != 0 )
 		{
@@ -119,8 +127,8 @@ bool OptionsMerge::process(int argc, char *argv[])
 			exit(1);
 		}
 	}
-	
-	if( vm.count("master-mp-bam") || vm.count("slave-mp-bam") ) 
+
+	if( vm.count("master-mp-bam") || vm.count("slave-mp-bam") )
 	{
 		// both the parameters have to be given, or none of them
 		if( not( vm.count("master-mp-bam") and vm.count("slave-mp-bam") ) )
@@ -129,29 +137,29 @@ bool OptionsMerge::process(int argc, char *argv[])
 			std::cerr << "Try \"--help\" for help" << std::endl;
 			exit(1);
 		}
-		
+
 		masterMpBamFile = vm["master-mp-bam"].as< std::string >();
 		slaveMpBamFile = vm["slave-mp-bam"].as< std::string >();
-		
+
 		// Check for master MP alignments file existence */
 		if( stat(masterMpBamFile.c_str(),&st) != 0 )
 		{
 			std::cerr << "Master's MP-alignments file " << masterMpBamFile << " does not exist." << std::endl;
 			exit(1);
 		}
-		
+
 		// Check for slave MP alignments file existence */
 		if( stat(slaveMpBamFile.c_str(),&st) != 0 )
 		{
 			std::cerr << "Slave's MP-aligments file " << slaveMpBamFile << " does not exist." << std::endl;
 			exit(1);
 		}
-		
+
 		if( masterMpBamFile != "" ) masterMpISizeFile = masterMpBamFile + ".isize";
 		if( slaveMpBamFile != "" ) slaveMpISizeFile = slaveMpBamFile + ".isize";
 	}
-	
-	
+
+
 	if( not( vm.count("blocks-file") ) )
 	{
 		std::cerr << "--blocks-file parameter is mandatory." << std::endl;
@@ -161,7 +169,7 @@ bool OptionsMerge::process(int argc, char *argv[])
 	else
 	{
 		blocksFile = vm["blocks-file"].as< std::string >();
-		
+
 		// Check for blocks file existence */
 		if( stat(blocksFile.c_str(),&st) != 0 )
 		{
@@ -169,8 +177,8 @@ bool OptionsMerge::process(int argc, char *argv[])
 			exit(1);
 		}
 	}
-	
-	
+
+
 	if( not( vm.count("master-fasta") and vm.count("slave-fasta") ) )
 	{
 		std::cerr << "Both --master-fasta and --slave-fasta parameters are mandatory." << std::endl;
@@ -181,14 +189,14 @@ bool OptionsMerge::process(int argc, char *argv[])
 	{
 		masterFastaFile = vm["master-fasta"].as< std::string >();
 		slaveFastaFile = vm["slave-fasta"].as< std::string >();
-		
+
 		// Check for master fasta file existence //
 		if( stat(masterFastaFile.c_str(),&st) != 0 )
 		{
 			std::cerr << "Master-assembly's fasta file " << masterFastaFile << " does not exist." << std::endl;
 			exit(1);
 		}
-		
+
 		// Check for slave fasta files existence //
 		if( stat( slaveFastaFile.c_str(),&st) != 0 )
 		{
@@ -196,8 +204,8 @@ bool OptionsMerge::process(int argc, char *argv[])
 			exit(1);
 		}
 	}
-	
-	
+
+
 	if( vm.count("min-block-size") )
 	{
 		minBlockSize = vm["min-block-size"].as<int>();
@@ -207,33 +215,33 @@ bool OptionsMerge::process(int argc, char *argv[])
 	{
 		minBlockSize = 5;
 	}
-	
-	
+
+
 	if( vm.count("threads") )
 	{
 		threadsNum = vm["threads"].as<int>();
 		if( threadsNum < 1 ) threadsNum = 1;
 	}
-	
-	
+
+
 	if( vm.count("coverage-filter") )
 	{
 		if( coverageThreshold >= 0 ) coverageThreshold = vm["coverage-filter"].as<double>();
 	}
-	
-	
+
+
 	if( vm.count("output-graphs") )
 	{
 		outputGraphs = true;
 	}
-	
-	
+
+
 	if( vm.count("output") )
 	{
 		outputFilePrefix = vm["output"].as< std::string >();
 	}
 
-	
+
 	return true;
 }
 

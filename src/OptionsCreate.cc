@@ -1,22 +1,30 @@
 /*
- *  This file is part of rNA.
- *  Copyright (c) 2011 by Cristian Del Fabbro <delfabbro@appliedgenomics.org>,
+ *  This file is part of GAM-NGS.
+ *  Copyright (c) 2011 by Riccardo Vicedomini <rvicedomini@appliedgenomics.org>,
  *  Francesco Vezzi <vezzi@appliedgenomics.org>,
- *  Alexandru Tomescu <alexandru.tomescu@uniud.it>, and
- *  Alberto Policriti <policriti@uniud.it>
+ *  Simone Scalabrin <scalabrin@appliedgenomics.org>,
+ *  Lars Arverstad <lars.arvestad@scilifelab.se>,
+ *  Alberto Policriti <policriti@appliedgenomics.org>,
+ *  Alberto Casagrande <casagrande@appliedgenomics.org>
  *
- *   rNA is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
-
- *   rNA is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
-
- *   You should have received a copy of the GNU General Public License
- *   along with rNA.  If not, see <http://www.gnu.org/licenses/>.
+ *  GAM-NGS is an evolution of a previous work (GAM) done by Alberto Casagrande,
+ *  Cristian Del Fabbro, Simone Scalabrin, and Alberto Policriti.
+ *  In particular, GAM-NGS has been adapted to work on NGS data sets and it has
+ *  been written using GAM's software as starting point. Thus, it shares part of
+ *  GAM's source code.
+ *
+ *  GAM-NGS is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  GAM-NGS is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with GAM-NGS.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -44,7 +52,7 @@ bool OptionsCreate::process(int argc, char *argv[])
 		// input
 		("master-bam", po::value< std::string >(), "coordinate-sorted PE alignments of the master assembly")
 		("slave-bam", po::value< std::string >(), "coordinate-sorted PE alignments of the slave assembly")
-		
+
 		//("master-namesorted-bam", po::value< std::string >(), "name sorted BAM file of the master assembly")
 		//("slave-namesorted-bam", po::value< std::string >(), "name sorted BAM file of the slave assembly")
 
@@ -65,7 +73,7 @@ bool OptionsCreate::process(int argc, char *argv[])
 		exit(2);
 	}
 
-	if (vm.count("help")) 
+	if (vm.count("help"))
 	{
 		std::cout << desc << std::endl;
 		std::cout << "Updated sources and documentation can be found at http://github.com/vice87/gam-ngs\n" << std::endl;
@@ -102,7 +110,7 @@ bool OptionsCreate::process(int argc, char *argv[])
 		std::cerr << "Slave BAM file " << slaveBamFile << " does not exist" << std::endl;
 		exit(1);
 	}
-	
+
 	if( vm.count("min-block-size") )
 	{
 		minBlockSize = vm["min-block-size"].as<int>();

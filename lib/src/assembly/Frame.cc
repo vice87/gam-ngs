@@ -1,8 +1,31 @@
 /*
- * File:   Frame.cc
- * Author: Riccardo Vicedomini
+ *  This file is part of GAM-NGS.
+ *  Copyright (c) 2011 by Riccardo Vicedomini <rvicedomini@appliedgenomics.org>,
+ *  Francesco Vezzi <vezzi@appliedgenomics.org>,
+ *  Simone Scalabrin <scalabrin@appliedgenomics.org>,
+ *  Lars Arverstad <lars.arvestad@scilifelab.se>,
+ *  Alberto Policriti <policriti@appliedgenomics.org>,
+ *  Alberto Casagrande <casagrande@appliedgenomics.org>
  *
- * Created on 22 maggio 2011, 17.40
+ *  GAM-NGS is an evolution of a previous work (GAM) done by Alberto Casagrande,
+ *  Cristian Del Fabbro, Simone Scalabrin, and Alberto Policriti.
+ *  In particular, GAM-NGS has been adapted to work on NGS data sets and it has
+ *  been written using GAM's software as starting point. Thus, it shares part of
+ *  GAM's source code.
+ *
+ *  GAM-NGS is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  GAM-NGS is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with GAM-NGS.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 #include <cstdlib>
@@ -120,7 +143,7 @@ bool Frame::frameOverlap( const Frame& a, const Frame& b, double minOverlap )
     if( a.getContigId() != b.getContigId() ) return false;
 
 	int32_t end = std::min( a.getEnd(), b.getEnd() );
-	
+
     if( a.getBegin() <= b.getBegin() )
     {
         double overlap = (a.getEnd()>=b.getBegin()) ? (100.0 * (double)(end - b.getBegin() + 1) / b.getLength()) : 0.0;

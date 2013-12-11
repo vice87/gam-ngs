@@ -1,3 +1,33 @@
+/*
+ *  This file is part of GAM-NGS.
+ *  Copyright (c) 2011 by Riccardo Vicedomini <rvicedomini@appliedgenomics.org>,
+ *  Francesco Vezzi <vezzi@appliedgenomics.org>,
+ *  Simone Scalabrin <scalabrin@appliedgenomics.org>,
+ *  Lars Arverstad <lars.arvestad@scilifelab.se>,
+ *  Alberto Policriti <policriti@appliedgenomics.org>,
+ *  Alberto Casagrande <casagrande@appliedgenomics.org>
+ *
+ *  GAM-NGS is an evolution of a previous work (GAM) done by Alberto Casagrande,
+ *  Cristian Del Fabbro, Simone Scalabrin, and Alberto Policriti.
+ *  In particular, GAM-NGS has been adapted to work on NGS data sets and it has
+ *  been written using GAM's software as starting point. Thus, it shares part of
+ *  GAM's source code.
+ *
+ *  GAM-NGS is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  GAM-NGS is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with GAM-NGS.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -28,7 +58,7 @@ MultiBamReader::~MultiBamReader()
 bool MultiBamReader::Open( const std::vector< std::string > &filenames )
 {
 	if(_is_open) this->Close();
-	
+
 	size_t bams = filenames.size();
 	if( bams == 0 ) return false;
 
@@ -44,7 +74,7 @@ bool MultiBamReader::Open( const std::vector< std::string > &filenames )
 	_isize_mean.resize( bams, 0 );
 	_isize_std.resize( bams, 0 );
 	_isize_count.resize( bams, 1 );
-	
+
 	_reads_len.resize( bams, 0 );
 	_coverage.resize( bams, 0 );
 
@@ -64,7 +94,7 @@ bool MultiBamReader::Open( const std::vector< std::string > &filenames )
 		else // if bam file opened successfully
 		{
 			index_filename = filenames[i] + ".bai";
-			
+
 			if( not _bam_readers[i]->OpenIndex( index_filename ) )
 			{
 				opened = false;
@@ -72,10 +102,10 @@ bool MultiBamReader::Open( const std::vector< std::string > &filenames )
 				std::cerr << "[bam] ERROR: unable to open BAM index file:\n" << index_filename << std::endl;
 			}
 		}
-		
+
 		pthread_mutex_init( &(this->_bam_mutex[i]), NULL );
 	}
-	
+
 	if(!opened) exit(EXIT_FAILURE); else _is_open = true;
 
 	// initialization of min/max inserts sizes
@@ -84,7 +114,7 @@ bool MultiBamReader::Open( const std::vector< std::string > &filenames )
 
 	// load first alignment from each bam file
 	for( size_t i=0; i < bams; i++ ) _valid_aligns[i] = _bam_readers[i]->GetNextAlignment( _bam_aligns[i] );
-	
+
 	// compute assembly size
 	_asm_size = 0;
 	const RefVector& ref_data = _bam_readers[0]->GetReferenceData();
@@ -106,11 +136,11 @@ void MultiBamReader::Close()
 	if( _is_open )
 	{
 		for( size_t i=0; i < _bam_readers.size(); i++ )
-		{ 
-			_bam_readers[i]->Close(); 
-			delete _bam_readers[i]; 
+		{
+			_bam_readers[i]->Close();
+			delete _bam_readers[i];
 		}
-		
+
 		_is_open = false;
 	}
 }
@@ -179,7 +209,7 @@ double MultiBamReader::getMeanCoverage()
 {
     double mean_coverage = 0;
     for( size_t i=0; i < _coverage.size(); i++ ) mean_coverage += _coverage[i];
-    
+
 	return (mean_coverage / _coverage.size());
 }
 
@@ -188,7 +218,7 @@ double MultiBamReader::getGlobCoverage()
 {
     double glob_coverage = 0;
     for( size_t i=0; i < _coverage.size(); i++ ) glob_coverage += _coverage[i];
-    
+
 	return glob_coverage;
 }
 
@@ -214,7 +244,7 @@ bool MultiBamReader::Rewind()
 	{
 		if( not _bam_readers[i]->Rewind() )
 		{
-			ret = false; 
+			ret = false;
 		}
 		else
 		{
@@ -312,12 +342,12 @@ bool MultiBamReader::GetNextAlignment( BamAlignment &align, bool update_stats )
 	{
 		// load the read following the one extracted
 		_valid_aligns[libId] = _bam_readers[libId]->GetNextAlignment( _bam_aligns[libId] );
-		
+
 		if( update_stats && align.IsMapped() && !align.IsDuplicate() && align.IsPrimaryAlignment() && !align.IsFailedQC() )
 		{
 			_reads_len[libId] += (align.GetEndPosition() - align.Position);
 		}
-		
+
 		// if needed, update statistics only if the read extracted has good quality and its mate is mapped on the same contig
 		if( update_stats && align.IsMapped() && !align.IsDuplicate() && align.IsPrimaryAlignment() && !align.IsFailedQC() &&
 			align.IsPaired() && align.IsFirstMate() && align.IsMateMapped() && align.RefID == align.MateRefID )
@@ -384,7 +414,7 @@ bool MultiBamReader::GetNextAlignment( BamAlignment &align, bool update_stats )
 	{
 		// if needed, compute standard deviation
 		if( update_stats )
-		{ 
+		{
 			for( size_t i=0; i < _isize_std.size(); i++ )
 			{
 				_isize_std[i] = sqrt( _isize_std[i] / double(_isize_count[i]) );
@@ -400,43 +430,43 @@ bool MultiBamReader::GetNextAlignment( BamAlignment &align, bool update_stats )
 bool MultiBamReader::computeStatistics()
 {
 	if( this->size() == 0 ) return false;
-	
+
 	BamAlignment align;
-	
+
 	// for each library compute its statistics
 	for( size_t libId=0; libId < _bam_readers.size(); libId++ )
 	{
 		// rewind current library
 		_bam_readers[libId]->Rewind();
-		
+
 		this->_isize_mean[libId] = 0;
 		this->_isize_std[libId] = 0;
 		this->_isize_count[libId] = 1;
-		
+
 		this->_reads_len[libId] = 0;
-		
+
 		while( _bam_readers[libId]->GetNextAlignmentCore(align) )
 		{
 			// skip unmapped or bad-quality reads
 			if( !align.IsMapped() || align.Position < 0 || align.IsDuplicate() || !align.IsPrimaryAlignment() || align.IsFailedQC() ) continue;
-			
+
 			int32_t alignmentLength = align.GetEndPosition() - align.Position;
 			int32_t startRead = align.Position;
 			int32_t startMate = align.MatePosition;
-			
+
 			// update reads' length
 			this->_reads_len[libId] += alignmentLength;
-			
+
 			// update insert statistics only if the read extracted has its mate mapped on the same contig
 			if( align.IsFirstMate() && align.IsMateMapped() && align.RefID == align.MateRefID )
 			{
 				int32_t iSize;
-				
+
 				if( startRead < startMate )
 				{
 					iSize = (startMate + align.Length) - startRead;
 					if( iSize < _minInsert[libId] || iSize > _maxInsert[libId] ) continue;
-					
+
 					// if the read and its mate are properly oriented update mean and std
 					if( !align.IsReverseStrand() && align.IsMateReverseStrand() )
 					{
@@ -450,7 +480,7 @@ bool MultiBamReader::computeStatistics()
 						{
 							double oldMean = _isize_mean[libId];
 							double oldStd = _isize_std[libId];
-							
+
 							_isize_mean[libId] = oldMean + (iSize - oldMean)/double(_isize_count[libId]);
 							_isize_std[libId] = oldStd + (_isize_count[libId]-1)*(iSize - oldMean)*(iSize - oldMean)/double(_isize_count[libId]);
 							_isize_count[libId]++;
@@ -461,7 +491,7 @@ bool MultiBamReader::computeStatistics()
 				{
 					iSize = (startRead + alignmentLength) - startMate;
 					if( iSize < _minInsert[libId] || iSize > _maxInsert[libId] ) continue;
-					
+
 					// if the read and its mate are properly oriented update mean and std
 					if( align.IsReverseStrand() && !align.IsMateReverseStrand() )
 					{
@@ -475,7 +505,7 @@ bool MultiBamReader::computeStatistics()
 						{
 							double oldMean = _isize_mean[libId];
 							double oldStd = _isize_std[libId];
-							
+
 							_isize_mean[libId] = oldMean + (iSize - oldMean)/double(_isize_count[libId]);
 							_isize_std[libId] = oldStd + (_isize_count[libId]-1)*(iSize - oldMean)*(iSize - oldMean)/double(_isize_count[libId]);
 							_isize_count[libId]++;
@@ -484,17 +514,17 @@ bool MultiBamReader::computeStatistics()
 				}
 			}
 		}
-		
+
 		// compute standard deviation
 		this->_isize_std[libId] = sqrt( _isize_std[libId] / double(_isize_count[libId]) );
-		
+
 		// compute library's mean coverage
 		this->_coverage[libId] = (this->_asm_size != 0) ? this->_reads_len[libId] / ((double)this->_asm_size) : 0.0;
 	}
-	
+
 	// rewind all the libraries
 	this->Rewind();
-	
+
 	return true;
 }
 
@@ -535,7 +565,7 @@ uint32_t MultiBamReader::readStatsFromFile( const std::string &filename )
 			std::cerr << "[bam] Error loading libraries statistics file (corresponding BAM file not found).\n      " << bamfile << std::endl;
 			return idx;
 		}
-		
+
 		_isize_mean[idx] = _isize_std[idx] = _coverage[idx] = 0.0;
 
 		getline( ifs, data );

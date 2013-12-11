@@ -1,3 +1,33 @@
+/*
+ *  This file is part of GAM-NGS.
+ *  Copyright (c) 2011 by Riccardo Vicedomini <rvicedomini@appliedgenomics.org>,
+ *  Francesco Vezzi <vezzi@appliedgenomics.org>,
+ *  Simone Scalabrin <scalabrin@appliedgenomics.org>,
+ *  Lars Arverstad <lars.arvestad@scilifelab.se>,
+ *  Alberto Policriti <policriti@appliedgenomics.org>,
+ *  Alberto Casagrande <casagrande@appliedgenomics.org>
+ *
+ *  GAM-NGS is an evolution of a previous work (GAM) done by Alberto Casagrande,
+ *  Cristian Del Fabbro, Simone Scalabrin, and Alberto Policriti.
+ *  In particular, GAM-NGS has been adapted to work on NGS data sets and it has
+ *  been written using GAM's software as starting point. Thus, it shares part of
+ *  GAM's source code.
+ *
+ *  GAM-NGS is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  GAM-NGS is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with GAM-NGS.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 /*!
  * \file PctgBuilder.hpp
  * \brief Definition of PctgBuilder class.
@@ -97,7 +127,7 @@ public:
 	{
 		return *(this->_slaveRef->at(ctgId)).Sequence;
 	}
-	
+
 	//! Adds the first contig to a paired contig.
     /*!
      * The contig must be one of the master assembly.
@@ -108,8 +138,8 @@ public:
      * \throws std::invalid_argument if the \c pctg is not empty.
      */
     PairedContig& addFirstContigTo(PairedContig &pctg, const int32_t ctgId) const;
-	
-	
+
+
     //! Builds a paired contig with a single (master) contig.
     /*!
      * \param pctgId the paired contig's identifier
@@ -130,13 +160,13 @@ public:
 	void splitMergeBlocksByDirection( MergeBlockLists &ml_in );
 	void splitMergeBlocksByAlign( MergeBlockLists &ml_in );
 	void alignMergeBlock( const CompactAssemblyGraph &graph, MergeBlock &mb ) const;
-    bool getMergePaths( const CompactAssemblyGraph &graph, CompactAssemblyGraph::Vertex &v, std::vector<MergeBlock> &mbv, 
+    bool getMergePaths( const CompactAssemblyGraph &graph, CompactAssemblyGraph::Vertex &v, std::vector<MergeBlock> &mbv,
                         MergeBlockLists &merge_paths ) const;
     bool solveForks( CompactAssemblyGraph &graph, std::vector<MergeBlock> &mbv ) const;
     void getNextContigs( const CompactAssemblyGraph &graph, CompactAssemblyGraph::Vertex &v, std::set<int32_t> &masterCtgs, std::set<int32_t> &slaveCtgs ) const;
     void getPrevContigs( const CompactAssemblyGraph &graph, CompactAssemblyGraph::Vertex &v, std::set<int32_t> &masterCtgs, std::set<int32_t> &slaveCtgs ) const;
 
-	
+
     //! Computes the best alignment between a paired contig and a contig which may be merged.
     /*!
      * \param pctg a paired contig

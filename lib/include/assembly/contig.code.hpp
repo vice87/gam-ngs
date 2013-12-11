@@ -1,3 +1,33 @@
+/*
+ *  This file is part of GAM-NGS.
+ *  Copyright (c) 2011 by Riccardo Vicedomini <rvicedomini@appliedgenomics.org>,
+ *  Francesco Vezzi <vezzi@appliedgenomics.org>,
+ *  Simone Scalabrin <scalabrin@appliedgenomics.org>,
+ *  Lars Arverstad <lars.arvestad@scilifelab.se>,
+ *  Alberto Policriti <policriti@appliedgenomics.org>,
+ *  Alberto Casagrande <casagrande@appliedgenomics.org>
+ *
+ *  GAM-NGS is an evolution of a previous work (GAM) done by Alberto Casagrande,
+ *  Cristian Del Fabbro, Simone Scalabrin, and Alberto Policriti.
+ *  In particular, GAM-NGS has been adapted to work on NGS data sets and it has
+ *  been written using GAM's software as starting point. Thus, it shares part of
+ *  GAM's source code.
+ *
+ *  GAM-NGS is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  GAM-NGS is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with GAM-NGS.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 #ifndef CONTIG_CODE_
 #define CONTIG_CODE_
 
@@ -9,68 +39,68 @@
 #include <stdexcept>
 
 size_t
-Contig::resize(const size_t& size) 
+Contig::resize(const size_t& size)
 {
 (this->_sequence).resize(size);
 //(this->_quality).resize(size);
- 
+
 return this->size();
 }
 
 Contig::Contig(): _name(""), _sequence(0) {} //, _quality(0) {}
 
-Contig::Contig(const Contig& orig): _name(orig._name), 
+Contig::Contig(const Contig& orig): _name(orig._name),
                             _sequence(orig._sequence) {}
                             //_quality(orig._quality) {}
 
-Contig::Contig(const std::string &name): _name(name), 
+Contig::Contig(const std::string &name): _name(name),
                             _sequence(0) {} //, _quality(0) {}
 
 Contig::Contig(const std::string &name, const SeqType &sequence,
-                                        const QualSeqType &quality): 
-                                    _name(name), _sequence(sequence) {} 
-                                                 // _quality(quality) 
+                                        const QualSeqType &quality):
+                                    _name(name), _sequence(sequence) {}
+                                                 // _quality(quality)
 //{
 //  if (_quality.size() != _sequence.size()) {
 //    std::stringstream s;
-//    s << "Sequence size does not match quality "<< 
+//    s << "Sequence size does not match quality "<<
 //                                "sequence size for \""<< name <<"\".";
 //    throw std::logic_error(s.str());
 //  }
 //}
 
 Contig::Contig(const std::string &name, const SeqType &sequence):
-               _name(name), _sequence(sequence) {} //, _quality(sequence.size()) 
+               _name(name), _sequence(sequence) {} //, _quality(sequence.size())
 //{
-//  for (QualSeqType::iterator i=this->_quality.begin(); 
+//  for (QualSeqType::iterator i=this->_quality.begin();
 //                             i!=this->_quality.end(); i++) {
 //    *i=100;
 //  }
 //}
 
-Contig::Contig(const std::string &name, const size_t& size): 
+Contig::Contig(const std::string &name, const size_t& size):
        _name(name), _sequence(size) {} //, _quality(size) {}
 
-Contig::Contig(const size_t& size): 
+Contig::Contig(const size_t& size):
        _name(), _sequence(size) {} //, _quality(size) {}
 
 const std::string &
 Contig::name() const { return this->_name; }
 
-const Contig& 
-Contig::set_name(const std::string& new_name) 
-{ 
-  this->_name=new_name;  
+const Contig&
+Contig::set_name(const std::string& new_name)
+{
+  this->_name=new_name;
 
-  return *this; 
+  return *this;
 }
 
 size_t
-Contig::size() const 
+Contig::size() const
 { return (this->_sequence).size(); }
 
-const Contig& 
-Contig::operator=(const Contig& orig) 
+const Contig&
+Contig::operator=(const Contig& orig)
 {
   this->_name=orig._name;
   this->_sequence=orig._sequence;
@@ -82,7 +112,7 @@ Contig::operator=(const Contig& orig)
 bool
 Contig::operator==(const Contig& ctg) const
 {
-   if (_sequence!=ctg._sequence) 
+   if (_sequence!=ctg._sequence)
      return false;
 
    // if (_quality!=ctg._quality) return false;
@@ -96,49 +126,49 @@ Contig::operator!=(const Contig& ctg) const
   return !(*this==ctg);
 }
 
-const Nucleotide& 
-Contig::operator[](const size_t& index) const 
+const Nucleotide&
+Contig::operator[](const size_t& index) const
 {
   return this->_sequence[index];
-} 
+}
 
-Nucleotide& 
-Contig::operator[](const size_t& index) 
+Nucleotide&
+Contig::operator[](const size_t& index)
 {
   return this->_sequence[index];
-} 
+}
 
-const Nucleotide& 
-Contig::at(const size_t& index) const 
+const Nucleotide&
+Contig::at(const size_t& index) const
 {
   return this->_sequence.at(index);
-} 
+}
 
-Nucleotide& 
-Contig::at(const size_t& index) 
+Nucleotide&
+Contig::at(const size_t& index)
 {
   return this->_sequence.at(index);
-} 
+}
 
-//const QualType& 
-//Contig::qual(const size_t& index) const 
+//const QualType&
+//Contig::qual(const size_t& index) const
 //{
 //  return this->_quality.at(index);
-//} 
+//}
 //
-//QualType& 
-//Contig::qual(const size_t& index) 
+//QualType&
+//Contig::qual(const size_t& index)
 //{
 //  return this->_quality.at(index);
-//} 
+//}
 
-SeqType 
+SeqType
 Contig::sequence(const size_t& index) const
 {
   return sequence(index, size()-index);
 }
 
-SeqType 
+SeqType
 Contig::sequence(const size_t& index, const size_t& length) const
 {
   if (index+length>size()) {
@@ -159,7 +189,7 @@ reverse(Contig& ctg)
 {
   //QualSeqType quality(ctg.size());
   if( ctg.size() == 0 ) return ctg;
-  
+
   unsigned int i = 0, j = ctg.size()-1;
   Nucleotide temp;
 
@@ -178,7 +208,7 @@ reverse(Contig& ctg)
 }
 
 Contig &
-complement(Contig& ctg)  
+complement(Contig& ctg)
 {
   //SeqType sequence(ctg.size());
   //QualSeqType quality(ctg.size());
@@ -193,13 +223,13 @@ complement(Contig& ctg)
 }
 
 Contig &
-reverse_complement(Contig& ctg)  
+reverse_complement(Contig& ctg)
 {
   return reverse(complement(ctg));
 }
 
-Contig 
-chop_borders(const Contig& ctg, 
+Contig
+chop_borders(const Contig& ctg,
              const size_t& preserve_from,
              const size_t& preserve_until)
 {
@@ -220,20 +250,20 @@ chop_borders(const Contig& ctg,
   return Contig(ctg.name(),new_seq); //return Contig(ctg.name(),new_seq,new_qual);
 }
 
-Contig 
+Contig
 chop_begin(const Contig& ctg, const size_t& preserve_from)
 {
   return chop_borders(ctg, preserve_from, ctg.size());
 }
 
-Contig 
+Contig
 chop_end(const Contig& ctg, const size_t& preserve_until)
 {
   return chop_borders(ctg, 0, preserve_until);
 }
 
 /*Contig
-merge(const Contig& a, const Contig& b, 
+merge(const Contig& a, const Contig& b,
                          const Alignment& alignment)
 {
   SeqType new_seq;

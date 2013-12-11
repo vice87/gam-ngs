@@ -1,3 +1,33 @@
+/*
+ *  This file is part of GAM-NGS.
+ *  Copyright (c) 2011 by Riccardo Vicedomini <rvicedomini@appliedgenomics.org>,
+ *  Francesco Vezzi <vezzi@appliedgenomics.org>,
+ *  Simone Scalabrin <scalabrin@appliedgenomics.org>,
+ *  Lars Arverstad <lars.arvestad@scilifelab.se>,
+ *  Alberto Policriti <policriti@appliedgenomics.org>,
+ *  Alberto Casagrande <casagrande@appliedgenomics.org>
+ *
+ *  GAM-NGS is an evolution of a previous work (GAM) done by Alberto Casagrande,
+ *  Cristian Del Fabbro, Simone Scalabrin, and Alberto Policriti.
+ *  In particular, GAM-NGS has been adapted to work on NGS data sets and it has
+ *  been written using GAM's software as starting point. Thus, it shares part of
+ *  GAM's source code.
+ *
+ *  GAM-NGS is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  GAM-NGS is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with GAM-NGS.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 #ifndef _SMITH_WATERMAN_CODE_
 #define _SMITH_WATERMAN_CODE_
 
@@ -12,18 +42,18 @@ pthread_mutex_t mutex_new = PTHREAD_MUTEX_INITIALIZER;
 
 void
 SmithWaterman::compute_alignment_matrix(
-                         const Contig& a, SmithWaterman::size_type& begin_a, 
-                         const Contig& b, SmithWaterman::size_type& begin_b, 
+                         const Contig& a, SmithWaterman::size_type& begin_a,
+                         const Contig& b, SmithWaterman::size_type& begin_b,
                          ScoreType* a_matrix[],
                          const SmithWaterman::size_type& y_size,
-                         const SmithWaterman::size_type& x_size) const 
+                         const SmithWaterman::size_type& x_size) const
 {
-    
+
   for (SmithWaterman::size_type x=0; x< x_size; x++) {
     if (x>=this->_max_b_gaps) {
       SmithWaterman::size_type a_pos=get_a_pos(0,x,begin_a);
       SmithWaterman::size_type b_pos=get_b_pos(0,begin_b);
-  
+
       if ((b_pos<b.size())&&(a_pos<a.size())) {
         a_matrix[0][x]=match_score(a, a_pos, b, b_pos);
       }
@@ -33,7 +63,7 @@ SmithWaterman::compute_alignment_matrix(
   ScoreType m_score;
   for (SmithWaterman::size_type y=1; y < y_size; y++) {
     SmithWaterman::size_type min_vect=0;
-   
+
     if (y<this->_max_b_gaps) {
       min_vect=this->_max_b_gaps-y;
     }
@@ -41,9 +71,9 @@ SmithWaterman::compute_alignment_matrix(
     if (min_vect+1<x_size) {
       SmithWaterman::size_type a_pos=get_a_pos(y,min_vect,begin_a);
       SmithWaterman::size_type b_pos=get_b_pos(y,begin_b);
-  
+
       if ((b_pos<b.size())&&(a_pos<a.size())) {
-    
+
         m_score= match_score(a, a_pos, b, b_pos);
 
         if ( get_a_pos(y-1,min_vect+1,begin_a)<a.size()) {
@@ -59,11 +89,11 @@ SmithWaterman::compute_alignment_matrix(
         } else {
           a_matrix[y][min_vect]=m_score;
         }
-    
+
         for (SmithWaterman::size_type x=min_vect+1; x<x_size-1; x++) {
- 
+
           SmithWaterman::size_type a_pos=get_a_pos(y,x,begin_a);
-  
+
           if (a_pos<a.size()) {
             m_score= match_score(a, a_pos, b, b_pos);
 
@@ -80,7 +110,7 @@ SmithWaterman::compute_alignment_matrix(
 
           a_matrix[y][x_size-1]=
                          std::max(a_matrix[y-1][x_size-1]+m_score,
-                                a_matrix[y][x_size-2]+gap_score());               
+                                a_matrix[y][x_size-2]+gap_score());
         }
       }
     }
@@ -88,14 +118,14 @@ SmithWaterman::compute_alignment_matrix(
 }
 
 inline
-Alignment 
+Alignment
 SmithWaterman::compute_alignment_from_matrix(
-                         const Contig& a, SmithWaterman::size_type& begin_a, 
-                         const Contig& b, SmithWaterman::size_type& begin_b, 
+                         const Contig& a, SmithWaterman::size_type& begin_a,
+                         const Contig& b, SmithWaterman::size_type& begin_b,
                          ScoreType* a_matrix[],
                          const SmithWaterman::size_type& y_size,
                          const SmithWaterman::size_type& x_size,
-                         const bool& b_rev) const 
+                         const bool& b_rev) const
 {
 
   SmithWaterman::size_type x=0;
@@ -132,7 +162,7 @@ SmithWaterman::compute_alignment_from_matrix(
       }
       m_score_list.push_front(m_score);
       y--;
-    } else { 
+    } else {
      if ((x+1<x_size)&&
         (a_matrix[y-1][x+1]+gap_score()==a_matrix[y][x])) {
        sequence_list.push_front(GAP_A);
@@ -187,34 +217,34 @@ SmithWaterman::compute_alignment_from_matrix(
 }
 
 SmithWaterman::SmithWaterman() {}
-SmithWaterman::SmithWaterman(const SmithWaterman::size_type& max_a_gaps, 
-           const SmithWaterman::size_type& max_b_gaps):  
+SmithWaterman::SmithWaterman(const SmithWaterman::size_type& max_a_gaps,
+           const SmithWaterman::size_type& max_b_gaps):
                                Aligner(max_a_gaps,max_b_gaps) {}
 
-SmithWaterman::SmithWaterman(const ScoreType& gap_score, 
-                    const SmithWaterman::size_type& max_a_gaps, 
-                    const SmithWaterman::size_type& max_b_gaps): 
+SmithWaterman::SmithWaterman(const ScoreType& gap_score,
+                    const SmithWaterman::size_type& max_a_gaps,
+                    const SmithWaterman::size_type& max_b_gaps):
                           Aligner(gap_score, max_a_gaps, max_b_gaps) {}
 
-SmithWaterman::SmithWaterman(const SmithWaterman::size_type& max_alignment): 
+SmithWaterman::SmithWaterman(const SmithWaterman::size_type& max_alignment):
                                               Aligner(max_alignment) {}
 
-SmithWaterman::SmithWaterman(const SmithWaterman::size_type& max_alignment, 
-                             const SmithWaterman::size_type& max_a_gaps, 
-                             const SmithWaterman::size_type& max_b_gaps):  
+SmithWaterman::SmithWaterman(const SmithWaterman::size_type& max_alignment,
+                             const SmithWaterman::size_type& max_a_gaps,
+                             const SmithWaterman::size_type& max_b_gaps):
                              Aligner(max_alignment,max_a_gaps,max_b_gaps) {}
 
-SmithWaterman::SmithWaterman(const SmithWaterman::size_type& max_alignment, 
-                             const ScoreType& gap_score, 
-                             const SmithWaterman::size_type& max_a_gaps,  
-                             const SmithWaterman::size_type& max_b_gaps): 
-                  Aligner(max_alignment, gap_score,max_a_gaps,max_b_gaps) {} 
+SmithWaterman::SmithWaterman(const SmithWaterman::size_type& max_alignment,
+                             const ScoreType& gap_score,
+                             const SmithWaterman::size_type& max_a_gaps,
+                             const SmithWaterman::size_type& max_b_gaps):
+                  Aligner(max_alignment, gap_score,max_a_gaps,max_b_gaps) {}
 
 Alignment
 SmithWaterman::apply(const Contig& a, SmithWaterman::size_type begin_a,
                const Contig& b, SmithWaterman::size_type begin_b,
                const bool& b_rev) const
-{ 
+{
   if ((a.size()<begin_a)||(b.size()<begin_b)) {
     return Alignment(a,b,begin_a,begin_b,b_rev);
   }
@@ -254,7 +284,7 @@ SmithWaterman::apply(const Contig& a, SmithWaterman::size_type begin_a,
   ScoreType* a_matrix[y_size];
 
   pthread_mutex_lock(&mutex_new);
-  
+
   for (SmithWaterman::size_type y=0; y<y_size; y++) {
     a_matrix[y] = new (std::nothrow) ScoreType[x_size]; //(ScoreType *)malloc(sizeof(ScoreType)*x_size);
 
@@ -266,22 +296,22 @@ SmithWaterman::apply(const Contig& a, SmithWaterman::size_type begin_a,
       a_matrix[y][x]=0;
     }
   }
-  
+
   pthread_mutex_unlock(&mutex_new);
 
-  compute_alignment_matrix(a, begin_a, b, begin_b, 
-                               a_matrix, y_size, x_size); 
+  compute_alignment_matrix(a, begin_a, b, begin_b,
+                               a_matrix, y_size, x_size);
 
-  Alignment result(compute_alignment_from_matrix(a, 
+  Alignment result(compute_alignment_from_matrix(a,
                                begin_a, b, begin_b,
-                                a_matrix, y_size, x_size, b_rev)); 
+                                a_matrix, y_size, x_size, b_rev));
 
   pthread_mutex_lock(&mutex_new);
-  
+
   for (SmithWaterman::size_type y=0; y<y_size; y++) {
     delete[] a_matrix[y]; //free(a_matrix[y]);
   }
-  
+
   pthread_mutex_unlock(&mutex_new);
 
   return result;
@@ -290,7 +320,7 @@ SmithWaterman::apply(const Contig& a, SmithWaterman::size_type begin_a,
 Alignment
 SmithWaterman::apply(const Contig& a, SmithWaterman::size_type begin_a,
                const Contig& b, SmithWaterman::size_type begin_b) const
-{ 
+{
   return apply(a, begin_a, b, begin_b, false);
 }
 

@@ -1,3 +1,33 @@
+/*
+ *  This file is part of GAM-NGS.
+ *  Copyright (c) 2011 by Riccardo Vicedomini <rvicedomini@appliedgenomics.org>,
+ *  Francesco Vezzi <vezzi@appliedgenomics.org>,
+ *  Simone Scalabrin <scalabrin@appliedgenomics.org>,
+ *  Lars Arverstad <lars.arvestad@scilifelab.se>,
+ *  Alberto Policriti <policriti@appliedgenomics.org>,
+ *  Alberto Casagrande <casagrande@appliedgenomics.org>
+ *
+ *  GAM-NGS is an evolution of a previous work (GAM) done by Alberto Casagrande,
+ *  Cristian Del Fabbro, Simone Scalabrin, and Alberto Policriti.
+ *  In particular, GAM-NGS has been adapted to work on NGS data sets and it has
+ *  been written using GAM's software as starting point. Thus, it shares part of
+ *  GAM's source code.
+ *
+ *  GAM-NGS is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  GAM-NGS is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with GAM-NGS.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 #include <list>
 #include <vector>
 #include <map>
@@ -8,27 +38,27 @@
 typedef std::map<ABlast::size_type,std::list<ABlast::size_type> > HashType;
 typedef std::vector< std::pair<ABlast::size_type,ABlast::size_type> > FoundVectorType;
 
-ABlast::ABlast(): 
-        _match_score(MATCH_SCORE), 
-        _mismatch_score(MISMATCH_SCORE), 
+ABlast::ABlast():
+        _match_score(MATCH_SCORE),
+        _mismatch_score(MISMATCH_SCORE),
         _gap_score(GAP_SCORE),
         _band_size(DEFAULT_BAND_SIZE),
-        _word_size(DEFAULT_WORD_SIZE) 
+        _word_size(DEFAULT_WORD_SIZE)
 {}
 
 ABlast::ABlast(
-        const ScoreType& match_score, 
-        const ScoreType& mismatch_score, 
-        const ScoreType& gap_score, 
+        const ScoreType& match_score,
+        const ScoreType& mismatch_score,
+        const ScoreType& gap_score,
         const unsigned int& band_size) :
         _match_score(match_score), _mismatch_score(mismatch_score),
-        _gap_score(gap_score), _band_size(band_size), 
+        _gap_score(gap_score), _band_size(band_size),
         _word_size(DEFAULT_WORD_SIZE)
 {}
 
 
 const ABlast::size_type&
-ABlast::word_size() const 
+ABlast::word_size() const
 {
   return _word_size;
 }
@@ -50,12 +80,12 @@ extended_word_size(const ABlast::size_type& word_size)
 
 inline
 ABlast::size_type
-sequence_code(const Contig& a, 
+sequence_code(const Contig& a,
               const ABlast::size_type& begin_pos,
               const ABlast::size_type& word_size)
 {
   ABlast::size_type code=0;
-  
+
   for (ABlast::size_type i=begin_pos; i<begin_pos+word_size; i++) {
     code=((LAST_BASE-1)*code)+(a.at(i)).base();
   }
@@ -65,7 +95,7 @@ sequence_code(const Contig& a,
 
 inline
 HashType
-build_hash(const Contig& a, const ABlast::size_type& word_size) 
+build_hash(const Contig& a, const ABlast::size_type& word_size)
 {
   HashType a_hash;
 
@@ -78,10 +108,10 @@ build_hash(const Contig& a, const ABlast::size_type& word_size)
 
 inline
 const FoundVectorType&
-mark_found(FoundVectorType& f_vector, 
-           ABlast::size_type idx_a, const ABlast::size_type& idx_b, 
-                       const ABlast::size_type& size_b, 
-                       const ABlast::size_type& word_size) 
+mark_found(FoundVectorType& f_vector,
+           ABlast::size_type idx_a, const ABlast::size_type& idx_b,
+                       const ABlast::size_type& size_b,
+                       const ABlast::size_type& word_size)
 {
 
   ABlast::size_type min=idx_a-idx_b+size_b;
@@ -98,15 +128,15 @@ mark_found(FoundVectorType& f_vector,
 
 inline
 const FoundVectorType&
-mark_found(FoundVectorType& f_vector, 
+mark_found(FoundVectorType& f_vector,
            const std::list<ABlast::size_type>& idx_a_list,
            const ABlast::size_type& idx_b,
-           const ABlast::size_type& size_b, 
-           const ABlast::size_type& word_size) 
+           const ABlast::size_type& size_b,
+           const ABlast::size_type& word_size)
 {
-  for (std::list<ABlast::size_type>::const_iterator 
+  for (std::list<ABlast::size_type>::const_iterator
                                  it=idx_a_list.begin();
-                                 it!=idx_a_list.end(); 
+                                 it!=idx_a_list.end();
                                                 it++) {
     mark_found(f_vector,*it,idx_b,size_b,word_size);
   }
@@ -117,7 +147,7 @@ mark_found(FoundVectorType& f_vector,
 inline
 FoundVectorType
 build_corrispondences_vector(
-                  const Contig& a, const Contig& b, 
+                  const Contig& a, const Contig& b,
                    const ABlast::size_type& word_size)
 {
   HashType a_hash=build_hash(a,word_size);
@@ -153,18 +183,18 @@ ABlast::apply(const Contig& a, const Contig& b, const bool& b_rev) const
 
   size_type begin_b=f_vector.at(max_begin).second;
   size_type begin_a=std::max((long unsigned int)0,max_begin+begin_b-b.size());
-  
+
   BandedSmithWaterman sw( DEFAULT_BAND_SIZE );
-  
+
   if( begin_a >= a.size() ) begin_a = a.size()-1;
   if( begin_b >= b.size() ) begin_b = b.size()-1;
   //std::cout << "begins = " << begin_a << "/" << begin_b << " (" << a.size() << "/" << b.size() << ")" << std::endl;
-  
-  return sw.find_alignment( a, begin_a, a.size()-1, b, begin_b, b.size()-1 ); 
+
+  return sw.find_alignment( a, begin_a, a.size()-1, b, begin_b, b.size()-1 );
 }
 
 MyAlignment
 ABlast::find_alignment( const Contig& a, const Contig& b ) const
 {
-  return apply(a,b,false); 
+  return apply(a,b,false);
 }

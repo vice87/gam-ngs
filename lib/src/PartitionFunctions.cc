@@ -1,3 +1,33 @@
+/*
+ *  This file is part of GAM-NGS.
+ *  Copyright (c) 2011 by Riccardo Vicedomini <rvicedomini@appliedgenomics.org>,
+ *  Francesco Vezzi <vezzi@appliedgenomics.org>,
+ *  Simone Scalabrin <scalabrin@appliedgenomics.org>,
+ *  Lars Arverstad <lars.arvestad@scilifelab.se>,
+ *  Alberto Policriti <policriti@appliedgenomics.org>,
+ *  Alberto Casagrande <casagrande@appliedgenomics.org>
+ *
+ *  GAM-NGS is an evolution of a previous work (GAM) done by Alberto Casagrande,
+ *  Cristian Del Fabbro, Simone Scalabrin, and Alberto Policriti.
+ *  In particular, GAM-NGS has been adapted to work on NGS data sets and it has
+ *  been written using GAM's software as starting point. Thus, it shares part of
+ *  GAM's source code.
+ *
+ *  GAM-NGS is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  GAM-NGS is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with GAM-NGS.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 #include <vector>
 #include <iostream>
 #include <sstream>
@@ -53,29 +83,29 @@ partitionBlocks( const std::list<Block> &blocks )
     for( pcb = pairedContigsBlocks.begin(); pcb != pairedContigsBlocks.end(); ++pcb )
     {
 		std::stringstream ff1,ff2,ff3;
-		
+
         // create an assembly graph
         AssemblyGraph *ag = new AssemblyGraph( *pcb, agId );
-		
+
 		// collapse paths which shares the same master/slave contigs
 		CompactAssemblyGraph *cg = new CompactAssemblyGraph(*ag);
 		std::cerr << "CompactAssemblyGraph_" << agId << " created." << std::endl;
 		cg->computeEdgeWeights( masterBam, masterMpBam, slaveBam, slaveMpBam );
 		std::cerr << "CompactAssemblyGraph_" << agId << " weights computed." << std::endl;
-		
+
 		try
 		{
 			// check if graph contains cycles
 			std::vector< size_t > ts;
 			boost::topological_sort( *ag, std::back_inserter(ts) );
-			
+
 			// at this point, ag does not contain cycles
-			
+
 			outList.push_back(cg);
 
 			bool has_bubbles = ag->hasBubbles();
 			bool has_forks = ag->hasForks();
-			
+
 			ff1 << "./gam_graphs/AssemblyGraph_" << agId;
 			ff2 << "./gam_graphs/CompactGraph_" << agId;
 
@@ -101,11 +131,11 @@ partitionBlocks( const std::list<Block> &blocks )
 		catch( boost::not_a_dag ) // if the graph is cyclic.
 		{
 			ag_cycles++;
-			
+
 			ff1 << "./gam_graphs/AssemblyGraph_" << agId << "_cyclic.dot";
 			ff2 << "./gam_graphs/CompactGraph_" << agId << "_cyclic.dot";
 		}
-		
+
 		if( g_options.outputGraphs )
 		{
 			boost::filesystem::path p1(ff1.str().c_str());

@@ -1,8 +1,31 @@
 /*
- * File:   Block.cc
- * Author: Riccardo Vicedomini
+ *  This file is part of GAM-NGS.
+ *  Copyright (c) 2011 by Riccardo Vicedomini <rvicedomini@appliedgenomics.org>,
+ *  Francesco Vezzi <vezzi@appliedgenomics.org>,
+ *  Simone Scalabrin <scalabrin@appliedgenomics.org>,
+ *  Lars Arverstad <lars.arvestad@scilifelab.se>,
+ *  Alberto Policriti <policriti@appliedgenomics.org>,
+ *  Alberto Casagrande <casagrande@appliedgenomics.org>
  *
- * Created on 22 maggio 2011, 17.40
+ *  GAM-NGS is an evolution of a previous work (GAM) done by Alberto Casagrande,
+ *  Cristian Del Fabbro, Simone Scalabrin, and Alberto Policriti.
+ *  In particular, GAM-NGS has been adapted to work on NGS data sets and it has
+ *  been written using GAM's software as starting point. Thus, it shares part of
+ *  GAM's source code.
+ *
+ *  GAM-NGS is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  GAM-NGS is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with GAM-NGS.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 #include <cstdlib>
@@ -198,7 +221,7 @@ std::vector< Block > Block::filterBlocksByOverlaps(std::list<Block>& blocks)
                 //block = cur;
             }
         }
-        
+
         block = next;
     }
 
@@ -223,7 +246,7 @@ std::vector< Block > Block::filterBlocksByOverlaps(std::list<Block>& blocks)
                 //block = cur;
             }
         }
-        
+
         block = next;
     }
 
@@ -241,7 +264,7 @@ std::vector< Block > Block::filterBlocksByOverlaps(std::list<Block>& blocks)
 
 
 void Block::filterBlocksByCoverage(
-	std::list<Block>& blocks, 
+	std::list<Block>& blocks,
 	const std::set< std::pair<int32_t,int32_t> > &slb,
 	double min_cov,
 	double t )
@@ -255,24 +278,24 @@ void Block::filterBlocksByCoverage(
 		double scRatio = ((double) (b->getSlaveFrame()).getBlockReadsLen()) / ((double) (b->getSlaveFrame()).getReadsLen());
 
 		if( std::max(mcRatio,scRatio) < t )
-		{ 
-			b = blocks.erase(b); continue; 
+		{
+			b = blocks.erase(b); continue;
 		}
 		else // FILTRAGGIO BASATO SULLA COPERTURA DEL BLOCCO RISPETTO ALLA COPERTURA MEDIA //TODO:verificare di non togliere blocchi importanti
 		{
 			int32_t mid = b->getMasterId();
 			int32_t sid = b->getSlaveId();
-			
+
 			if( slb.find( std::make_pair(mid,sid) ) == slb.end() )
 			{
 				double m_cov = ((double) (b->getMasterFrame()).getBlockReadsLen()) / (b->getMasterFrame()).getLength();
 				double s_cov = ((double) (b->getSlaveFrame()).getBlockReadsLen()) / (b->getSlaveFrame()).getLength();
 				double cov = mcRatio >= scRatio ? m_cov : s_cov;
-				
+
 				if( cov < min_cov )
-				{ 
+				{
 					//std::cerr << "low coverage block removed: (" << b->getMasterId() << "," << b->getSlaveId() << ")" << std::endl;
-					b = blocks.erase(b); continue; 
+					b = blocks.erase(b); continue;
 				}
 			}
 		}

@@ -1,8 +1,31 @@
 /*
- * File:   ThreadedBuildPctg.code.hpp
- * Author: vice
+ *  This file is part of GAM-NGS.
+ *  Copyright (c) 2011 by Riccardo Vicedomini <rvicedomini@appliedgenomics.org>,
+ *  Francesco Vezzi <vezzi@appliedgenomics.org>,
+ *  Simone Scalabrin <scalabrin@appliedgenomics.org>,
+ *  Lars Arverstad <lars.arvestad@scilifelab.se>,
+ *  Alberto Policriti <policriti@appliedgenomics.org>,
+ *  Alberto Casagrande <casagrande@appliedgenomics.org>
  *
- * Created on 12 giugno 2011, 22.49
+ *  GAM-NGS is an evolution of a previous work (GAM) done by Alberto Casagrande,
+ *  Cristian Del Fabbro, Simone Scalabrin, and Alberto Policriti.
+ *  In particular, GAM-NGS has been adapted to work on NGS data sets and it has
+ *  been written using GAM's software as starting point. Thus, it shares part of
+ *  GAM's source code.
+ *
+ *  GAM-NGS is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  GAM-NGS is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with GAM-NGS.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 #include <unistd.h>
@@ -29,7 +52,7 @@ ThreadedBuildPctg::extractNextPctg()
 {
 	CompactAssemblyGraph *output = NULL;
 
-    pthread_mutex_lock(&(this->_mutex));	
+    pthread_mutex_lock(&(this->_mutex));
 
 	while( _nextPctg < _graphs.size() )
 	{
@@ -73,7 +96,7 @@ void ThreadedBuildPctg::incProcBlocks( uint64_t num, uint64_t tid )
     if( this->_lastPerc < perc )
     {
 		this->_lastPerc = perc;
-		
+
 		if( isatty(fileno(stdout)) )
 		{
 			std::cout << "\r[merge] Merging contigs " << perc << "% done." << std::flush;
@@ -89,10 +112,10 @@ void ThreadedBuildPctg::incProcBlocks( uint64_t num, uint64_t tid )
 }
 
 
-ThreadedBuildPctg::ThreadedBuildPctg( 
-	const std::list< CompactAssemblyGraph* > &graphsList, 
-	const RefSequence &masterRef, 
-	const RefSequence &slaveRef ) 
+ThreadedBuildPctg::ThreadedBuildPctg(
+	const std::list< CompactAssemblyGraph* > &graphsList,
+	const RefSequence &masterRef,
+	const RefSequence &slaveRef )
 :
 	_masterRef(masterRef), _slaveRef(slaveRef),
 	_pctgNum(0), _nextPctg(0), _procBlocks(0), _totBlocks(0)
@@ -104,7 +127,7 @@ ThreadedBuildPctg::ThreadedBuildPctg(
     {
 		this->_totBlocks += boost::num_vertices(**it);
 		this->_graphs[b] = *it;
-		
+
 		b++;
     }
 
@@ -158,7 +181,7 @@ ThreadedBuildPctg::run()
 		outPctgList->splice( outPctgList->end(), *(threads_argv[i]->output) );
 
 	// free dynamically allocated graphs
-	for( size_t i=0; i < _graphs.size(); i++ ) 
+	for( size_t i=0; i < _graphs.size(); i++ )
 	{
 		if(_graphs[i] != NULL) delete _graphs[i];
 	}
@@ -283,7 +306,7 @@ void*
 buildPctgThread(void* argv)
 {
 	// retrieve arguments of current thread
-	
+
 	typedef ThreadedBuildPctg::thread_arg_t thread_arg_t;
 
 	thread_arg_t* thread_argv = (thread_arg_t*)argv;
@@ -304,10 +327,10 @@ buildPctgThread(void* argv)
         {
             std::cerr << "Something unexpected happened processing graph " << cg->getId() << std::endl;
         }
-		
+
 		uint64_t cg_size = boost::num_vertices(*cg);
 		tbp->incProcBlocks( cg_size, tid );
-		
+
 		cg->clear();
 		cg = tbp->extractNextPctg();
 	}
