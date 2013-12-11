@@ -3,7 +3,7 @@
 #  SPARSEHASH_FOUND - System has Sparsehash
 #  SPARSEHASH_INCLUDE_DIRS - The Sparsehash include directories
 
-find_path(SPARSEHASH_INCLUDE_DIR NAMES google/sparsehash/sparsehashtable.h
+find_path(SPARSEHASH_INCLUDE_DIR NAMES google/sparse_hash_map
         PATHS
                 ${SPARSEHASH_ROOT}
                 $ENV{SPARSEHASH_ROOT}
