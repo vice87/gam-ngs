@@ -81,7 +81,7 @@ From the example directory execute the following commands:
     $ chmod +x ./download_dataset.sh
     $ ./download_dataset.sh
 
-These previous commands will download Staphylococcus data set from GAGE. 
+These previous commands will download Staphylococcus data set from GAGE.
 In particular, after the download, the following files will be used in GAM-NGS's usage example:
 
  * ./Data/allpathsCor/frag_1.fastq
@@ -100,6 +100,13 @@ These will create alignment files (BAM) in ./Alignments sub-folder.
 Then the merging with GAM-NGS of Allpaths-LG and MSR-CA assemblies will be performed in ./gam-ngs_merge sub-folder.
 
 
+## Custom Sparsehash/Boost libraries
+
+If you want to compile GAM-NGS with specific (local) installations of sparsehash/boost libraries,
+you can use the following cmake command:
+
+    $ cmake -DBOOST_ROOT=/path/to/boost_1_xx_0 -DBoost_NO_BOOST_CMAKE=TRUE -DSPARSEHASH_ROOT=~/path/to/sparsehash
+
 ##Bug reporting
 
 If gdb package is available in your system and you found a bug in GAM-NGS (e.g., segmentation fault),
@@ -113,7 +120,7 @@ The steps are the following ones:
         set(CMAKE_BUILD_TYPE Debug)
 
 2. Re-compile the tool with the usual commands (removing any previous file/folder in the build directory)
-	
+
         $ cmake ..
         $ make
 
@@ -131,7 +138,7 @@ The steps are the following ones:
         (gdb) backtrace
         (gdb) quit
 
-6. A file named gdb.txt should have been created in the current directory. 
+6. A file named gdb.txt should have been created in the current directory.
    Provide that file to me (possibly along with standard output and standard error).
 
 Thank you!
