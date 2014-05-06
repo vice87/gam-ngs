@@ -50,7 +50,7 @@ set( CMAKE_BUILD_TYPE Release )
 include_directories("${PROJECT_SOURCE_DIR}/include")
 include_directories("${PROJECT_SOURCE_DIR}/lib")
 include_directories("${PROJECT_SOURCE_DIR}/lib/include")
-include_directories("${PROJECT_SOURCE_DIR}/lib/bamtools-2.0.5/src")
+include_directories("${PROJECT_SOURCE_DIR}/lib/bamtools-2.3.0/src")
 include_directories( ${Boost_INCLUDE_DIRS} )
 include_directories( ${SPARSEHASH_INCLUDE_DIR} )
 
