@@ -89,9 +89,9 @@ partitionBlocks( const std::list<Block> &blocks )
 
 		// collapse paths which shares the same master/slave contigs
 		CompactAssemblyGraph *cg = new CompactAssemblyGraph(*ag);
-		std::cerr << "CompactAssemblyGraph_" << agId << " created." << std::endl;
+		//std::cerr << "CompactAssemblyGraph_" << agId << " created." << std::endl;
 		cg->computeEdgeWeights( masterBam, masterMpBam, slaveBam, slaveMpBam );
-		std::cerr << "CompactAssemblyGraph_" << agId << " weights computed." << std::endl;
+		//std::cerr << "CompactAssemblyGraph_" << agId << " weights computed." << std::endl;
 
 		try
 		{

@@ -809,17 +809,45 @@ void getNoBlocksContigs(
 	std::vector<bool> master_ctgWithBlock( masterRef.size(), false );
 	std::vector<bool> slave_ctgWithBlock( slaveRef.size(), false );
 
+	int32_t mid, sid;
+	int32_t m_size = static_cast<int32_t>(masterRef.size());
+	int32_t s_size = static_cast<int32_t>(slaveRef.size());
+
 	for( std::list<Block>::const_iterator b = blocks.begin(); b != blocks.end(); ++b )
 	{
-		master_ctgWithBlock.at( b->getMasterId() ) = true;
-		slave_ctgWithBlock.at( b->getSlaveId() ) = true;
+		mid = b->getMasterId();
+		sid = b->getSlaveId();
+
+		if( mid < m_size && mid >= 0 )
+		{
+			master_ctgWithBlock[mid] = true;
+		}
+		else
+		{
+			std::cerr << "[getNoBlocksContigs] error: found a block with master id "
+					<< mid << " when the admissible range is [0," << m_size << ")." << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+
+		if( sid < s_size && sid >= 0 )
+		{
+			slave_ctgWithBlock[mid] = true;
+		}
+		else
+		{
+			std::cerr << "[getNoBlocksContigs] error: found a block with slave id "
+					<< sid << " when the admissible range is [0," << s_size << ")." << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	for( int32_t i=0; i < master_ctgWithBlock.size(); i++ )
-		if( not master_ctgWithBlock.at(i) ) masterNBC.insert(i);
+		if( not master_ctgWithBlock[i] ) masterNBC.insert(i);
 
 	for( int32_t i=0; i < slave_ctgWithBlock.size(); i++ )
-		if( not slave_ctgWithBlock.at(i) ) slaveNBC.insert(i);
+		if( not slave_ctgWithBlock[i] ) slaveNBC.insert(i);
 }
 
 
