@@ -4,17 +4,8 @@
 #  SPARSEHASH_INCLUDE_DIRS - The Sparsehash include directories
 
 find_path(SPARSEHASH_INCLUDE_DIR NAMES google/sparse_hash_map
-        PATHS
-                ${SPARSEHASH_ROOT}
-                $ENV{SPARSEHASH_ROOT}
-                /usr/local/
-                /usr/
-                /sw/
-                /opt/local
-                /opt/csw/
-                /opt/
-        PATH_SUFFIXES
-                include/
+        PATHS         ${SPARSEHASH_ROOT} $ENV{SPARSEHASH_ROOT} /usr/local/ /usr/ /sw/ /opt/local /opt/csw/ /opt/ ENV CPLUS_INCLUDE_PATH
+        PATH_SUFFIXES include/
 )
 
 set(SPARSEHASH_INCLUDE_DIRS ${SPARSEHASH_INCLUDE_DIR})
