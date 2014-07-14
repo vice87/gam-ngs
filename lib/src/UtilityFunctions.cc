@@ -30,6 +30,8 @@
 
 #include "UtilityFunctions.hpp"
 
+#include <boost/algorithm/string.hpp>
+
 char * getPathBaseName( char *path )
 {
     char *ptr = strrchr(path, '/');
@@ -79,6 +81,7 @@ void loadBamFileNames( const std::string &input_file, std::vector< std::string >
 		max_is = 0;
 
 		getline(ifs,line1);
+		boost::trim(line1);
 
 		if( line1 != "" )
 		{
