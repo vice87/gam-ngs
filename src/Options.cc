@@ -41,6 +41,9 @@ void Options::set_defaults()
 	minBlockSize = 50;
 	threadsNum = 1;
 	coverageThreshold = 0.75;
+	noMultiplicityFilter = false;
+
+	debug = false;
 
 	// output options
 	outputFilePrefix = "out";

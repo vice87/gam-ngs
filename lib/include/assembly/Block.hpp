@@ -207,7 +207,8 @@ public:
         const int minBlockSize,
         sparse_hash_map< std::string, Read > &readsMap_1,
         sparse_hash_map< std::string, Read > &readsMap_2,
-        std::vector< std::vector< uint32_t > > &coverage );
+        std::vector< std::vector< uint32_t > > &coverage,
+        bool noMultFilter = false );
 
     static void updateCoverages(
         std::vector<Block> &blocks,
@@ -252,8 +253,8 @@ public:
      * \param blockFile the name of the output file.
      * \param blocks a vector of Block objects.
      */
-    static void writeCoreBlocks( const std::string& blockFile, std::vector< Block >& blocks  );
     static void writeBlocks( const std::string& blockFile, std::vector< Block >& blocks  );
+    static void writeBlocksVerbose( const std::string &blockFile, std::vector< Block > &blocks, const MultiBamReader &masterBam, const MultiBamReader &slaveBam );
 
     //! Less-Than operator for the Block class.
     bool operator <(const Block &block) const;

@@ -98,6 +98,9 @@ namespace modules {
         struct stat st;
         time_t tStart = time(NULL);
 
+        if( g_options.noMultiplicityFilter ) 
+            std::cout << "[main] option --noMultiplicityFilter provided; reads will be processed as if they had unique mapping" << std::endl;
+
         _g_statsFile.open((g_options.outputFilePrefix + ".stats").c_str(), std::ios::out); // open statistics (output) file
 
         std::list<Block> blocks;

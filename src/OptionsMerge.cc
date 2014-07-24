@@ -55,8 +55,8 @@ bool OptionsMerge::process(int argc, char *argv[])
 		("slave-bam", po::value< std::string >(), "coordinate-sorted PE alignments of the slave assembly")
 		//("master-isize", po::value< std::string >(), "insert size statistics file corresponding to master assembly")
 		//("slave-isize", po::value< std::string >(), "insert size statistics file corresponding to slave assembly")
-		("master-mp-bam", po::value< std::string >(), "coordinate sorted MP alignments of the master assembly (optional)" )
-		("slave-mp-bam", po::value< std::string >(), "coordinate sorted MP alignments of the slave assembly (optional)" )
+		("master-mp-bam", po::value< std::string >(), "coordinate sorted MP alignments of the master assembly. (optional) Warning: MP reads are expected to be aligned (as PE reads) in forward-reverse orientation." )
+		("slave-mp-bam", po::value< std::string >(), "coordinate sorted MP alignments of the slave assembly. (optional) Warning: MP reads are expected to be aligned (as PE reads) in forward-reverse orientation" )
 		//("master-mp-isize", po::value< std::string >(), "insert size statistics file corresponding to master assembly MP alignments")
 		//("slave-mp-isize", po::value< std::string >(), "insert size statistics file corresponding to slave assembly MP alignments")
 		//("master-namesorted-bam", po::value< std::string >(), "name sorted BAM file of the master assembly")
@@ -68,6 +68,7 @@ bool OptionsMerge::process(int argc, char *argv[])
 		("min-block-size", po::value<int>(), "minimum number of reads of blocks to be loaded (optional) [default=5]")
 		("threads", po::value<int>(), "number of threads (optional) [default=1]")
 		("coverage-filter", po::value<double>(), "coverage filter threshold (optional) [default=0.75]")
+		("no-mult-filter", "force all reads to be processed as if they had unique mapping (optional)")
 
 		("output-graphs", "output graphs in gam_graphs sub-folder (debug)")
 
@@ -75,9 +76,17 @@ bool OptionsMerge::process(int argc, char *argv[])
 		("output", po::value< std::string >(), "output-files' prefix (optional) [default=out]")
 		;
 
+	po::options_description hidden_opts("Hidden options");
+	hidden_opts.add_options()
+        ("debug", "enable additional output files for debug purpose.")
+		;
+
+	po::options_description all("Allowed options");
+	all.add(desc).add(hidden_opts);
+
 	po::variables_map vm;
 	try {
-		po::store(po::parse_command_line(argc, argv, desc), vm);
+		po::store(po::parse_command_line(argc, argv, all), vm);
 		po::notify(vm);
 	} catch (boost::program_options::error error) {
 		std::cerr <<  error.what() << std::endl;
@@ -90,6 +99,11 @@ bool OptionsMerge::process(int argc, char *argv[])
 		std::cout << desc << std::endl;
 		std::cout << "Updated sources and documentation can be found at http://github.com/vice87/gam-ngs\n" << std::endl;
 		exit(0);
+	}
+
+	if (vm.count("debug"))
+	{
+		debug = true;
 	}
 
 	/*if (vm.count("version")) {
@@ -227,6 +241,11 @@ bool OptionsMerge::process(int argc, char *argv[])
 	if( vm.count("coverage-filter") )
 	{
 		if( coverageThreshold >= 0 ) coverageThreshold = vm["coverage-filter"].as<double>();
+	}
+
+	if( vm.count("no-mult-filter") ) 
+	{
+		noMultiplicityFilter = true;
 	}
 
 

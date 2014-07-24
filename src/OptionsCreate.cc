@@ -57,15 +57,24 @@ bool OptionsCreate::process(int argc, char *argv[])
 		//("slave-namesorted-bam", po::value< std::string >(), "name sorted BAM file of the slave assembly")
 
         ("min-block-size", po::value<int>(), "minimum number of reads needed to build a block (optional) [default=50]")
+        ("no-mult-filter", "force all reads to be processed as if they had unique mapping (optional)")
 		//("threads", po::value<int>(), "number of threads [default 1]")
 
 		// output
 		("output", po::value< std::string >(), "output-file's prefix (optional) [default=out]")
 		;
 
+	po::options_description hidden_opts("Debug options");
+	hidden_opts.add_options()
+        ("debug", "enable additional output files for debug purpose.")
+		;
+
+	po::options_description all("Hidden options");
+	all.add(desc).add(hidden_opts);
+
 	po::variables_map vm;
 	try {
-		po::store(po::parse_command_line(argc, argv, desc), vm);
+		po::store(po::parse_command_line(argc, argv, all), vm);
 		po::notify(vm);
 	} catch (boost::program_options::error error) {
 		std::cerr <<  error.what() << std::endl;
@@ -78,6 +87,11 @@ bool OptionsCreate::process(int argc, char *argv[])
 		std::cout << desc << std::endl;
 		std::cout << "Updated sources and documentation can be found at http://github.com/vice87/gam-ngs\n" << std::endl;
 		exit(0);
+	}
+
+	if (vm.count("debug"))
+	{
+		debug = true;
 	}
 
 	/*if (vm.count("version")) {
@@ -115,6 +129,11 @@ bool OptionsCreate::process(int argc, char *argv[])
 	{
 		minBlockSize = vm["min-block-size"].as<int>();
 		if( minBlockSize < 1 ) std::cerr << "WARNING: min-block-size is less than 1" << std::endl;
+	}
+
+	if( vm.count("no-mult-filter") ) 
+	{
+		noMultiplicityFilter = true;
 	}
 
 	// OUTPUT

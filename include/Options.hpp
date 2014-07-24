@@ -77,6 +77,9 @@ public:
 	int minBlockSize;
 	int threadsNum;
 	double coverageThreshold;
+	bool noMultiplicityFilter;
+
+	bool debug;
 
 	bool outputGraphs;
 

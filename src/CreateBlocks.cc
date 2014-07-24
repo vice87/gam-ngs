@@ -66,6 +66,9 @@ void CreateBlocks::execute()
 
 	time_t t1 = time(NULL);
 
+	if( g_options.noMultiplicityFilter ) 
+		std::cout << "[main] option --noMultiplicityFilter provided; reads will be processed as if they had unique mapping" << std::endl;
+
 	std::cout << "[main] opening BAM files" << std::endl;
 
 	// load master BAM filenames and min/max insert sizes
@@ -113,13 +116,11 @@ void CreateBlocks::execute()
 	sparse_hash_map< std::string, Read > masterReadMap_1, masterReadMap_2;
 
 	// load uniquely mapped reads of the master, while updating master contig's coverage and inserts stats
-	Read::loadReadsMap( masterBam, masterReadMap_1, masterReadMap_2, masterCoverage );
+	Read::loadReadsMap( masterBam, masterReadMap_1, masterReadMap_2, masterCoverage, g_options.noMultiplicityFilter );
 
 	// output inserts statistics for master assembly
 	std::string isize_stats_file = g_options.masterBamFile + ".isize";
 	masterBam.writeStatsToFile( isize_stats_file );
-
-	masterBam.Close(); // close master bam (no longer needed)
 
 	time_t t2 = time(NULL);
 	std::cout << "[main] reads loaded in " << formatTime(t2-t1) << std::endl;
@@ -138,7 +139,7 @@ void CreateBlocks::execute()
 
 	// build blocks, compute slave contig's coverage and inserts stats
 	Block::findBlocks( blocks, slaveBam, g_options.minBlockSize,
-					   masterReadMap_1, masterReadMap_2, slaveCoverage );
+					   masterReadMap_1, masterReadMap_2, slaveCoverage, g_options.noMultiplicityFilter );
 
 
 	/* COMPUTE COVERAGE OF THE BLOCKS */
@@ -148,12 +149,16 @@ void CreateBlocks::execute()
 	isize_stats_file = g_options.slaveBamFile + ".isize";
 	slaveBam.writeStatsToFile( isize_stats_file );
 
-	slaveBam.Close(); // close current slave (no longer needed)
-
 	std::cout << "[main] blocks found = " << blocks.size() << std::endl;
 
 	std::cout << "[main] writing blocks on file: " << getPathBaseName( g_options.outputFilePrefix ) << std::endl;
 	Block::writeBlocks( g_options.outputFilePrefix + ".blocks", blocks );
+	
+	if( g_options.debug ) 
+		Block::writeBlocksVerbose( g_options.outputFilePrefix + ".blocks.verbose.txt", blocks, masterBam, slaveBam );
+
+	masterBam.Close(); // close master bam (no longer needed)
+	slaveBam.Close(); // close current slave (no longer needed)
 
 	std::cout << "[main] total execution time = " << formatTime( time(NULL)-t1 ) << std::endl;
 }

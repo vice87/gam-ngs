@@ -32,6 +32,11 @@
 
 #include <stack>
 
+#include "OptionsMerge.hpp"
+using namespace options;
+extern OptionsMerge g_options;
+
+
 CompactAssemblyGraph::CompactAssemblyGraph( const AssemblyGraph &ag )
 {
 	this->_cgId = ag.getId();
@@ -461,7 +466,9 @@ void CompactAssemblyGraph::getLibRegionScore( MultiBamReader &bamReader, EdgeKin
 			// if not defined, I assume read's multiplicity is 1
 			if( !align.GetTag(std::string("NH"),nh) ) nh = 1;	// standard field
 			if( !align.GetTag(std::string("XT"),xt) ) xt = 'U';	// bwa field
-			if( nh != 1 || xt != 'U' ) continue; // discard reads with multiplicity greater than 1
+			bool uniqMapRead = g_options.noMultiplicityFilter || (nh == 1 && xt == 'U');
+			
+			if( !uniqMapRead ) continue; // discard reads with multiplicity greater than 1
 
 			int32_t startMate = align.MatePosition;
 			int32_t endMate = startMate + readLength - 1;

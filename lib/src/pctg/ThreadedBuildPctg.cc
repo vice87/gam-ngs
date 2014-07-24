@@ -267,7 +267,7 @@ double ThreadedBuildPctg::computeZScore( MultiBamReader &multiBamReader, int32_t
 		align.BuildCharData();
 		if( !align.GetTag(std::string("NH"),nh) ) nh = 1;	// standard SAM format field
         if( !align.GetTag(std::string("XT"),xt) ) xt = 'U'; // bwa field
-		bool is_uniq_mapped = (nh == 1 && xt == 'U');
+		bool is_uniq_mapped = g_options.noMultiplicityFilter || (nh == 1 && xt == 'U');
 
 		if( !is_uniq_mapped ) continue;
 

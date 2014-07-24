@@ -39,7 +39,6 @@
 #include "OrderingFunctions.hpp"
 #include "UtilityFunctions.hpp"
 
-
 Block::Block():
         _numReads(0)
 {}
@@ -474,7 +473,8 @@ void Block::findBlocks(
         const int minBlockSize,
         sparse_hash_map< std::string, Read > &readsMap_1,
         sparse_hash_map< std::string, Read > &readsMap_2,
-        std::vector< std::vector< uint32_t > > &coverage )
+        std::vector< std::vector< uint32_t > > &coverage,
+        bool noMultFilter )
 {
     typedef sparse_hash_map< std::string, Read > ReadMap;
     typedef std::list< std::string > ReadNameList;
@@ -500,7 +500,7 @@ void Block::findBlocks(
         // load read's moltiplicity (if the field is missing, assume it as uniquely mapped)
         if( !align.GetTag(std::string("NH"),nh) ) nh = 1;	// standard SAM format field
         if( !align.GetTag(std::string("XT"),xt) ) xt = 'U'; // bwa field
-		bool uniqMapRead = (nh == 1 && xt == 'U');
+		bool uniqMapRead = noMultFilter || (nh == 1 && xt == 'U');
 
 		if( !uniqMapRead ) continue; // skip reads mapped in multiple positions
 
@@ -737,7 +737,7 @@ void Block::writeBlocks( const std::string &blockFile, std::vector< Block > &blo
 	output << "# MasterAssemblyID\tMasterContigID\tMasterStrand\tMasterBegin\tMasterEnd\tMasterBlockReadsLength\tMasterReadsLength\t"
 		   << "SlaveAssemblyID\tSlaveContigID\tSlaveStrand\tSlaveBegin\tSlaveEnd\tSlaveBlockReadsLength\tSlaveReadsLength\n";
 
-	for( std::vector<Block>::iterator it = blocks.begin(); it != blocks.end(); it++ )
+	for( std::vector<Block>::iterator it = blocks.begin(); it != blocks.end(); ++it )
     {
         output << (*it) << std::endl;
     }
@@ -746,18 +746,26 @@ void Block::writeBlocks( const std::string &blockFile, std::vector< Block > &blo
 }
 
 
-void Block::writeCoreBlocks( const std::string& blockFile, std::vector< Block >& blocks  )
+void Block::writeBlocksVerbose( const std::string &blockFile, std::vector< Block > &blocks, const MultiBamReader &masterBam, const MultiBamReader &slaveBam )
 {
-    std::ofstream output( blockFile.c_str() );
+	std::ofstream output( blockFile.c_str() );
 
-    for( std::vector<Block>::iterator b = blocks.begin(); b != blocks.end(); b++ )
+	// block file header
+	output << "# This file should NOT be used as input for gam-merge command. It is only provided to easily look how blocks have been built.\n";
+	output << "# MasterAssemblyID\tMasterContigID\tMasterStrand\tMasterBegin\tMasterEnd\tMasterBlockReadsLength\tMasterReadsLength\t"
+		   << "SlaveAssemblyID\tSlaveContigID\tSlaveStrand\tSlaveBegin\tSlaveEnd\tSlaveBlockReadsLength\tSlaveReadsLength\n";
+
+	const RefVector& masterRef = masterBam.GetReferenceData();
+	const RefVector& slaveRef = slaveBam.GetReferenceData();
+
+	for( std::vector<Block>::iterator b = blocks.begin(); b != blocks.end(); ++b )
     {
         Frame mf = b->getMasterFrame();
         Frame sf = b->getSlaveFrame();
 
         output << b->getReadsNumber() << "\t"
-               << mf.getContigId() << "\t" << mf.getStrand() << "\t" << mf.getBegin() << "\t" << mf.getEnd() << "\t" << b->getReadsLen() << "\t"
-               << sf.getContigId() << "\t" << sf.getStrand() << "\t" << sf.getBegin() << "\t" << sf.getEnd() << "\t" << b->getReadsLen() << std::endl;
+               << masterRef.at(mf.getContigId()).RefName << "\t" << mf.getStrand() << "\t" << mf.getBegin() << "\t" << mf.getEnd() << "\t" << b->getReadsLen() << "\t"
+               << slaveRef.at(sf.getContigId()).RefName << "\t" << sf.getStrand() << "\t" << sf.getBegin() << "\t" << sf.getEnd() << "\t" << b->getReadsLen() << std::endl;
     }
 
     output.close();

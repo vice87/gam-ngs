@@ -84,7 +84,8 @@ void Read::loadReadsMap(
 		MultiBamReader &bamReader,
 		sparse_hash_map< std::string, Read > &readMap_1,
 		sparse_hash_map< std::string, Read > &readMap_2,
-		std::vector< std::vector<uint32_t> > &coverage )
+		std::vector< std::vector<uint32_t> > &coverage,
+        bool noMultFilter )
 {
     // initialize coverage vector
     const RefVector& refVect = bamReader.GetReferenceData();
@@ -104,7 +105,7 @@ void Read::loadReadsMap(
         // se la molteplicità non è stata definita, assumo che sia pari ad 1
         if( !align.GetTag(std::string("NH"),nh) ) nh = 1;
         if( !align.GetTag(std::string("XT"),xt) ) xt = 'U';
-        bool uniqMapRead = (nh == 1 && xt == 'U');
+        bool uniqMapRead = noMultFilter || (nh == 1 && xt == 'U');
 
 		if( !uniqMapRead ) continue; // read mappata in modo molteplice
 
@@ -116,77 +117,6 @@ void Read::loadReadsMap(
 		// update vector coverage
 		uint32_t read_len = align.GetEndPosition() - align.Position;
 		for( int i=0; i < read_len; i++ ) coverage.at(align.RefID).at(align.Position+i) += 1;
-    }
-}
-
-void Read::loadMasterReadsMap( BamReader &bamMaster, BamReader &bamSlave, sparse_hash_map< std::string, Read > &readMap )
-{
-    int32_t nh, xt;
-    BamAlignment align, masterAlign, prevMasterAlign;
-
-    if( !bamMaster.GetNextAlignment(masterAlign) ) return;
-
-    while( bamSlave.GetNextAlignment(align) )
-    {
-        if( strnum_cmp( align.Name.c_str(), masterAlign.Name.c_str()) < 0 ) // align.Name < masterAlign.Name
-        {
-            if( align.Name == prevMasterAlign.Name && align.IsPaired() && align.IsFirstMate() == prevMasterAlign.IsFirstMate() )
-            {
-                if( !align.GetTag(std::string("NH"),nh) ) nh = 1; // se molteplicità in un campo non standard assumo che sia pari ad 1
-                if( !align.GetTag(std::string("XT"),xt) ) xt = 'U'; // l'allineamento non è stato fatto con bwa
-
-                if( nh == 1 && xt == 'U' && align.IsMapped() )
-                {
-                    if( !prevMasterAlign.GetTag(std::string("NH"),nh) ) nh = 1; // se molteplicità in un campo non standard assumo che sia pari ad 1
-                    if( !prevMasterAlign.GetTag(std::string("XT"),xt) ) xt = 'U'; // l'allineamento non è stato fatto con bwa
-                    if( nh == 1 && xt == 'U' && prevMasterAlign.IsMapped() )
-                    {
-                        Read masterRead(prevMasterAlign.RefID, prevMasterAlign.Position, prevMasterAlign.GetEndPosition(), prevMasterAlign.IsReverseStrand());
-                        std::string readName = prevMasterAlign.Name + (prevMasterAlign.IsFirstMate() ? "1" : "2");
-                        readMap.insert( std::make_pair(readName,masterRead) );
-                    }
-                }
-            }
-
-            continue;
-        }
-
-        if( strnum_cmp( align.Name.c_str(), masterAlign.Name.c_str()) > 0 ) // align.Name > slaveAlign.Name
-        {
-            do
-            {
-                bamMaster.GetNextAlignment(masterAlign);
-            }
-            while( strnum_cmp(align.Name.c_str(), masterAlign.Name.c_str()) > 0 );
-        }
-
-        if( strnum_cmp( align.Name.c_str(), masterAlign.Name.c_str()) == 0 && align.IsPaired() && align.IsFirstMate() != masterAlign.IsFirstMate() )
-        {
-            prevMasterAlign = masterAlign;
-            if( !bamMaster.GetNextAlignment(masterAlign) ) break;
-        }
-
-        if( strnum_cmp( align.Name.c_str(), masterAlign.Name.c_str()) == 0 )
-        {
-            if( !align.GetTag(std::string("NH"),nh) ) nh = 1; // se molteplicità in un campo non standard assumo che sia pari ad 1
-            if( !align.GetTag(std::string("XT"),xt) ) xt = 'U'; // l'allineamento non è stato fatto con bwa
-            if( nh == 1 && xt == 'U' && align.IsMapped() )
-            {
-                if( !masterAlign.GetTag(std::string("NH"),nh) ) nh = 1; // se molteplicità in un campo non standard assumo che sia pari ad 1
-                if( !masterAlign.GetTag(std::string("XT"),xt) ) xt = 'U'; // l'allineamento non è stato fatto con bwa
-                if( nh == 1 && xt == 'U' && masterAlign.IsMapped() )
-                {
-                    Read masterRead(masterAlign.RefID, masterAlign.Position, masterAlign.GetEndPosition(), masterAlign.IsReverseStrand());
-                    std::string readName = masterAlign.Name;
-
-                    if( align.IsPaired() ) readName = readName + (masterAlign.IsFirstMate() ? "1" : "2");
-
-                    readMap.insert( std::make_pair(readName,masterRead) );
-                }
-            }
-
-            if( !bamMaster.GetNextAlignment(masterAlign) ) break;
-        }
     }
 }
 

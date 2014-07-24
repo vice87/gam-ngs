@@ -110,21 +110,6 @@ public:
 
     bool overlaps( Read &read, int minOverlap = 0 ) const;
 
-    //! Loads a set of common reads from two bam files sorted by read's name.
-    /*!
-     * In particular, exclusively the reads from the master bam are loaded.
-     * Reads with multiple alignments or unmapped are discarded.
-     *
-     * \param bamMaster alignment of reads in master assembly (read-name sorted).
-     * \param bamSlave alignment of reads in slave assembly (read-name sorted).
-     * \param readMap map where the reads are loaded.
-     */
-    static void loadMasterReadsMap(
-		BamReader &bamMaster,
-		BamReader &bamSlave,
-		sparse_hash_map< std::string, Read > &readMap
-	);
-
     //! Loads a set of (mapped) reads from a bam file.
     /*!
      * Reads with multiple alignments or unmapped are discarded.
@@ -142,7 +127,8 @@ public:
         MultiBamReader &bamReader,
         sparse_hash_map< std::string, Read > &readMap_1,
         sparse_hash_map< std::string, Read > &readMap_2,
-        std::vector< std::vector<uint32_t> > &coverage
+        std::vector< std::vector<uint32_t> > &coverage,
+        bool noMultFilter = false
 	);
 };
 
