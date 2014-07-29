@@ -565,13 +565,15 @@ void readNextSequence( std::istream &is, Contig &ctg )
 
 
 
-void
+size_t
 loadSequences( const std::string &file, RefSequence &refSequence, const std::map< std::string, int32_t > &ctg2Id )
 {
 	std::ifstream ifs( file.c_str(), std::ifstream::in );
 
 	char buffer[BUFFER_LEN];
 	ifs.rdbuf()->pubsetbuf( buffer, BUFFER_LEN );
+	
+	size_t num = 0;
 
 	while( !ifs.eof() )
 	{
@@ -584,9 +586,13 @@ loadSequences( const std::string &file, RefSequence &refSequence, const std::map
 		readNextSequence( ifs, *ctg );
 
 		refSequence[it->second].Sequence = ctg;
+		
+		++num;
 	}
 
 	ifs.close();
+	
+	return num;
 }
 
 /*

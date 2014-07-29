@@ -112,7 +112,7 @@ readNextContigID( std::istream &is, std::string &ctg_id );
 void
 readNextSequence( std::istream &is, Contig &ctg );
 
-void
+size_t
 loadSequences( const std::string &file, RefSequence &refSequence, const std::map< std::string, int32_t > &ctg2Id );
 
 #endif // _IO_CONTIG_

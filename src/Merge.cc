@@ -294,8 +294,23 @@ namespace modules {
         for (size_t i = 0; i < masterRef.size(); i++) masterCtg2Id[ masterRef[i].RefName ] = i;
         for (size_t i = 0; i < slaveRef.size(); i++) slaveCtg2Id[ slaveRef[i].RefName ] = i;
 
-        loadSequences(g_options.masterFastaFile, masterRef, masterCtg2Id);
-        loadSequences(g_options.slaveFastaFile, slaveRef, slaveCtg2Id);
+        size_t m_num = loadSequences(g_options.masterFastaFile, masterRef, masterCtg2Id);
+		std::cout << "       master sequences loaded = " << m_num << std::endl;
+		
+		if( m_num != masterRef.size() )
+		{
+			std::cerr << "[error] the number of contigs loaded from the master fasta file is different from the number of sequences in master bam headers\n";
+			exit(1);
+		}
+		
+        size_t s_num = loadSequences(g_options.slaveFastaFile, slaveRef, slaveCtg2Id);
+		std::cout << "       slave sequences loaded  = " << s_num << std::endl;
+		
+		if( s_num != slaveRef.size() )
+		{
+			std::cerr << "[error] the number of contigs loaded from the slave fasta file is different from the number of sequences in slave bam headers\n";
+			exit(1);
+		}
 
         /* OUTPUT SLAVE CONTIGS WITH NO BLOCKS */
 
