@@ -32,6 +32,9 @@
 #define TYPES_
 
 #include "stdint.h"
+#include <boost/dynamic_bitset.hpp>
+
+typedef boost::dynamic_bitset<> boost_bitset_t;
 
 typedef uint64_t IdType;       //!< unsigned integer for ID type
 typedef uint64_t UIntType;     //!< unsigned integer type

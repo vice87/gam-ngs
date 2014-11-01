@@ -268,17 +268,17 @@ void getNoBlocksContigs(
 	const RefSequence &masterRef,
 	const RefSequence &slaveRef,
 	const std::list<Block> &blocks,
-	std::set< int32_t > &masterNBC,
-	std::set< int32_t > &slaveNBC );
+	boost_bitset_t &masterNBC,
+	boost_bitset_t &slaveNBC );
 
 void getNoBlocksAfterFilterContigs(
 	const RefSequence &masterRef,
 	const RefSequence &slaveRef,
 	const std::list<Block> &blocks,
-	const std::set< int32_t > &masterNBC,
-	const std::set< int32_t > &slaveNBC,
-	std::set< int32_t > &masterNBC_AF,
-	std::set< int32_t > &slaveNBC_AF );
+	const boost_bitset_t &masterNBC,
+	const boost_bitset_t &slaveNBC,
+	boost_bitset_t &masterNBC_AF,
+	boost_bitset_t &slaveNBC_AF );
 
 #endif	/* BLOCK_HPP */
 

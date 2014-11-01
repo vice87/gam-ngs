@@ -43,6 +43,7 @@
 #include <unistd.h>
 
 //#include <boost/graph/graphviz.hpp>
+#include <boost/dynamic_bitset.hpp>
 
 #include "api/BamAux.h"
 #include "api/BamReader.h"
@@ -99,7 +100,7 @@ namespace modules {
         time_t tStart = time(NULL);
 
         if( g_options.noMultiplicityFilter ) 
-            std::cout << "[main] option --noMultiplicityFilter provided; reads will be processed as if they had unique mapping" << std::endl;
+            std::cout << "[warning] option --noMultiplicityFilter provided; reads will be processed as if they had unique mapping" << std::endl;
 
         _g_statsFile.open((g_options.outputFilePrefix + ".stats").c_str(), std::ios::out); // open statistics (output) file
 
@@ -231,7 +232,7 @@ namespace modules {
 
         /* LOAD SEQUENCES DATA */
 
-        std::cout << "[main] Loading contigs data" << std::endl;
+        std::cout << "[main] Loading contigs data..." << std::flush;
 
         uint64_t master_ctgs = masterBam.GetReferenceData().size();
         uint64_t slave_ctgs = slaveBam.GetReferenceData().size();
@@ -254,13 +255,18 @@ namespace modules {
             }
         }
 
+        std::cout << "done." << std::endl;
+
         /* BLOCKS FILTERING */
 
         std::set< std::pair<int32_t, int32_t> > sl_blocks;
         getSingleLinkBlocks(blocks, sl_blocks);
 
-        std::set<int32_t> masterNBC_BF, slaveNBC_BF; // contigs without blocks (before filtering)
+        std::cout << "[main] Retrieving contigs without blocks..." << std::flush;
+        boost_bitset_t masterNBC_BF(master_ctgs);
+        boost_bitset_t slaveNBC_BF(slave_ctgs); 
         getNoBlocksContigs(masterRef, slaveRef, blocks, masterNBC_BF, slaveNBC_BF);
+        std::cout << "done." << std::endl;
 
         double min_cov = std::min(masterBam.getGlobCoverage(), slaveBam.getGlobCoverage()) / 2;
 
@@ -276,8 +282,11 @@ namespace modules {
         //Block::filterBlocksByLength( blocks, masterRef, slaveRef, sl_blocks, 500 );
         //std::cout << "[main] length filtered blocks = " << blocks.size() << std::endl;
 
-        std::set<int32_t> masterNBC_AF, slaveNBC_AF; // contigs without blocks (after filtering)
+        std::cout << "[main] Retrieving contigs with no blocks after coverage filtering..." << std::flush;
+        boost_bitset_t masterNBC_AF(master_ctgs);
+        boost_bitset_t slaveNBC_AF(slave_ctgs);
         getNoBlocksAfterFilterContigs(masterRef, slaveRef, blocks, masterNBC_BF, slaveNBC_BF, masterNBC_AF, slaveNBC_AF);
+        std::cout << "done." << std::endl;
 
         /* PARTITION BLOCKS */
 
@@ -318,13 +327,19 @@ namespace modules {
         std::string noblocks_fasta_file = g_options.outputFilePrefix + ".noblocks.BF.fasta";
         std::cout << "[merge] Writing contigs with no blocks to file: " << noblocks_fasta_file << std::endl;
         std::ofstream noblocks_fasta_stream(noblocks_fasta_file.c_str());
-        for (std::set< int32_t >::iterator it = slaveNBC_BF.begin(); it != slaveNBC_BF.end(); it++)
+        for( size_t i = 0; i < slaveNBC_BF.size(); ++i )
 		{
-			if( *it < 0 || *it >= slaveRef.size() )
-				std::cerr << "[error] using index " << *it << " to access a vector of size " << slaveRef.size() << std::endl;
+            if( i >= slaveRef.size() )
+            {
+                std::cerr << "[error] using index " << i << " to access a vector of size " << slaveRef.size() << std::endl;
+                exit(1);
+            }
 
-            Contig *ctg = slaveRef.at(*it).Sequence;
-            noblocks_fasta_stream << *ctg << std::endl;
+            if( slaveNBC_BF.test(i) )
+            {
+                Contig *ctg = slaveRef.at(i).Sequence;
+                noblocks_fasta_stream << *ctg << std::endl;
+            }
         }
         noblocks_fasta_stream.close();
 
@@ -332,13 +347,19 @@ namespace modules {
         noblocks_fasta_file = g_options.outputFilePrefix + ".noblocks.AF.fasta";
         std::cout << "[merge] Writing contigs with no blocks (after filtering) to file: " << noblocks_fasta_file << std::endl;
         noblocks_fasta_stream.open(noblocks_fasta_file.c_str());
-        for (std::set< int32_t >::iterator it = slaveNBC_AF.begin(); it != slaveNBC_AF.end(); it++)
+        for( size_t i = 0; i < slaveNBC_AF.size(); ++i )
 		{
-            if( *it < 0 || *it >= slaveRef.size() )
-				std::cerr << "[error] using index " << *it << " to access a vector of size " << slaveRef.size() << std::endl;
+            if( i >= slaveRef.size() )
+            {
+                std::cerr << "[error] using index " << i << " to access a vector of size " << slaveRef.size() << std::endl;
+                exit(1);
+            }
 
-			Contig *ctg = slaveRef.at(*it).Sequence;
-            noblocks_fasta_stream << *ctg << std::endl;
+            if( slaveNBC_AF.test(i) )
+            {
+                Contig *ctg = slaveRef.at(i).Sequence;
+                noblocks_fasta_stream << *ctg << std::endl;
+            }
         }
         noblocks_fasta_stream.close();
 
@@ -383,24 +404,21 @@ namespace modules {
         // save IDs of (slave) contigs NOT merged
         std::cout << "[merge] writing slave's unused contigs (not even partially merged) on file \"" << ( g_options.outputFilePrefix + ".notmerged.fasta" ) << "\"" << std::endl;
         std::fstream unusedCtgsFile( (g_options.outputFilePrefix + ".notmerged.fasta").c_str(), std::fstream::out );
-        std::vector<bool> usedCtgs( slaveRef.size(), false );
+        boost_bitset_t usedCtgs( slaveRef.size() );
 
-        for( std::list< PairedContig >::const_iterator pctg = result->begin(); pctg != result->end(); pctg++ )
+        for( std::list< PairedContig >::const_iterator pctg = result->begin(); pctg != result->end(); ++pctg )
         {
             const std::set< int32_t >& slaveCtgs = pctg->getSlaveIds();
 
-            for( std::set< int32_t >::const_iterator ctg = slaveCtgs.begin(); ctg != slaveCtgs.end(); ctg++ )
-                usedCtgs.at(*ctg) = true;
+            for( std::set< int32_t >::const_iterator ctgid = slaveCtgs.begin(); ctgid != slaveCtgs.end(); ++ctgid )
+                usedCtgs[*ctgid] = 1;
         }
 
-        for( std::set<int32_t>::const_iterator it = slaveNBC_BF.begin(); it != slaveNBC_BF.end(); it++ )
-            usedCtgs[*it] = true;
-
-        for( std::set<int32_t>::const_iterator it = slaveNBC_AF.begin(); it != slaveNBC_AF.end(); it++ )
-            usedCtgs[*it] = true;
+        usedCtgs |= slaveNBC_BF;
+        usedCtgs |= slaveNBC_AF;
 
         for( size_t i=0; i < usedCtgs.size(); i++ )
-            if( !usedCtgs[i] ) unusedCtgsFile << *(slaveRef[i].Sequence) << "\n";
+            if( not usedCtgs[i] ) unusedCtgsFile << *(slaveRef[i].Sequence) << "\n";
 
         unusedCtgsFile.close();
         usedCtgs.clear(); // linea commentata perchè mi servono dopo per le regioni duplicate

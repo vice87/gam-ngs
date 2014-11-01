@@ -811,15 +811,15 @@ void getNoBlocksContigs(
 	const RefSequence &masterRef,
 	const RefSequence &slaveRef,
 	const std::list<Block> &blocks,
-	std::set< int32_t > &masterNBC,
-	std::set< int32_t > &slaveNBC )
+	boost_bitset_t &masterNBC,
+	boost_bitset_t &slaveNBC )
 {
-	std::vector<bool> master_ctgWithBlock( masterRef.size(), false );
-	std::vector<bool> slave_ctgWithBlock( slaveRef.size(), false );
-
 	int32_t mid, sid;
 	int32_t m_size = static_cast<int32_t>(masterRef.size());
 	int32_t s_size = static_cast<int32_t>(slaveRef.size());
+
+	masterNBC.reset();
+	slaveNBC.reset();
 
 	for( std::list<Block>::const_iterator b = blocks.begin(); b != blocks.end(); ++b )
 	{
@@ -828,34 +828,38 @@ void getNoBlocksContigs(
 
 		if( mid < m_size && mid >= 0 )
 		{
-			master_ctgWithBlock[mid] = true;
+			masterNBC[mid] = 1;
 		}
 		else
 		{
 			std::cerr << "[getNoBlocksContigs] error: found a block with master id "
-					<< mid << " when the admissible range is [0," << m_size << ")." << std::endl;
+					<< mid << " when the admissible range is [0," << m_size << ")" 
+					<< "Probably master and slave have been wrongly provided (e.g., swapped)." 
+					<< std::endl;
 
 			exit(EXIT_FAILURE);
 		}
 
 		if( sid < s_size && sid >= 0 )
 		{
-			slave_ctgWithBlock[mid] = true;
+			slaveNBC[mid] = 1;
 		}
 		else
 		{
 			std::cerr << "[getNoBlocksContigs] error: found a block with slave id "
-					<< sid << " when the admissible range is [0," << s_size << ")." << std::endl;
+					<< sid << " when the admissible range is [0," << s_size << ")." 
+					<< "Probably master and slave have been wrongly provided (e.g., swapped)." 
+					<< std::endl;
 
 			exit(EXIT_FAILURE);
 		}
 	}
 
-	for( int32_t i=0; i < master_ctgWithBlock.size(); i++ )
-		if( not master_ctgWithBlock[i] ) masterNBC.insert(i);
+	// now masterNBC and slaveNBC contain contigs with at least a block lying on them
+	// => flip the bitset to obtain the set of contigs with no blocks
 
-	for( int32_t i=0; i < slave_ctgWithBlock.size(); i++ )
-		if( not slave_ctgWithBlock[i] ) slaveNBC.insert(i);
+	masterNBC.flip();
+	slaveNBC.flip();
 }
 
 
@@ -863,29 +867,31 @@ void getNoBlocksAfterFilterContigs(
 	const RefSequence &masterRef,
 	const RefSequence &slaveRef,
 	const std::list<Block> &blocks,
-	const std::set< int32_t > &masterNBC,
-	const std::set< int32_t > &slaveNBC,
-	std::set< int32_t > &masterNBC_AF,
-	std::set< int32_t > &slaveNBC_AF )
+	const boost_bitset_t &masterNBC,
+	const boost_bitset_t &slaveNBC,
+	boost_bitset_t &masterNBC_AF,
+	boost_bitset_t &slaveNBC_AF )
 {
-	std::vector<bool> master_ctgWithBlockAF( masterRef.size(), false );
-	std::vector<bool> slave_ctgWithBlockAF( slaveRef.size(), false );
+	//std::vector<bool> master_ctgWithBlockAF( masterRef.size(), false );
+	//std::vector<bool> slave_ctgWithBlockAF( slaveRef.size(), false );
+
+	masterNBC_AF.reset();
+	slaveNBC_AF.reset();
 
 	for( std::list<Block>::const_iterator b = blocks.begin(); b != blocks.end(); ++b )
 	{
-		master_ctgWithBlockAF.at( b->getMasterId() ) = true;
-		slave_ctgWithBlockAF.at( b->getSlaveId() ) = true;
+		masterNBC_AF[ b->getMasterId() ] = 1;
+		slaveNBC_AF[ b->getSlaveId() ] = 1;
 	}
 
-	for( std::set< int32_t >::const_iterator it = masterNBC.begin(); it != masterNBC.end(); it++ )
-		master_ctgWithBlockAF.at(*it) = true;
+	// at this point, masterNBC_AF and slaveNBC_AF contain contigs with at least a block lying on them
+	// => bitwiseOR with masterNBC and slaveNBC to add contigs with no block before the filtering
 
-	for( std::set< int32_t >::const_iterator it = slaveNBC.begin(); it != slaveNBC.end(); it++ )
-		slave_ctgWithBlockAF.at(*it) = true;
+	masterNBC_AF |= masterNBC;
+	slaveNBC_AF  |= slaveNBC;
 
-	for( int32_t i=0; i < master_ctgWithBlockAF.size(); i++ )
-		if( not master_ctgWithBlockAF.at(i) ) masterNBC_AF.insert(i);
+	// flip bitsets to obtain contigs we want (those with no blocks after the filtering)
 
-	for( int32_t i=0; i < slave_ctgWithBlockAF.size(); i++ )
-		if( not slave_ctgWithBlockAF.at(i) ) slaveNBC_AF.insert(i);
+	masterNBC_AF.flip();
+	slaveNBC_AF.flip();
 }
