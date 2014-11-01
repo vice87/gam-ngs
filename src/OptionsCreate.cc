@@ -41,7 +41,7 @@ bool OptionsCreate::process(int argc, char *argv[])
 	this->argv = argv;
 
 	std::stringstream ss;
-	ss << "\ngam-create: GAM-NGS executable for building blocks, given two alignments. Allowed options";
+	ss << "\ngam-create: GAM-NGS 1.1 (20141101) executable for building blocks, given two alignments. Allowed options";
 
 	po::options_description desc(ss.str().c_str());
 	desc.add_options()

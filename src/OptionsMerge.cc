@@ -42,7 +42,7 @@ bool OptionsMerge::process(int argc, char *argv[])
 
 	// PROCESS PARAMETERS
 	std::stringstream ss;
-	ss << "\ngam-merge: GAM-NGS executable for merging two assemblies. Allowed options";
+	ss << "\ngam-merge: GAM-NGS 1.1 (20141101) executable for merging two assemblies. Allowed options";
 
 	po::options_description desc(ss.str().c_str());
 	desc.add_options()
