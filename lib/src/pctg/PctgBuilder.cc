@@ -33,11 +33,14 @@
 #include <boost/detail/container_fwd.hpp>
 #include <sys/stat.h>
 
+#include "OptionsMerge.hpp"
 #include "pctg/PctgBuilder.hpp"
 #include "pctg/MergeInCutTailFailed.hpp"
 #include "assembly/io_contig.hpp"
 #include "alignment/ablast.hpp"
 #include "alignment/banded_smith_waterman.hpp"
+
+extern OptionsMerge g_options;
 
 //std::ofstream g_badAlignStream;
 //std::ofstream ext_ba_desc_stream;
@@ -1111,8 +1114,11 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 
 			if( fork_type == MIS_MASTER )
 			{
-				std::cerr << "[debug] Found MASTER misassembly in ctg "  << blocks_list.front().getMasterId()
-					<< " mw=" << mw << " sw=" << sw << " w_diff=" << w_diff << std::endl;
+				if( g_options.debug )
+				{
+					std::cerr << "[debug] Found MASTER misassembly in ctg "  << blocks_list.front().getMasterId()
+						<< " mw=" << mw << " sw=" << sw << " w_diff=" << w_diff << std::endl;
+				}
 
 				if( sharedFirstInMaster ){ mbv[*v].m_rtail = false; mbv[mv].m_ltail = false; }
 				else { mbv[*v].m_ltail = false; mbv[mv].m_rtail = false; }
@@ -1121,8 +1127,11 @@ bool PctgBuilder::solveForks( CompactAssemblyGraph &graph, std::vector<MergeBloc
 			}
 			else if( fork_type == MIS_SLAVE )
 			{
-				std::cerr << "[debug] Found SLAVE misassembly in ctg "  << blocks_list.front().getSlaveId()
-					<< " mw=" << mw << " sw=" << sw << " w_diff=" << w_diff << std::endl;
+				if( g_options.debug )
+				{
+					std::cerr << "[debug] Found SLAVE misassembly in ctg "  << blocks_list.front().getSlaveId()
+						<< " mw=" << mw << " sw=" << sw << " w_diff=" << w_diff << std::endl;
+				}
 
 				if( sharedFirstInSlave ){ mbv[*v].s_rtail = false; mbv[sv].s_ltail = false; }
 				else { mbv[*v].s_ltail = false; mbv[sv].s_rtail = false; }
@@ -1290,12 +1299,14 @@ bool PctgBuilder::getMergePaths(const CompactAssemblyGraph &graph, CompactAssemb
     uint64_t out_degree = boost::out_degree(v, graph);
     uint64_t in_degree = boost::in_degree(v, graph);
 
-    if (out_degree >= 2) {
+    if( out_degree >= 2 ) 
+    {
         std::cerr << "[error] Found vertex with output degree >= 2 in fork-solved graph (this should NOT happen!) ==> (" << mbv[v].m_id << "," << mbv[v].s_id << ")" << std::endl;
         return false;
     }
 
-    if (in_degree >= 2) {
+    if(in_degree >= 2) 
+    {
         std::cerr << "[error] Found vertex with input degree >= 2 in fork-solved graph (this should NOT happen!) ==> (" << mbv[v].m_id << "," << mbv[v].s_id << ")" << std::endl;
         return false;
     }
@@ -1326,7 +1337,7 @@ bool PctgBuilder::getMergePaths(const CompactAssemblyGraph &graph, CompactAssemb
 
             bool curFirstInSlave = curSlaveStart <= nxtSlaveStart;
 
-            std::cerr << "[debug] Found (linear) SLAVE mis-assembly in ctg " << mbv[v_cur].s_id << std::endl;
+            if( g_options.debug ) std::cerr << "[debug] Found (linear) SLAVE mis-assembly in ctg " << mbv[v_cur].s_id << std::endl;
 
             if (curFirstInSlave) {
                 mbv[v_cur].s_rtail = false;
