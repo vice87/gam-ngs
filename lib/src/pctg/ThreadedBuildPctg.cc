@@ -165,7 +165,7 @@ ThreadedBuildPctg::run()
 		threads_argv[i]->output = new std::list< PairedContig >;
 
 		pthread_create( &threads[i], &attr, buildPctgThread, (void*)threads_argv[i] );
-		std::cerr << "[build pctg] Thread " << i << " created." << std::endl;
+		if(g_options.debug) std::cerr << "[build pctg] Thread " << i << " created." << std::endl;
 	}
 
     pthread_attr_destroy(&attr);
