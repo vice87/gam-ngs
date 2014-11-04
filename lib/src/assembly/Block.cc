@@ -814,7 +814,6 @@ void getNoBlocksContigs(
 	boost_bitset_t &masterNBC,
 	boost_bitset_t &slaveNBC )
 {
-	int32_t mid, sid;
 	int32_t m_size = static_cast<int32_t>(masterRef.size());
 	int32_t s_size = static_cast<int32_t>(slaveRef.size());
 
@@ -823,31 +822,31 @@ void getNoBlocksContigs(
 
 	for( std::list<Block>::const_iterator b = blocks.begin(); b != blocks.end(); ++b )
 	{
-		mid = b->getMasterId();
-		sid = b->getSlaveId();
+		int32_t master_id = b->getMasterId();
+		int32_t slave_id = b->getSlaveId();
 
-		if( mid < m_size && mid >= 0 )
+		if( master_id < m_size && master_id >= 0 )
 		{
-			masterNBC[mid] = 1;
+			masterNBC[master_id] = 1;
 		}
 		else
 		{
 			std::cerr << "[getNoBlocksContigs] error: found a block with master id "
-					<< mid << " when the admissible range is [0," << m_size << ")" 
+					<< master_id << " when the admissible range is [0," << m_size << ")" 
 					<< "Probably master and slave have been wrongly provided (e.g., swapped)." 
 					<< std::endl;
 
 			exit(EXIT_FAILURE);
 		}
 
-		if( sid < s_size && sid >= 0 )
+		if( slave_id < s_size && slave_id >= 0 )
 		{
-			slaveNBC[mid] = 1;
+			slaveNBC[slave_id] = 1;
 		}
 		else
 		{
 			std::cerr << "[getNoBlocksContigs] error: found a block with slave id "
-					<< sid << " when the admissible range is [0," << s_size << ")." 
+					<< slave_id << " when the admissible range is [0," << s_size << ")." 
 					<< "Probably master and slave have been wrongly provided (e.g., swapped)." 
 					<< std::endl;
 
@@ -872,16 +871,44 @@ void getNoBlocksAfterFilterContigs(
 	boost_bitset_t &masterNBC_AF,
 	boost_bitset_t &slaveNBC_AF )
 {
-	//std::vector<bool> master_ctgWithBlockAF( masterRef.size(), false );
-	//std::vector<bool> slave_ctgWithBlockAF( slaveRef.size(), false );
+	int32_t m_size = static_cast<int32_t>(masterRef.size());
+	int32_t s_size = static_cast<int32_t>(slaveRef.size());
 
 	masterNBC_AF.reset();
 	slaveNBC_AF.reset();
 
 	for( std::list<Block>::const_iterator b = blocks.begin(); b != blocks.end(); ++b )
 	{
-		masterNBC_AF[ b->getMasterId() ] = 1;
-		slaveNBC_AF[ b->getSlaveId() ] = 1;
+		int32_t master_id = b->getMasterId();
+		int32_t slave_id = b->getSlaveId();
+
+		if( master_id < m_size && master_id >= 0 )
+		{
+			masterNBC_AF[master_id] = 1;
+		}
+		else
+		{
+			std::cerr << "[getNoBlocksAfterFilterContigs] error: found a block with master id "
+					<< master_id << " when the admissible range is [0," << m_size << ")" 
+					<< "Probably master and slave have been wrongly provided (e.g., swapped)." 
+					<< std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+
+		if( slave_id < s_size && slave_id >= 0 )
+		{
+			slaveNBC_AF[slave_id] = 1;
+		}
+		else
+		{
+			std::cerr << "[getNoBlocksAfterFilterContigs] error: found a block with slave id "
+					<< slave_id << " when the admissible range is [0," << s_size << ")." 
+					<< "Probably master and slave have been wrongly provided (e.g., swapped)." 
+					<< std::endl;
+
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	// at this point, masterNBC_AF and slaveNBC_AF contain contigs with at least a block lying on them

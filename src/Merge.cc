@@ -232,7 +232,7 @@ namespace modules {
 
         /* LOAD SEQUENCES DATA */
 
-        std::cout << "[main] Loading contigs data..." << std::flush;
+        std::cout << "[main] Loading contigs data..." << std::endl;
 
         uint64_t master_ctgs = masterBam.GetReferenceData().size();
         uint64_t slave_ctgs = slaveBam.GetReferenceData().size();
@@ -241,21 +241,30 @@ namespace modules {
         RefSequence slaveRef(slave_ctgs);
 
         {
+            int64_t master_asm_len = 0;
+            int64_t slave_asm_len = 0;
+
             const RefVector& master_ref_data = masterBam.GetReferenceData();
             const RefVector& slave_ref_data = slaveBam.GetReferenceData();
 
             for (uint64_t i = 0; i < master_ctgs; i++) {
                 masterRef[i].RefName = master_ref_data.at(i).RefName;
                 masterRef[i].RefLength = master_ref_data.at(i).RefLength;
+                master_asm_len += master_ref_data.at(i).RefLength;
             }
 
             for (uint64_t i = 0; i < slave_ctgs; i++) {
                 slaveRef[i].RefName = slave_ref_data.at(i).RefName;
                 slaveRef[i].RefLength = slave_ref_data.at(i).RefLength;
+                slave_asm_len += slave_ref_data.at(i).RefLength;
             }
+
+            std::cout << "done." 
+                << "\n          " << "Master Assembly: sequences = " << master_ctgs << "\ntotal length = " << master_asm_len
+                << "\n          " << "Slave  Assembly: sequences = " << slave_ctgs << "\ntotal length = " << slave_asm_len
+                << std::endl; 
         }
 
-        std::cout << "done." << std::endl;
 
         /* BLOCKS FILTERING */
 
