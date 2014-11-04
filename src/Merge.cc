@@ -232,7 +232,7 @@ namespace modules {
 
         /* LOAD SEQUENCES DATA */
 
-        std::cout << "[main] Loading contigs data..." << std::endl;
+        std::cout << "[main] Loading contigs data..." << std::flush;
 
         uint64_t master_ctgs = masterBam.GetReferenceData().size();
         uint64_t slave_ctgs = slaveBam.GetReferenceData().size();
@@ -260,8 +260,8 @@ namespace modules {
             }
 
             std::cout << "done." 
-                << "\n          " << "Master Assembly: sequences = " << master_ctgs << "\ntotal length = " << master_asm_len
-                << "\n          " << "Slave  Assembly: sequences = " << slave_ctgs << "\ntotal length = " << slave_asm_len
+                << "\n          " << "Master Assembly: sequences = " << master_ctgs << "\ttotal length = " << master_asm_len
+                << "\n          " << "Slave  Assembly: sequences = " << slave_ctgs << "\ttotal length = " << slave_asm_len
                 << std::endl; 
         }
 
