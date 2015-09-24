@@ -33,15 +33,19 @@
 
 SCRIPT_PATH=`pwd -P`
 THREADS_NUM=4
+BLOCKSIZE=10
 BWA=bwa
+
+master=Allpaths-LG
+slave=MSR-CA
+
 GAM_CREATE=../bin/gam-create
 GAM_MERGE=../bin/gam-merge
 
-# Aligning reads on Allpaths-LG and MSR-CA's assemblies
+# Aligning reads on master and slave's assemblies
 
 >./log.stderr
-
-for index in Allpaths-LG MSR-CA
+for index in $master $slave
 do
 	ASM_PATH="./Assembly/${index}/genome.ctg.fasta"
 	ALN_PREFIX="./Alignments/${index}/${index}.frag.bwa"
@@ -74,23 +78,40 @@ do
 	samtools index $ALN_PREFIX.sorted.bam 2>>./log.stderr
 done
 
-# GAM-NGS pipeline
+gam-ngs () {
+	# Variable assignment
+	MASTER=$1
+	SLAVE=$2
+	# GAM-NGS pipeline
 
-mkdir -p ${SCRIPT_PATH}/gam-ngs_merge
+	mkdir -p ${SCRIPT_PATH}/gam-ngs_merge_${MASTER}_${SLAVE}
 
-# Prepare GAM-NGS's input files
+	# Prepare GAM-NGS's input files
+	for name in $MASTER $SLAVE
+	do
+	        echo -e "${SCRIPT_PATH}/Alignments/${name}/${name}.frag.bwa.sorted.bam\n90 270" >${SCRIPT_PATH}/gam-ngs_merge_${MASTER}_${SLAVE}/${name}.PE.list.txt
+	done
 
-echo -e "${SCRIPT_PATH}/Alignments/Allpaths-LG/Allpaths-LG.frag.bwa.sorted.bam\n90 270" >${SCRIPT_PATH}/gam-ngs_merge/Allpaths-LG.PE.list.txt
-echo -e "${SCRIPT_PATH}/Alignments/MSR-CA/MSR-CA.frag.bwa.sorted.bam\n90 270" >${SCRIPT_PATH}/gam-ngs_merge/MSR-CA.PE.list.txt
+	# GAM-NGS: Blocks construction phase
 
-# GAM-NGS: Blocks construction phase
+	echo -e "\n### GAM-NGS's blocks construction\n"
+	command="${GAM_CREATE} --master-bam ${SCRIPT_PATH}/gam-ngs_merge_${MASTER}_${SLAVE}/${MASTER}.PE.list.txt --slave-bam ${SCRIPT_PATH}/gam-ngs_merge_${MASTER}_${SLAVE}/${SLAVE}.PE.list.txt --min-block-size ${BLOCKSIZE} --output ${SCRIPT_PATH}/gam-ngs_merge_${MASTER}_${SLAVE}/out >${SCRIPT_PATH}/gam-ngs_merge_${MASTER}_${SLAVE}/gam-create.log.out 2>${SCRIPT_PATH}/gam-ngs_merge_${MASTER}_${SLAVE}/gam-create.log.err"
 
-echo -e "\n### GAM-NGS's blocks construction\n"
-echo -e "gam-create --master-bam ${SCRIPT_PATH}/gam-ngs_merge/Allpaths-LG.PE.list.txt --slave-bam ${SCRIPT_PATH}/gam-ngs_merge/MSR-CA.PE.list.txt --min-block-size 10 --output ${SCRIPT_PATH}/gam-ngs_merge/out >${SCRIPT_PATH}/gam-ngs_merge/gam-create.log.out 2>${SCRIPT_PATH}/gam-ngs_merge/gam-create.log.err\n"
-${GAM_CREATE} --master-bam ${SCRIPT_PATH}/gam-ngs_merge/Allpaths-LG.PE.list.txt --slave-bam ${SCRIPT_PATH}/gam-ngs_merge/MSR-CA.PE.list.txt --min-block-size 10 --output ${SCRIPT_PATH}/gam-ngs_merge/out >${SCRIPT_PATH}/gam-ngs_merge/gam-create.log.out 2>${SCRIPT_PATH}/gam-ngs_merge/gam-create.log.err
+	echo $command
+	eval $command
 
-# GAM-NGS: Merge
+	# GAM-NGS: Merge
 
-echo -e "### GAM-NGS's merging phase\n"
-echo -e "gam-merge --blocks-file ${SCRIPT_PATH}/gam-ngs_merge/out.blocks --master-bam ${SCRIPT_PATH}/gam-ngs_merge/Allpaths-LG.PE.list.txt --master-fasta ${SCRIPT_PATH}/Assembly/Allpaths-LG/genome.ctg.fasta --slave-bam ${SCRIPT_PATH}/gam-ngs_merge/MSR-CA.PE.list.txt --slave-fasta ${SCRIPT_PATH}/Assembly/MSR-CA/genome.ctg.fasta --min-block-size 10 --output ${SCRIPT_PATH}/gam-ngs_merge/out --threads ${THREADS_NUM} >${SCRIPT_PATH}/gam-ngs_merge/gam-merge.log.out 2>${SCRIPT_PATH}/gam-ngs_merge/gam-merge.log.err\n"
-${GAM_MERGE} --blocks-file ${SCRIPT_PATH}/gam-ngs_merge/out.blocks --master-bam ${SCRIPT_PATH}/gam-ngs_merge/Allpaths-LG.PE.list.txt --master-fasta ${SCRIPT_PATH}/Assembly/Allpaths-LG/genome.ctg.fasta --slave-bam ${SCRIPT_PATH}/gam-ngs_merge/MSR-CA.PE.list.txt --slave-fasta ${SCRIPT_PATH}/Assembly/MSR-CA/genome.ctg.fasta --min-block-size 10 --output ${SCRIPT_PATH}/gam-ngs_merge/out --threads ${THREADS_NUM} >${SCRIPT_PATH}/gam-ngs_merge/gam-merge.log.out 2>${SCRIPT_PATH}/gam-ngs_merge/gam-merge.log.err
+	echo -e "### GAM-NGS's merging phase\n"
+	command="${GAM_MERGE} --blocks-file ${SCRIPT_PATH}/gam-ngs_merge_${MASTER}_${SLAVE}/out.blocks --master-bam ${SCRIPT_PATH}/gam-ngs_merge_${MASTER}_${SLAVE}/${MASTER}.PE.list.txt --master-fasta ${SCRIPT_PATH}/Assembly/${MASTER}/genome.ctg.fasta --slave-bam ${SCRIPT_PATH}/gam-ngs_merge_${MASTER}_${SLAVE}/${SLAVE}.PE.list.txt --slave-fasta ${SCRIPT_PATH}/Assembly/${SLAVE}/genome.ctg.fasta --min-block-size ${BLOCKSIZE} --output ${SCRIPT_PATH}/gam-ngs_merge_${MASTER}_${SLAVE}/out --threads ${THREADS_NUM} >${SCRIPT_PATH}/gam-ngs_merge_${MASTER}_${SLAVE}/gam-merge.log.out 2>${SCRIPT_PATH}/gam-ngs_merge_${MASTER}_${SLAVE}/gam-merge.log.err"
+
+	echo $command
+	eval $command
+}
+# First run
+gam-ngs $master $slave
+
+# Second run
+gam-ngs $slave $master
+
+
