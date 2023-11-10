@@ -145,8 +145,8 @@ int main(int argc, char** argv)
     {
         if( 2*length >= tot_length ) break;
         length += *rit;
-        N50++;
-        L50 = *rit;
+	N50 = *rit;
+        L50++;
     }
 
     cout << getBaseName(argv[1]) << " statistics:" << endl
